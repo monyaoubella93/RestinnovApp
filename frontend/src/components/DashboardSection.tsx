@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { DashboardData, SejourStatut } from '../types'
-import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 import { RelevesProprietairesSection } from './RelevesProprietairesSection'
 
 interface DashboardSectionProps {
@@ -11,7 +10,6 @@ interface DashboardSectionProps {
   onNavigateToSejour?: (sejourId: number) => void
   onNavigateToSejoursListe?: (statut?: SejourStatut) => void
   onCheckout?: (sejourId: number) => Promise<void>
-  onNavigateToTicketsMaintenance?: () => void
   onNavigateToResolutionsAValider?: () => void
 }
 
@@ -199,7 +197,6 @@ export function DashboardSection({
   onNavigateToSejour,
   onNavigateToSejoursListe,
   onCheckout,
-  onNavigateToTicketsMaintenance,
   onNavigateToResolutionsAValider,
 }: DashboardSectionProps) {
   if (loading) {
@@ -386,35 +383,7 @@ export function DashboardSection({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-700">Problèmes signalés</h3>
-          {data.problemes_signales.length === 0 ? (
-            <p className="mt-2 text-sm text-gray-500">Aucun problème signalé.</p>
-          ) : (
-            <ul className="mt-3 divide-y divide-gray-100">
-              {data.problemes_signales.map((probleme) => (
-                <li key={probleme.id}>
-                  <button
-                    type="button"
-                    onClick={() => onNavigateToTicketsMaintenance?.()}
-                    className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-2 text-left transition-colors hover:bg-gray-50"
-                  >
-                    <p className="truncate text-sm font-medium text-gray-900">
-                      {probleme.appartement?.adresse ?? 'Appartement supprimé'}
-                    </p>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${URGENCE_STYLES[probleme.urgence]}`}
-                    >
-                      {URGENCE_LABELS[probleme.urgence]}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700">Ménages à valider</h3>
           {data.menages_a_valider.length === 0 ? (

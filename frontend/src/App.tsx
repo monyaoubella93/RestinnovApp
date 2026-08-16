@@ -540,7 +540,6 @@ function App() {
               onNavigateToSejour={handleNavigateToSejourDetail}
               onNavigateToSejoursListe={handleNavigateToSejoursListe}
               onCheckout={handleDashboardCheckout}
-              onNavigateToTicketsMaintenance={() => navigateTo('maintenance-tickets')}
               onNavigateToResolutionsAValider={() => navigateTo('maintenance-resolutions')}
             />
           )}

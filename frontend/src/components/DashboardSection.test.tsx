@@ -134,10 +134,7 @@ describe('DashboardSection', () => {
     expect(screen.getByText('Maintenance')).toBeInTheDocument()
   })
 
-  it('affiche les problèmes signalés avec adresse et badge d\'urgence, cliquable', async () => {
-    const user = userEvent.setup()
-    const onNavigateToTicketsMaintenance = vi.fn()
-
+  it('n\'affiche plus la section "Problèmes signalés" (visible uniquement dans la cloche de notifications)', () => {
     render(
       <DashboardSection
         data={{
@@ -155,21 +152,10 @@ describe('DashboardSection', () => {
         }}
         loading={false}
         error={null}
-        onNavigateToTicketsMaintenance={onNavigateToTicketsMaintenance}
       />,
     )
 
-    expect(screen.getByText('12 rue de la Roquette')).toBeInTheDocument()
-    expect(screen.getByText('Haute')).toBeInTheDocument()
-
-    await user.click(screen.getByText('12 rue de la Roquette'))
-    expect(onNavigateToTicketsMaintenance).toHaveBeenCalledTimes(1)
-  })
-
-  it('affiche un message quand aucun problème n\'est signalé', () => {
-    render(<DashboardSection data={{ ...data, problemes_signales: [] }} loading={false} error={null} />)
-
-    expect(screen.getByText('Aucun problème signalé.')).toBeInTheDocument()
+    expect(screen.queryByText('Problèmes signalés')).not.toBeInTheDocument()
   })
 
   it('affiche les ménages à valider avec adresse et voyageur, cliquable vers le séjour', async () => {
