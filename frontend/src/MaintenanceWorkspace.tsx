@@ -3,6 +3,8 @@ import { useAuth } from './auth/AuthContext'
 import { fetchMesTicketsMaintenance } from './api'
 import { HistoriqueTicketsAgentSection } from './components/HistoriqueTicketsAgentSection'
 import { MesTicketsSection } from './components/MesTicketsSection'
+import { SyncStatusPill } from './pwa/SyncStatusPill'
+import { useOfflineSync } from './pwa/useOfflineSync'
 import { usePwaIdentity } from './pwa/usePwaIdentity'
 import type { MonTicketMaintenance } from './types'
 
@@ -24,6 +26,7 @@ function initiales(nom: string): string {
 
 export function MaintenanceWorkspace() {
   usePwaIdentity('maintenance')
+  const offlineSync = useOfflineSync()
   const { user, logout } = useAuth()
   const [onglet, setOnglet] = useState<Onglet>('mes-tickets')
   const [tickets, setTickets] = useState<MonTicketMaintenance[]>([])
@@ -149,10 +152,7 @@ export function MaintenanceWorkspace() {
             </p>
           </div>
           <div className="border-l border-border-default pl-4 text-[13px] text-ink-tertiary">{todayCapitalized}</div>
-          <div className="ml-auto flex h-10 items-center gap-2 rounded-field bg-success-bg px-3 text-xs font-bold text-success-text">
-            <span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />
-            Tout est synchronisé
-          </div>
+          <SyncStatusPill {...offlineSync} />
         </header>
 
         <main className="flex-1 overflow-auto p-6">

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ajouterPhotosPreuveMission,
+  isOfflineQueuedError,
   marquerMissionMenageRefusVu,
   ouvrirMissionMenage,
   resolveStorageUrl,
@@ -163,23 +164,38 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
   const doneItems = checklistItems.filter((item) => item.coche).length
   const progressPct = totalItems === 0 ? 100 : Math.round((doneItems / totalItems) * 100)
 
-  const handleToggle = async (item: ChecklistItem) => {
-    if (!item.coche) playConfirmSound()
-    const updated = await toggleChecklistItem(item.id, { coche: !item.coche })
+  const applyChecklistPatch = (itemId: number, patch: Partial<ChecklistItem>) => {
     setMission((current) =>
       current
-        ? { ...current, checklist_items: (current.checklist_items ?? []).map((i) => (i.id === updated.id ? updated : i)) }
+        ? {
+            ...current,
+            checklist_items: (current.checklist_items ?? []).map((i) => (i.id === itemId ? { ...i, ...patch } : i)),
+          }
         : current,
     )
   }
 
+  const handleToggle = async (item: ChecklistItem) => {
+    if (!item.coche) playConfirmSound()
+    try {
+      const updated = await toggleChecklistItem(item.id, { coche: !item.coche })
+      applyChecklistPatch(item.id, updated)
+    } catch (err) {
+      // Offline: the toggle is queued for replay, but the agent still needs
+      // to see it take effect immediately -- apply the same patch locally.
+      if (!isOfflineQueuedError(err)) throw err
+      applyChecklistPatch(item.id, { coche: !item.coche })
+    }
+  }
+
   const handlePhoto = async (item: ChecklistItem, file: File) => {
-    const updated = await toggleChecklistItem(item.id, { photo: file })
-    setMission((current) =>
-      current
-        ? { ...current, checklist_items: (current.checklist_items ?? []).map((i) => (i.id === updated.id ? updated : i)) }
-        : current,
-    )
+    try {
+      const updated = await toggleChecklistItem(item.id, { photo: file })
+      applyChecklistPatch(item.id, updated)
+    } catch (err) {
+      if (!isOfflineQueuedError(err)) throw err
+      applyChecklistPatch(item.id, { photo_url: URL.createObjectURL(file) })
+    }
   }
 
   const handleUpdateMissionProduits = async (missionMenageId: number, input: UpdateMissionMenageProduitsInput) => {

@@ -28,6 +28,7 @@ import type {
   TicketMaintenanceStatut,
   Voyageur,
 } from './types'
+import { enqueueAction, type QueuedFileField } from './pwa/offlineQueue'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 const TOKEN_STORAGE_KEY = 'auth_token'
@@ -61,6 +62,11 @@ function authHeaders(extra?: Record<string, string>): HeadersInit {
     ...extra,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   }
+}
+
+/** Exposes the current auth headers to pwa/useOfflineSync.ts, which replays queued requests directly (outside api.ts's own fetch wrappers). */
+export function authHeadersForOfflineSync(): HeadersInit {
+  return authHeaders()
 }
 
 /**
@@ -215,6 +221,74 @@ export class ApiError extends Error {
     super(message)
     this.name = 'ApiError'
     this.errors = errors
+  }
+}
+
+/**
+ * Thrown instead of a network error by the field-work mutations below
+ * (checklist toggle, photos, produits, ticket resolution) when the request
+ * couldn't reach the server -- it has been written to the offline queue
+ * (see pwa/offlineQueue.ts) and will replay automatically once the
+ * connection returns. Callers on the agent workspaces catch this
+ * specifically to apply the same change to local state optimistically,
+ * rather than showing it as a failure.
+ */
+export class OfflineQueuedError extends Error {
+  constructor() {
+    super("Hors ligne : l'action a été mise en file d'attente.")
+    this.name = 'OfflineQueuedError'
+  }
+}
+
+export function isOfflineQueuedError(err: unknown): err is OfflineQueuedError {
+  return err instanceof OfflineQueuedError
+}
+
+function isNetworkFailure(err: unknown): boolean {
+  return !navigator.onLine || err instanceof TypeError
+}
+
+/**
+ * Sends a FormData-bodied mutation; on a genuine network failure (not a
+ * server-side rejection -- those still throw ApiError as usual) the request
+ * is written to the offline queue for replay and OfflineQueuedError is
+ * thrown instead of letting the network error propagate.
+ */
+async function postFormDataOrQueue(url: string, formData: FormData) {
+  try {
+    const response = await fetch(url, { method: 'POST', headers: authHeaders(), body: formData })
+    return await parseJsonOrThrow(response)
+  } catch (err) {
+    if (err instanceof ApiError || !isNetworkFailure(err)) throw err
+
+    const fields: Record<string, string> = {}
+    const files: QueuedFileField[] = []
+    for (const [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        files.push({ field: key, blob: value, filename: value.name, type: value.type })
+      } else {
+        fields[key] = value
+      }
+    }
+    await enqueueAction({ url, method: 'POST', fields, files })
+    throw new OfflineQueuedError()
+  }
+}
+
+/** Same offline-queueing behaviour as `postFormDataOrQueue`, for a JSON-bodied PATCH. */
+async function patchJsonOrQueue(url: string, json: unknown) {
+  try {
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(json),
+    })
+    return await parseJsonOrThrow(response)
+  } catch (err) {
+    if (err instanceof ApiError || !isNetworkFailure(err)) throw err
+
+    await enqueueAction({ url, method: 'PATCH', json })
+    throw new OfflineQueuedError()
   }
 }
 
@@ -555,13 +629,7 @@ export async function updateMissionMenageProduits(
   missionMenageId: number,
   input: UpdateMissionMenageProduitsInput,
 ): Promise<MissionMenage> {
-  const response = await fetch(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/produits`, {
-    method: 'PATCH',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(input),
-  })
-
-  return parseJsonOrThrow(response)
+  return patchJsonOrQueue(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/produits`, input)
 }
 
 export async function marquerMissionMenageVue(missionMenageId: number): Promise<MissionMenage> {
@@ -669,13 +737,7 @@ export async function toggleChecklistItem(
   if (input.coche !== undefined) formData.append('coche', String(input.coche))
   if (input.photo) formData.append('photo', input.photo)
 
-  const response = await fetch(`${API_BASE_URL}/api/checklist-items/${checklistItemId}`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: formData,
-  })
-
-  return parseJsonOrThrow(response)
+  return postFormDataOrQueue(`${API_BASE_URL}/api/checklist-items/${checklistItemId}`, formData)
 }
 
 export async function signalerProduit(
@@ -686,13 +748,7 @@ export async function signalerProduit(
   formData.append('photo', input.photo)
   if (input.note) formData.append('note', input.note)
 
-  const response = await fetch(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/produits-signales`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: formData,
-  })
-
-  return parseJsonOrThrow(response)
+  return postFormDataOrQueue(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/produits-signales`, formData)
 }
 
 export async function ajouterPhotosPreuveMission(
@@ -703,13 +759,7 @@ export async function ajouterPhotosPreuveMission(
   input.photos.forEach((photo) => formData.append('photos[]', photo))
   if (input.note) formData.append('note', input.note)
 
-  const response = await fetch(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/photos-preuve`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: formData,
-  })
-
-  return parseJsonOrThrow(response)
+  return postFormDataOrQueue(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/photos-preuve`, formData)
 }
 
 export async function fetchProduitsSignales(statut?: string): Promise<ProduitMenageSignale[]> {
@@ -860,13 +910,7 @@ export async function resoudreTicketMaintenance(
   if (input.note) formData.append('note', input.note)
   formData.append('_method', 'PATCH')
 
-  const response = await fetch(`${API_BASE_URL}/api/tickets-maintenance/${id}/resoudre`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: formData,
-  })
-
-  return parseJsonOrThrow(response)
+  return postFormDataOrQueue(`${API_BASE_URL}/api/tickets-maintenance/${id}/resoudre`, formData)
 }
 
 export async function validerResolutionTicketMaintenance(id: number): Promise<TicketMaintenance> {

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { resolveStorageUrl } from '../api'
+import { InstallPromptCard } from '../pwa/InstallPromptCard'
 import type { MissionMenage, ProduitCatalogue } from '../types'
 import { STATUT_VALIDATION_LABELS, STATUT_VALIDATION_STYLES } from '../utils/statutValidation'
 import { MissionDetailAgent } from './MissionDetailAgent'
@@ -68,6 +69,12 @@ export function MesMissionsSection({
         <div>
           {heading && <h3 className="text-lg font-bold text-ink">{heading}</h3>}
           {subheading && <p className="text-sm text-ink-tertiary">{subheading}</p>}
+        </div>
+      )}
+
+      {heading && (
+        <div className="mt-4">
+          <InstallPromptCard />
         </div>
       )}
 

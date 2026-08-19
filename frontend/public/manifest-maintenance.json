@@ -6,8 +6,8 @@
   "start_url": "/maintenance",
   "scope": "/maintenance",
   "display": "standalone",
-  "background_color": "#f9fafb",
-  "theme_color": "#d97706",
+  "background_color": "#F4F6FA",
+  "theme_color": "#0C1A31",
   "icons": [
     {
       "src": "/icons/icon-192-maintenance.png",
@@ -20,6 +20,18 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192-maintenance.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512-maintenance.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

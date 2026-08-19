@@ -3,6 +3,8 @@ import { useAuth } from './auth/AuthContext'
 import { fetchMissionsAgent, fetchProduitsCatalogue } from './api'
 import { HistoriqueAgentSection } from './components/HistoriqueAgentSection'
 import { MesMissionsSection } from './components/MesMissionsSection'
+import { SyncStatusPill } from './pwa/SyncStatusPill'
+import { useOfflineSync } from './pwa/useOfflineSync'
 import { usePwaIdentity } from './pwa/usePwaIdentity'
 import type { MissionMenage, ProduitCatalogue } from './types'
 
@@ -31,6 +33,7 @@ function initiales(nom: string): string {
  */
 export function AgentWorkspace() {
   usePwaIdentity('menage')
+  const offlineSync = useOfflineSync()
 
   const { user, logout } = useAuth()
   const [catalogue, setCatalogue] = useState<ProduitCatalogue[]>([])
@@ -167,10 +170,7 @@ export function AgentWorkspace() {
             </p>
           </div>
           <div className="border-l border-border-default pl-4 text-[13px] text-ink-tertiary">{todayCapitalized}</div>
-          <div className="ml-auto flex h-10 items-center gap-2 rounded-field bg-success-bg px-3 text-xs font-bold text-success-text">
-            <span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />
-            Tout est synchronisé
-          </div>
+          <SyncStatusPill {...offlineSync} />
         </header>
 
         <main className="flex-1 overflow-auto p-6">

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { InstallPromptCard } from '../pwa/InstallPromptCard'
 import type { MonTicketMaintenance } from '../types'
 import { STATUT_VALIDATION_LABELS, STATUT_VALIDATION_STYLES } from '../utils/statutValidation'
 import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
@@ -56,6 +57,12 @@ export function MesTicketsSection({ tickets, loading, error, heading, emptyMessa
   return (
     <div>
       {heading && <h3 className="text-lg font-bold text-ink">{heading}</h3>}
+
+      {heading && (
+        <div className="mt-4">
+          <InstallPromptCard />
+        </div>
+      )}
 
       {loading && <p className="mt-4 text-sm text-ink-tertiary">Chargement...</p>}
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
