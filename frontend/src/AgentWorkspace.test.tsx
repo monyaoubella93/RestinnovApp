@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentWorkspace } from './AgentWorkspace'
 import { AuthProvider } from './auth/AuthContext'
+import i18n from './i18n'
 import type { MissionMenage } from './types'
 
 function seedLoggedInAgent() {
@@ -61,6 +62,12 @@ describe('AgentWorkspace', () => {
     vi.restoreAllMocks()
     localStorage.clear()
     seedLoggedInAgent()
+  })
+
+  afterEach(() => {
+    // i18next is a module-level singleton -- reset it so a language switch
+    // in one test never leaks into the next.
+    void i18n.changeLanguage('fr')
   })
 
   it('affiche "Mes missions du jour" par défaut', async () => {
@@ -135,5 +142,37 @@ describe('AgentWorkspace', () => {
 
     await screen.findByText('Mes missions du jour')
     expect(screen.queryByTestId('refusees-dot')).not.toBeInTheDocument()
+  })
+
+  it('bascule en arabe au clic sur le sélecteur de langue : textes traduits, dir="rtl", et le choix est mémorisé', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = mockFetch() as typeof fetch
+    const { container } = renderWithAuth()
+
+    await screen.findByText('Mes missions du jour')
+    expect(container.firstElementChild).toHaveAttribute('dir', 'ltr')
+
+    await user.click(screen.getByRole('button', { name: /changer la langue/i }))
+
+    expect(await screen.findByText('مهامي')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'النظافة' })).toBeInTheDocument()
+    expect(container.firstElementChild).toHaveAttribute('dir', 'rtl')
+    expect(localStorage.getItem('app_language')).toBe('ar')
+  })
+
+  it('revient au français au clic suivant sur le sélecteur de langue', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = mockFetch() as typeof fetch
+    const { container } = renderWithAuth()
+
+    await screen.findByText('Mes missions du jour')
+    await user.click(screen.getByRole('button', { name: /changer la langue/i }))
+    await screen.findByText('مهامي')
+
+    await user.click(screen.getByRole('button', { name: /تغيير اللغة/i }))
+
+    expect(await screen.findByText('Mes missions')).toBeInTheDocument()
+    expect(container.firstElementChild).toHaveAttribute('dir', 'ltr')
+    expect(localStorage.getItem('app_language')).toBe('fr')
   })
 })
