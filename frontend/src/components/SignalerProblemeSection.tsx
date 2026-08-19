@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { SignalerProblemeInput } from '../api'
 
 interface SignalerProblemeSectionProps {
@@ -9,6 +10,7 @@ interface SignalerProblemeSectionProps {
 type RecordingState = 'idle' | 'recording' | 'recorded'
 
 export function SignalerProblemeSection({ missionMenageId, onSignaler }: SignalerProblemeSectionProps) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
@@ -75,7 +77,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
       recorder.start()
       setRecordingState('recording')
     } catch {
-      setError("Impossible d'accéder au micro.")
+      setError(t('menage.signalerProbleme.micError'))
     }
   }
 
@@ -94,7 +96,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
     setError(null)
 
     if (!photo && !audioFile && !description.trim()) {
-      setError('Ajoutez au moins une photo, un audio ou une description.')
+      setError(t('menage.signalerProbleme.atLeastOne'))
       return
     }
 
@@ -109,7 +111,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
       setExpanded(false)
       setSent(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue.')
+      setError(err instanceof Error ? err.message : t('common.genericError'))
     } finally {
       setSubmitting(false)
     }
@@ -129,7 +131,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
           <span aria-hidden="true" className="text-2xl">
             ⚠️
           </span>
-          Signaler un problème
+          {t('menage.signalerProbleme.button')}
         </button>
         {sent && (
           <p
@@ -139,7 +141,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
             <span aria-hidden="true" className="text-lg">
               ✅
             </span>
-            Signalement envoyé au Manager
+            {t('menage.signalerProbleme.sentConfirmation')}
           </p>
         )}
       </div>
@@ -148,54 +150,60 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
 
   return (
     <div className="space-y-4 rounded-card-agent-lg border-2 border-border-default bg-surface p-4">
-      <h4 className="text-base font-bold text-ink">Signaler un problème</h4>
+      <h4 className="text-base font-bold text-ink">{t('menage.signalerProbleme.button')}</h4>
 
       <div className="flex justify-center gap-8">
         <div className="flex flex-col items-center gap-1">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            aria-label="Ouvrir l'appareil photo"
+            aria-label={t('menage.signalerProbleme.openCamera')}
             className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-danger-border bg-danger-bg text-4xl hover:brightness-95"
           >
             📷
           </button>
-          <span className="text-xs font-medium text-ink-tertiary">Photo</span>
+          <span className="text-xs font-medium text-ink-tertiary">{t('menage.signalerProbleme.photoCaption')}</span>
           <input
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png"
             capture="environment"
             className="hidden"
-            aria-label="Photo du problème"
+            aria-label={t('menage.signalerProbleme.photoAlt')}
             onChange={(e) => handlePhotoChange(e.target.files?.[0])}
           />
           {photoPreviewUrl && (
-            <img src={photoPreviewUrl} alt="Aperçu de la photo" className="mt-1 h-20 w-20 rounded-lg object-cover" />
+            <img
+              src={photoPreviewUrl}
+              alt={t('menage.signalerProbleme.previewAlt')}
+              className="mt-1 h-20 w-20 rounded-lg object-cover"
+            />
           )}
         </div>
 
         <div className="flex flex-col items-center gap-1">
           {!micSupported ? (
-            <p className="max-w-[6rem] text-center text-xs text-ink-disabled">Audio non disponible</p>
+            <p className="max-w-[6rem] text-center text-xs text-ink-disabled">
+              {t('menage.signalerProbleme.audioUnavailable')}
+            </p>
           ) : recordingState === 'idle' ? (
             <>
               <button
                 type="button"
                 onClick={startRecording}
-                aria-label="Enregistrer un message audio"
+                aria-label={t('menage.signalerProbleme.recordAudio')}
                 className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-danger-border bg-danger-bg text-4xl hover:brightness-95"
               >
                 🎤
               </button>
-              <span className="text-xs font-medium text-ink-tertiary">Audio</span>
+              <span className="text-xs font-medium text-ink-tertiary">{t('menage.signalerProbleme.audioCaption')}</span>
             </>
           ) : recordingState === 'recording' ? (
             <>
               <button
                 type="button"
                 onClick={stopRecording}
-                aria-label="Arrêter l'enregistrement"
+                aria-label={t('menage.signalerProbleme.stopRecording')}
                 data-testid="recording-indicator"
                 className="relative flex h-20 w-20 items-center justify-center rounded-full bg-danger text-3xl text-white"
               >
@@ -207,7 +215,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
                   ⏹
                 </span>
               </button>
-              <span className="text-xs font-medium text-danger">Enregistrement...</span>
+              <span className="text-xs font-medium text-danger">{t('menage.signalerProbleme.recording')}</span>
             </>
           ) : (
             <div className="flex flex-col items-center gap-2">
@@ -218,7 +226,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
               <button
                 type="button"
                 onClick={resetAudio}
-                aria-label="Recommencer l'enregistrement audio"
+                aria-label={t('menage.signalerProbleme.restartRecording')}
                 className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-border-default text-xl hover:bg-table-header-bg"
               >
                 🔄
@@ -233,7 +241,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
           htmlFor={`signalement_description_${missionMenageId}`}
           className="block text-sm font-semibold text-ink-secondary"
         >
-          Description (optionnel)
+          {t('menage.signalerProbleme.descriptionLabel')}
         </label>
         <textarea
           id={`signalement_description_${missionMenageId}`}
@@ -260,7 +268,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
           }}
           className="min-h-14 flex-1 rounded-xl border-2 border-border-default px-4 py-2 text-base font-medium text-ink-secondary hover:bg-table-header-bg"
         >
-          Annuler
+          {t('common.cancel')}
         </button>
         <button
           type="button"
@@ -271,7 +279,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
           <span aria-hidden="true" className="text-xl">
             ✓
           </span>
-          {submitting ? 'Envoi...' : 'Envoyer'}
+          {submitting ? t('common.sending') : t('common.send')}
         </button>
       </div>
     </div>

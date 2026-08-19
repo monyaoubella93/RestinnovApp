@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { fetchMesTicketsMaintenanceHistorique, resolveStorageUrl } from '../api'
 import type { HistoriqueTicketAgent } from '../types'
-import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
+import { URGENCE_STYLES } from '../utils/urgence'
 
 function HistoriqueTicketRow({ ticket }: { ticket: HistoriqueTicketAgent }) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -12,7 +14,7 @@ function HistoriqueTicketRow({ ticket }: { ticket: HistoriqueTicketAgent }) {
         type="button"
         onClick={() => setExpanded((current) => !current)}
         aria-expanded={expanded}
-        className="flex min-h-[80px] w-full items-center gap-4 p-4 text-left"
+        className="flex min-h-[80px] w-full items-center gap-4 p-4 text-start"
       >
         <div
           aria-hidden="true"
@@ -22,13 +24,13 @@ function HistoriqueTicketRow({ ticket }: { ticket: HistoriqueTicketAgent }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-lg font-bold text-ink">
-            {ticket.appartement?.nom ?? 'Appartement'}
-            <span className="ml-2 font-mono text-xs font-normal text-ink-tertiary">{ticket.reference}</span>
+            {ticket.appartement?.nom ?? t('common.apartmentFallback')}
+            <span className="ms-2 font-mono text-xs font-normal text-ink-tertiary">{ticket.reference}</span>
           </p>
           <p className="truncate text-sm text-ink-tertiary">{ticket.appartement?.adresse}</p>
         </div>
         <span className={`shrink-0 rounded-badge px-2 py-0.5 text-xs font-bold ${URGENCE_STYLES[ticket.urgence]}`}>
-          Urgence {URGENCE_LABELS[ticket.urgence]}
+          {t('maintenance.urgenceLabel', { label: t(`common.urgence.${ticket.urgence}`) })}
         </span>
         <span aria-hidden="true" className="shrink-0 text-xl text-ink-disabled">
           {expanded ? '▲' : '▼'}
@@ -41,12 +43,14 @@ function HistoriqueTicketRow({ ticket }: { ticket: HistoriqueTicketAgent }) {
           {ticket.photo_apres && (
             <img
               src={resolveStorageUrl(ticket.photo_apres)}
-              alt="Photo après réparation"
+              alt={t('maintenance.historique.photoApres')}
               className="h-24 w-24 rounded-lg object-cover"
             />
           )}
           {ticket.cout_reparation != null && (
-            <p className="font-mono font-bold text-ink">Coût : {ticket.cout_reparation} MAD</p>
+            <p className="font-mono font-bold text-ink">
+              {t('maintenance.historique.cout', { montant: ticket.cout_reparation })}
+            </p>
           )}
           {ticket.note_resolution && <p className="text-ink-secondary">{ticket.note_resolution}</p>}
         </div>
@@ -56,6 +60,7 @@ function HistoriqueTicketRow({ ticket }: { ticket: HistoriqueTicketAgent }) {
 }
 
 export function HistoriqueTicketsAgentSection() {
+  const { t } = useTranslation()
   const [tickets, setTickets] = useState<HistoriqueTicketAgent[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -65,15 +70,16 @@ export function HistoriqueTicketsAgentSection() {
     setError(null)
     fetchMesTicketsMaintenanceHistorique()
       .then(setTickets)
-      .catch((err) => setError(err instanceof Error ? err.message : "Impossible de charger l'historique."))
+      .catch((err) => setError(err instanceof Error ? err.message : t('maintenance.historique.error')))
       .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
     <div>
-      <h3 className="text-lg font-bold text-ink">Validés</h3>
+      <h3 className="text-lg font-bold text-ink">{t('maintenance.historique.title')}</h3>
 
-      {loading && <p className="mt-4 text-sm text-ink-tertiary">Chargement...</p>}
+      {loading && <p className="mt-4 text-sm text-ink-tertiary">{t('common.loading')}</p>}
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
       {!loading && !error && tickets.length === 0 && (
         <div className="mt-8 flex flex-col items-center gap-3 py-6 text-center">
@@ -83,7 +89,7 @@ export function HistoriqueTicketsAgentSection() {
           >
             🗂️
           </div>
-          <p className="text-base text-ink-tertiary">Aucun ticket validé pour l'instant.</p>
+          <p className="text-base text-ink-tertiary">{t('maintenance.historique.empty')}</p>
         </div>
       )}
 
