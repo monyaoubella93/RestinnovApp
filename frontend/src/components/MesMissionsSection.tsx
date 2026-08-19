@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { resolveStorageUrl } from '../api'
+import { InstallPromptCard } from '../pwa/InstallPromptCard'
 import type { MissionMenage, ProduitCatalogue } from '../types'
 import { STATUT_VALIDATION_LABELS, STATUT_VALIDATION_STYLES } from '../utils/statutValidation'
 import { MissionDetailAgent } from './MissionDetailAgent'
@@ -66,22 +67,28 @@ export function MesMissionsSection({
     <div>
       {(heading || subheading) && (
         <div>
-          {heading && <h3 className="text-lg font-semibold text-gray-900">{heading}</h3>}
-          {subheading && <p className="text-sm text-gray-500">{subheading}</p>}
+          {heading && <h3 className="text-lg font-bold text-ink">{heading}</h3>}
+          {subheading && <p className="text-sm text-ink-tertiary">{subheading}</p>}
         </div>
       )}
 
-      {loading && <p className="mt-4 text-sm text-gray-500">Chargement...</p>}
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {heading && (
+        <div className="mt-4">
+          <InstallPromptCard />
+        </div>
+      )}
+
+      {loading && <p className="mt-4 text-sm text-ink-tertiary">Chargement...</p>}
+      {error && <p className="mt-4 text-sm text-danger">{error}</p>}
       {!loading && !error && missions.length === 0 && (
         <div className="mt-8 flex flex-col items-center gap-3 py-6 text-center">
           <div
             aria-hidden="true"
-            className="flex h-24 w-24 items-center justify-center rounded-full bg-emerald-100 text-5xl"
+            className="flex h-24 w-24 items-center justify-center rounded-full bg-success-bg text-5xl"
           >
             {emptyIcon}
           </div>
-          <p className="text-base text-gray-500">{emptyMessage}</p>
+          <p className="text-base text-ink-tertiary">{emptyMessage}</p>
         </div>
       )}
 
@@ -94,7 +101,7 @@ export function MesMissionsSection({
               <button
                 type="button"
                 onClick={() => setSelectedMissionId(mission.id)}
-                className="flex min-h-[96px] w-full items-center gap-4 rounded-2xl border-2 border-gray-200 bg-white p-4 text-left shadow-sm hover:border-indigo-300 hover:shadow-md"
+                className="flex min-h-[96px] w-full items-center gap-4 rounded-card-agent-lg border-2 border-border-default bg-surface p-4 text-left hover:border-brand-border hover:shadow-md"
               >
                 <div className="relative shrink-0">
                   {appartement?.photo_principale ? (
@@ -107,7 +114,7 @@ export function MesMissionsSection({
                   ) : (
                     <div
                       aria-hidden="true"
-                      className="flex h-20 w-20 items-center justify-center rounded-xl bg-indigo-100 text-4xl"
+                      className="flex h-20 w-20 items-center justify-center rounded-xl bg-brand-pale text-4xl"
                     >
                       🏠
                     </div>
@@ -117,15 +124,15 @@ export function MesMissionsSection({
                       data-testid={`mission-nouvelle-badge-${mission.id}`}
                       role="status"
                       aria-label="Nouvelle mission"
-                      className="absolute -right-1 -top-1 h-5 w-5 rounded-full border-2 border-white bg-orange-500"
+                      className="absolute -right-1 -top-1 h-5 w-5 rounded-full border-2 border-white bg-warning"
                     />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-lg font-semibold text-gray-900">{appartement?.nom ?? `Appartement`}</p>
-                  <p className="truncate text-sm text-gray-500">{appartement?.adresse}</p>
+                  <p className="truncate text-lg font-bold text-ink">{appartement?.nom ?? `Appartement`}</p>
+                  <p className="truncate text-sm text-ink-tertiary">{appartement?.adresse}</p>
                   {badge && (
-                    <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.style}`}>
+                    <span className={`mt-1 inline-block rounded-badge px-2 py-0.5 text-xs font-bold ${badge.style}`}>
                       {badge.label}
                     </span>
                   )}

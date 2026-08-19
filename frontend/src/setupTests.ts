@@ -1,5 +1,9 @@
 import '@testing-library/jest-dom/vitest'
 import { vi } from 'vitest'
+// jsdom has no IndexedDB implementation; the app relies on it for the
+// offline queue (src/pwa/offlineQueue.ts), so every test gets a real,
+// working (in-memory) IndexedDB the same way production does.
+import 'fake-indexeddb/auto'
 
 const store = new Map<string, string>()
 
@@ -22,4 +26,3 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
   writable: true,
 })
-

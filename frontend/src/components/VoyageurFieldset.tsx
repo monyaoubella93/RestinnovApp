@@ -15,8 +15,8 @@ const TYPE_LABELS: Record<Voyageur['type'], string> = {
 }
 
 const TYPE_STYLES: Record<Voyageur['type'], string> = {
-  adulte: 'bg-indigo-100 text-indigo-800',
-  enfant: 'bg-amber-100 text-amber-800',
+  adulte: 'bg-brand-pale text-brand',
+  enfant: 'bg-warning-bg text-warning-text',
 }
 
 export function VoyageurFieldset({
@@ -28,20 +28,20 @@ export function VoyageurFieldset({
   onRemove,
 }: VoyageurFieldsetProps) {
   return (
-    <div className="relative rounded-md border border-gray-200 p-3">
+    <div className="relative rounded-field border border-border-default p-3">
       {canRemove && (
         <button
           type="button"
           onClick={onRemove}
           aria-label={`Retirer le voyageur ${index + 1}`}
-          className="absolute right-2 top-2 text-gray-400 hover:text-red-600"
+          className="absolute right-2 top-2 text-ink-disabled hover:text-danger"
         >
           ✕
         </button>
       )}
 
       <div className="mb-2 flex items-center gap-2">
-        <p className="text-sm font-medium text-gray-700">Voyageur {index + 1}</p>
+        <p className="text-sm font-semibold text-ink-secondary">Voyageur {index + 1}</p>
         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_STYLES[voyageur.type]}`}>
           {TYPE_LABELS[voyageur.type]}
         </span>
@@ -49,7 +49,7 @@ export function VoyageurFieldset({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label htmlFor={`voyageur_nom_${index}`} className="block text-xs font-medium text-gray-600">
+          <label htmlFor={`voyageur_nom_${index}`} className="block text-xs font-semibold text-ink-secondary">
             Nom
           </label>
           <input
@@ -59,11 +59,11 @@ export function VoyageurFieldset({
             value={voyageur.nom}
             onChange={(e) => onChange({ nom: e.target.value })}
             placeholder="Nom du voyageur"
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
         <div>
-          <label htmlFor={`voyageur_passeport_${index}`} className="block text-xs font-medium text-gray-600">
+          <label htmlFor={`voyageur_passeport_${index}`} className="block text-xs font-semibold text-ink-secondary">
             Numéro de passeport
           </label>
           <input
@@ -72,11 +72,11 @@ export function VoyageurFieldset({
             value={voyageur.numero_passeport ?? ''}
             onChange={(e) => onChange({ numero_passeport: e.target.value })}
             placeholder="Optionnel"
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
         <div>
-          <label htmlFor={`voyageur_telephone_${index}`} className="block text-xs font-medium text-gray-600">
+          <label htmlFor={`voyageur_telephone_${index}`} className="block text-xs font-semibold text-ink-secondary">
             Téléphone
           </label>
           <input
@@ -85,18 +85,18 @@ export function VoyageurFieldset({
             value={voyageur.telephone ?? ''}
             onChange={(e) => onChange({ telephone: e.target.value })}
             placeholder="Optionnel"
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
       </div>
 
       {voyageur.type === 'adulte' && (
-        <label className="mt-2 flex items-center gap-2 text-sm text-gray-700">
+        <label className="mt-2 flex items-center gap-2 text-sm text-ink-secondary">
           <input
             type="checkbox"
             checked={voyageur.est_principal}
             onChange={onSetPrincipal}
-            className="h-4 w-4 rounded border-gray-300"
+            className="h-4 w-4 rounded border-border-default accent-brand"
           />
           Voyageur principal
         </label>

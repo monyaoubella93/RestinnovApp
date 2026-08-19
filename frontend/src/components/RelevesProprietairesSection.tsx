@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { downloadRelevePdf, fetchAppartements, fetchReleve } from '../api'
-import type { Appartement, Releve } from '../types'
+import type { Appartement, ModeGestion, Releve } from '../types'
 
 function currentMonth(): string {
   const now = new Date()
@@ -9,6 +9,16 @@ function currentMonth(): string {
 
 function formatMontant(value: number | undefined): string {
   return `${(value ?? 0).toFixed(2)} MAD`
+}
+
+const MODE_GESTION_LABELS: Record<ModeGestion, string> = {
+  mandat: 'Mandat',
+  sous_location: 'Sous-location',
+}
+
+const MODE_GESTION_STYLES: Record<ModeGestion, string> = {
+  mandat: 'bg-brand-pale text-brand',
+  sous_location: 'bg-violet-bg text-violet',
 }
 
 /**
@@ -24,6 +34,7 @@ export function RelevesProprietairesSection() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<number | null>(null)
+  const [downloadingAll, setDownloadingAll] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -65,11 +76,31 @@ export function RelevesProprietairesSection() {
     }
   }
 
+  const handleDownloadAll = async () => {
+    setError(null)
+    setDownloadingAll(true)
+    try {
+      for (const appartement of appartements) {
+        // eslint-disable-next-line no-await-in-loop -- sequential to avoid opening dozens of downloads at once
+        await downloadRelevePdf(appartement.id, mois)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Impossible de télécharger tous les PDF.')
+    } finally {
+      setDownloadingAll(false)
+    }
+  }
+
+  const relevesList = Object.values(releves)
+  const totalRevenus = relevesList.reduce((sum, r) => sum + r.revenus_bruts, 0)
+  const totalProprietaires = relevesList.reduce((sum, r) => sum + r.montant_proprietaire, 0)
+  const totalCommission = relevesList.reduce((sum, r) => sum + r.commission_restinnov, 0)
+
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="rounded-card-manager border border-border-default bg-surface p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-gray-700">Relevés propriétaires</h3>
-        <div>
+        <h3 className="text-sm font-bold text-ink">Relevés propriétaires</h3>
+        <div className="flex items-center gap-2">
           <label htmlFor="releves_mois" className="sr-only">
             Mois
           </label>
@@ -78,43 +109,77 @@ export function RelevesProprietairesSection() {
             type="month"
             value={mois}
             onChange={(e) => setMois(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="rounded-field border border-border-default px-3 py-1.5 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
+          <button
+            type="button"
+            onClick={handleDownloadAll}
+            disabled={downloadingAll || appartements.length === 0}
+            className="rounded-field bg-brand px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
+          >
+            {downloadingAll ? 'Génération...' : 'Générer tous les PDF'}
+          </button>
         </div>
       </div>
 
-      {loading && <p className="mt-3 text-sm text-gray-500">Chargement...</p>}
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {!loading && !error && appartements.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-field border border-border-default p-3">
+            <p className="text-xs font-semibold text-ink-tertiary">Revenus bruts</p>
+            <p className="mt-1 font-mono text-lg font-bold text-ink">{formatMontant(totalRevenus)}</p>
+          </div>
+          <div className="rounded-field border border-border-default p-3">
+            <p className="text-xs font-semibold text-ink-tertiary">Reversé aux propriétaires</p>
+            <p className="mt-1 font-mono text-lg font-bold text-ink">{formatMontant(totalProprietaires)}</p>
+          </div>
+          <div className="rounded-field border border-border-default border-l-[3px] border-l-success p-3">
+            <p className="text-xs font-semibold text-ink-tertiary">Commission Restinnov</p>
+            <p className="mt-1 font-mono text-lg font-bold text-success-text">{formatMontant(totalCommission)}</p>
+          </div>
+        </div>
+      )}
+
+      {loading && <p className="mt-3 text-sm text-ink-tertiary">Chargement...</p>}
+      {error && <p className="mt-3 text-sm text-danger">{error}</p>}
 
       {!loading && !error && appartements.length === 0 && (
-        <p className="mt-3 text-sm text-gray-500">Aucun appartement pour le moment.</p>
+        <p className="mt-3 text-sm text-ink-tertiary">Aucun appartement pour le moment.</p>
       )}
 
       {!loading && !error && appartements.length > 0 && (
-        <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full divide-y divide-border-default text-sm">
             <thead>
-              <tr className="text-left text-xs font-medium uppercase text-gray-500">
-                <th className="py-2 pr-4">Appartement</th>
+              <tr className="bg-table-header-bg text-left text-[11px] font-bold uppercase tracking-[0.08em] text-ink-tertiary-2">
+                <th className="py-2 pr-4 pl-2">Appartement</th>
                 <th className="py-2 pr-4">Propriétaire</th>
-                <th className="py-2 pr-4">Revenus</th>
-                <th className="py-2 pr-4">Frais</th>
-                <th className="py-2 pr-4">Montant dû</th>
+                <th className="py-2 pr-4">Mode</th>
+                <th className="py-2 pr-4 text-right">Revenus</th>
+                <th className="py-2 pr-4 text-right">Frais</th>
+                <th className="py-2 pr-4 text-right">Montant dû</th>
                 <th className="py-2 pr-4">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border-light">
               {appartements.map((appartement) => {
                 const releve = releves[appartement.id]
                 const frais = releve ? releve.frais_menage_total + releve.frais_maintenance_total : 0
+                const modeGestion = releve?.appartement.mode_gestion
 
                 return (
                   <tr key={appartement.id}>
-                    <td className="py-2 pr-4 text-gray-900">{appartement.nom}</td>
-                    <td className="py-2 pr-4 text-gray-700">{appartement.proprietaire?.nom ?? 'Aucun'}</td>
-                    <td className="py-2 pr-4 text-gray-700">{formatMontant(releve?.revenus_bruts)}</td>
-                    <td className="py-2 pr-4 text-gray-700">{formatMontant(frais)}</td>
-                    <td className="py-2 pr-4 font-medium text-gray-900">
+                    <td className="py-2 pr-4 pl-2 font-semibold text-ink">{appartement.nom}</td>
+                    <td className="py-2 pr-4 text-ink-secondary">{appartement.proprietaire?.nom ?? 'Aucun'}</td>
+                    <td className="py-2 pr-4">
+                      {modeGestion && (
+                        <span className={`rounded-badge px-2 py-0.5 text-xs font-bold ${MODE_GESTION_STYLES[modeGestion]}`}>
+                          {MODE_GESTION_LABELS[modeGestion].toUpperCase()}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-4 text-right font-mono text-ink-secondary">{formatMontant(releve?.revenus_bruts)}</td>
+                    <td className="py-2 pr-4 text-right font-mono text-danger">{formatMontant(frais)}</td>
+                    <td className="py-2 pr-4 text-right font-mono font-bold text-ink">
                       {formatMontant(releve?.montant_proprietaire)}
                     </td>
                     <td className="py-2 pr-4">
@@ -122,7 +187,7 @@ export function RelevesProprietairesSection() {
                         type="button"
                         onClick={() => handleDownload(appartement.id)}
                         disabled={downloadingId === appartement.id}
-                        className="text-sm font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                        className="text-sm font-semibold text-brand-light hover:text-brand disabled:opacity-50"
                       >
                         {downloadingId === appartement.id ? 'Téléchargement...' : 'Télécharger PDF'}
                       </button>

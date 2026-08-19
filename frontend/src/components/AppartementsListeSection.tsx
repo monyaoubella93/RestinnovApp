@@ -18,15 +18,15 @@ const STATUT_LABELS: Record<string, string> = {
 }
 
 const STATUT_STYLES: Record<string, string> = {
-  disponible: 'bg-green-100 text-green-800',
-  occupe: 'bg-gray-100 text-gray-600',
-  en_menage: 'bg-purple-100 text-purple-800',
-  maintenance: 'bg-red-100 text-red-800',
+  disponible: 'bg-success-bg text-success-text',
+  occupe: 'bg-brand-pale text-brand',
+  en_menage: 'bg-violet-bg text-violet',
+  maintenance: 'bg-danger-bg text-danger',
 }
 
 function StatutBadge({ statut }: { statut: string }) {
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUT_STYLES[statut] ?? 'bg-gray-100 text-gray-600'}`}>
+    <span className={`rounded-badge px-2 py-0.5 text-xs font-bold ${STATUT_STYLES[statut] ?? 'bg-table-header-bg text-ink-tertiary'}`}>
       {STATUT_LABELS[statut] ?? statut}
     </span>
   )
@@ -113,12 +113,12 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
         <button
           type="button"
           onClick={() => setSelectedAppartementId(null)}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+          className="text-sm font-semibold text-brand-light hover:text-brand"
         >
           ← Retour à la liste
         </button>
 
-        <div className="mt-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="mt-4 rounded-card-manager border border-border-default bg-surface p-6">
           <div className="flex flex-wrap items-start gap-4">
             {selectedAppartement.photo_principale && (
               <img
@@ -128,20 +128,20 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
               />
             )}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">{selectedAppartement.nom}</h3>
-              <p className="text-sm text-gray-600">{selectedAppartement.adresse}</p>
+              <h3 className="text-lg font-bold text-ink">{selectedAppartement.nom}</h3>
+              <p className="text-sm text-ink-secondary">{selectedAppartement.adresse}</p>
               <div className="mt-2">
                 <StatutBadge statut={selectedAppartement.statut} />
               </div>
             </div>
           </div>
 
-          <div className="mt-4 flex gap-4 border-b border-gray-200">
+          <div className="mt-4 flex gap-4 border-b border-border-default">
             <button
               type="button"
               onClick={() => setDetailTab('infos')}
-              className={`-mb-px border-b-2 px-1 pb-2 text-sm font-medium ${
-                detailTab === 'infos' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+              className={`-mb-px border-b-2 px-1 pb-2 text-sm font-semibold ${
+                detailTab === 'infos' ? 'border-brand text-brand' : 'border-transparent text-ink-tertiary hover:text-ink-secondary'
               }`}
             >
               Infos
@@ -149,8 +149,8 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
             <button
               type="button"
               onClick={() => setDetailTab('historique')}
-              className={`-mb-px border-b-2 px-1 pb-2 text-sm font-medium ${
-                detailTab === 'historique' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+              className={`-mb-px border-b-2 px-1 pb-2 text-sm font-semibold ${
+                detailTab === 'historique' ? 'border-brand text-brand' : 'border-transparent text-ink-tertiary hover:text-ink-secondary'
               }`}
             >
               Historique ménage
@@ -160,24 +160,24 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
           {detailTab === 'infos' ? (
             <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div>
-                <dt className="text-gray-500">Checklists assignées</dt>
-                <dd className="text-gray-900">
+                <dt className="text-ink-tertiary">Checklists assignées</dt>
+                <dd className="text-ink">
                   {selectedAppartement.checklist_modeles && selectedAppartement.checklist_modeles.length > 0
                     ? selectedAppartement.checklist_modeles.map((modele) => modele.nom).join(', ')
                     : 'Aucune'}
                 </dd>
               </div>
               <div>
-                <dt className="text-gray-500">Agent habituel</dt>
-                <dd className="text-gray-900">{selectedAppartement.agent_habituel?.nom ?? 'Aucun'}</dd>
+                <dt className="text-ink-tertiary">Agent habituel</dt>
+                <dd className="text-ink">{selectedAppartement.agent_habituel?.nom ?? 'Aucun'}</dd>
               </div>
               <div>
-                <dt className="text-gray-500">Nombre de séjours</dt>
-                <dd className="text-gray-900">{selectedAppartement.sejours_count ?? 0}</dd>
+                <dt className="text-ink-tertiary">Nombre de séjours</dt>
+                <dd className="text-ink">{selectedAppartement.sejours_count ?? 0}</dd>
               </div>
               <div>
-                <dt className="text-gray-500">Dernier séjour</dt>
-                <dd className="text-gray-900">{formatDate(selectedAppartement.dernier_sejour)}</dd>
+                <dt className="text-ink-tertiary">Dernier séjour</dt>
+                <dd className="text-ink">{formatDate(selectedAppartement.dernier_sejour)}</dd>
               </div>
             </dl>
           ) : (
@@ -194,21 +194,21 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Appartements</h3>
-          <p className="text-sm text-gray-500">{meta.total} appartements trouvés</p>
+          <h3 className="text-xl font-bold tracking-[-0.02em] text-ink">Appartements</h3>
+          <p className="text-[13px] text-ink-tertiary">{meta.total} appartements trouvés</p>
         </div>
         <button
           type="button"
           onClick={onNavigateToCreer}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          className="rounded-field bg-brand px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-light"
         >
           + Nouvel appartement
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 rounded-card-manager border border-border-default bg-surface p-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="appartements_search" className="block text-xs font-medium text-gray-500">
+          <label htmlFor="appartements_search" className="block text-xs font-semibold text-ink-secondary">
             Recherche
           </label>
           <input
@@ -220,11 +220,11 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
               setPage(1)
             }}
             placeholder="Nom ou adresse"
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
         <div>
-          <label htmlFor="appartements_statut" className="block text-xs font-medium text-gray-500">
+          <label htmlFor="appartements_statut" className="block text-xs font-semibold text-ink-secondary">
             Statut
           </label>
           <select
@@ -234,7 +234,7 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
               setStatutFilter(e.target.value)
               setPage(1)
             }}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           >
             <option value="">Tous</option>
             <option value="disponible">Disponible</option>
@@ -245,23 +245,23 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
         </div>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Chargement...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {loading && <p className="text-sm text-ink-tertiary">Chargement...</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       {!loading && !error && appartements.length === 0 && (
-        <p className="text-sm text-gray-500">Aucun appartement trouvé.</p>
+        <p className="text-sm text-ink-tertiary">Aucun appartement trouvé.</p>
       )}
 
       {!loading && !error && appartements.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
+        <div className="overflow-x-auto rounded-card-manager border border-border-default bg-surface">
+          <table className="min-w-full divide-y divide-border-default text-sm">
             <thead>
-              <tr className="text-left text-xs font-medium uppercase text-gray-500">
+              <tr className="bg-table-header-bg text-left text-[11px] font-bold uppercase tracking-[0.08em] text-ink-tertiary-2">
                 <th className="px-4 py-2">Photo</th>
                 <th className="px-4 py-2">
                   <button type="button" onClick={handleSortNom} className="flex items-center">
                     Nom
-                    <span className="ml-1 text-indigo-600">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                    <span className="ml-1 text-brand">{sortDir === 'asc' ? '↑' : '↓'}</span>
                   </button>
                 </th>
                 <th className="px-4 py-2">Adresse</th>
@@ -273,7 +273,7 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
                 <th className="px-4 py-2">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border-light">
               {appartements.map((appartement) => (
                 <tr key={appartement.id}>
                   <td className="px-4 py-3">
@@ -284,31 +284,31 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
                         className="h-10 w-10 rounded-md object-cover"
                       />
                     ) : (
-                      <span className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-100 text-xs text-gray-400">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-md bg-table-header-bg text-xs text-ink-disabled">
                         —
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{appartement.nom}</td>
-                  <td className="px-4 py-3 text-gray-700">{appartement.adresse}</td>
+                  <td className="px-4 py-3 font-semibold text-ink">{appartement.nom}</td>
+                  <td className="px-4 py-3 text-ink-secondary">{appartement.adresse}</td>
                   <td className="px-4 py-3">
                     <StatutBadge statut={appartement.statut} />
                   </td>
-                  <td className="px-4 py-3 text-gray-700">
+                  <td className="px-4 py-3 text-ink-secondary">
                     {appartement.checklist_modeles && appartement.checklist_modeles.length > 0
                       ? appartement.checklist_modeles.map((modele) => modele.nom).join(', ')
                       : 'Aucune'}
                   </td>
-                  <td className="px-4 py-3 text-gray-700">{appartement.agent_habituel?.nom ?? 'Aucun'}</td>
-                  <td className="px-4 py-3 text-gray-700">{appartement.sejours_count ?? 0}</td>
-                  <td className="px-4 py-3 text-gray-700">{formatDate(appartement.dernier_sejour)}</td>
+                  <td className="px-4 py-3 text-ink-secondary">{appartement.agent_habituel?.nom ?? 'Aucun'}</td>
+                  <td className="px-4 py-3 font-mono text-ink-secondary">{appartement.sejours_count ?? 0}</td>
+                  <td className="px-4 py-3 font-mono text-ink-secondary">{formatDate(appartement.dernier_sejour)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         aria-label={`Modifier l'appartement ${appartement.nom}`}
                         onClick={() => onEditAppartement(appartement)}
-                        className="text-gray-500 hover:text-indigo-600"
+                        className="text-ink-tertiary hover:text-brand"
                       >
                         <PencilIcon />
                       </button>
@@ -319,7 +319,7 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
                           setSelectedAppartementId(appartement.id)
                           setDetailTab('infos')
                         }}
-                        className="text-gray-500 hover:text-indigo-600"
+                        className="text-ink-tertiary hover:text-brand"
                       >
                         <EyeIcon />
                       </button>
@@ -338,7 +338,7 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={meta.current_page <= 1}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-field border border-border-default px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
           >
             Précédent
           </button>
@@ -349,8 +349,8 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
                 type="button"
                 onClick={() => setPage(p)}
                 aria-current={p === meta.current_page ? 'page' : undefined}
-                className={`h-8 w-8 rounded-md text-sm font-medium ${
-                  p === meta.current_page ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100'
+                className={`h-8 w-8 rounded-field text-sm font-medium ${
+                  p === meta.current_page ? 'bg-brand text-white' : 'text-ink-secondary hover:bg-table-header-bg'
                 }`}
               >
                 {p}
@@ -361,7 +361,7 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
             type="button"
             onClick={() => setPage((p) => Math.min(meta.last_page, p + 1))}
             disabled={meta.current_page >= meta.last_page}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-field border border-border-default px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
           >
             Suivant
           </button>

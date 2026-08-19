@@ -30,7 +30,7 @@ describe('usePwaIdentity', () => {
     renderHook(() => usePwaIdentity('menage'))
 
     expect(linkHref('manifest')).toContain('/manifest-menage.json')
-    expect(metaContent('theme-color')).toBe('#059669')
+    expect(metaContent('theme-color')).toBe('#0C1A31')
     expect(linkHref('icon')).toContain('/icons/icon-192-menage.png')
     expect(linkHref('apple-touch-icon')).toContain('/icons/icon-192-menage.png')
   })
@@ -39,7 +39,7 @@ describe('usePwaIdentity', () => {
     renderHook(() => usePwaIdentity('maintenance'))
 
     expect(linkHref('manifest')).toContain('/manifest-maintenance.json')
-    expect(metaContent('theme-color')).toBe('#d97706')
+    expect(metaContent('theme-color')).toBe('#0C1A31')
     expect(linkHref('icon')).toContain('/icons/icon-192-maintenance.png')
     expect(linkHref('apple-touch-icon')).toContain('/icons/icon-192-maintenance.png')
   })
@@ -53,6 +53,6 @@ describe('usePwaIdentity', () => {
 
     rerender({ kind: 'maintenance' })
     expect(linkHref('icon')).toContain('/icons/icon-192-maintenance.png')
-    expect(metaContent('theme-color')).toBe('#d97706')
+    expect(metaContent('theme-color')).toBe('#0C1A31')
   })
 })

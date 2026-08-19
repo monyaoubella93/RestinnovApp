@@ -10,7 +10,7 @@ function HistoriqueRow({ mission }: { mission: HistoriqueMissionAgent }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <li className="rounded-2xl border-2 border-gray-200 bg-white shadow-sm">
+    <li className="rounded-card-agent-lg border-2 border-border-default bg-surface">
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
@@ -19,28 +19,28 @@ function HistoriqueRow({ mission }: { mission: HistoriqueMissionAgent }) {
       >
         <div
           aria-hidden="true"
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-3xl"
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-success-bg text-3xl"
         >
           ✅
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-semibold text-gray-900">{mission.appartement?.nom ?? 'Appartement'}</p>
-          <p className="truncate text-sm text-gray-500">{mission.appartement?.adresse}</p>
-          <p className="text-xs text-gray-400">{formatDate(mission.sejour.date_depart)}</p>
+          <p className="truncate text-lg font-bold text-ink">{mission.appartement?.nom ?? 'Appartement'}</p>
+          <p className="truncate text-sm text-ink-tertiary">{mission.appartement?.adresse}</p>
+          <p className="font-mono text-xs text-ink-tertiary">{formatDate(mission.sejour.date_depart)}</p>
         </div>
-        <span aria-hidden="true" className="shrink-0 text-xl text-gray-400">
+        <span aria-hidden="true" className="shrink-0 text-xl text-ink-disabled">
           {expanded ? '▲' : '▼'}
         </span>
       </button>
 
       {expanded && (
-        <div className="space-y-4 border-t border-gray-100 px-4 py-3">
+        <div className="space-y-4 border-t border-border-light px-4 py-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">
               Checklist{mission.checklist_modeles_utilises.length > 0 ? ` (${mission.checklist_modeles_utilises.join(', ')})` : ''}
             </p>
             {mission.checklist_items.length === 0 ? (
-              <p className="mt-1 text-sm text-gray-500">Aucun item de checklist.</p>
+              <p className="mt-1 text-sm text-ink-tertiary">Aucun item de checklist.</p>
             ) : (
               <ul className="mt-2 space-y-1">
                 {mission.checklist_items.map((item, index) => (
@@ -48,12 +48,12 @@ function HistoriqueRow({ mission }: { mission: HistoriqueMissionAgent }) {
                     <span
                       aria-label={item.coche ? 'Coché' : 'Non coché'}
                       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                        item.coche ? 'bg-emerald-600 text-white' : 'border border-gray-300 text-transparent'
+                        item.coche ? 'bg-success text-white' : 'border border-border-default text-transparent'
                       }`}
                     >
                       ✓
                     </span>
-                    <span className={item.coche ? 'text-gray-700' : 'text-gray-500'}>{item.libelle}</span>
+                    <span className={item.coche ? 'text-ink-secondary' : 'text-ink-tertiary'}>{item.libelle}</span>
                     {item.photo_url && (
                       <img
                         src={resolveStorageUrl(item.photo_url)}
@@ -68,11 +68,11 @@ function HistoriqueRow({ mission }: { mission: HistoriqueMissionAgent }) {
           </div>
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Produits utilisés</p>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">Produits utilisés</p>
             {mission.produits.length === 0 ? (
-              <p className="mt-1 text-sm text-gray-500">Aucun produit.</p>
+              <p className="mt-1 text-sm text-ink-tertiary">Aucun produit.</p>
             ) : (
-              <ul className="mt-1 text-sm text-gray-700">
+              <ul className="mt-1 text-sm text-ink-secondary">
                 {mission.produits.map((produit, index) => (
                   <li key={index}>{produit.nom}</li>
                 ))}
@@ -101,19 +101,19 @@ export function HistoriqueAgentSection() {
 
   return (
     <div>
-      <h3 className="text-lg font-semibold text-gray-900">Validées</h3>
+      <h3 className="text-lg font-bold text-ink">Validées</h3>
 
-      {loading && <p className="mt-4 text-sm text-gray-500">Chargement...</p>}
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {loading && <p className="mt-4 text-sm text-ink-tertiary">Chargement...</p>}
+      {error && <p className="mt-4 text-sm text-danger">{error}</p>}
       {!loading && !error && missions.length === 0 && (
         <div className="mt-8 flex flex-col items-center gap-3 py-6 text-center">
           <div
             aria-hidden="true"
-            className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100 text-5xl"
+            className="flex h-24 w-24 items-center justify-center rounded-full bg-table-header-bg text-5xl"
           >
             🗂️
           </div>
-          <p className="text-base text-gray-500">Aucun ménage validé pour l'instant.</p>
+          <p className="text-base text-ink-tertiary">Aucun ménage validé pour l'instant.</p>
         </div>
       )}
 

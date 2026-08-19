@@ -51,22 +51,22 @@ export function FraisMaintenanceSection({
   }
 
   return (
-    <div className="mt-3 rounded-md border border-gray-200 p-3">
-      <p className="text-sm font-semibold text-gray-700">Frais de maintenance</p>
+    <div className="mt-3 rounded-field border border-border-default p-3">
+      <p className="text-sm font-bold text-ink">Frais de maintenance</p>
 
       {fraisMaintenance.length > 0 && (
         <ul className="mt-2 space-y-1">
           {fraisMaintenance.map((frais) => (
-            <li key={frais.id} className="flex items-center justify-between text-sm text-gray-700">
+            <li key={frais.id} className="flex items-center justify-between text-sm text-ink-secondary">
               <span>
-                {frais.description} — {Number(frais.prix).toFixed(2)} MAD
+                {frais.description} — <span className="font-mono">{Number(frais.prix).toFixed(2)} MAD</span>
               </span>
               <button
                 type="button"
                 onClick={() => handleDelete(frais.id)}
                 disabled={deletingId === frais.id}
                 aria-label={`Supprimer ${frais.description}`}
-                className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                className="text-ink-disabled hover:text-danger disabled:opacity-50"
               >
                 ✕
               </button>
@@ -75,7 +75,7 @@ export function FraisMaintenanceSection({
         </ul>
       )}
 
-      <p className="mt-2 text-sm font-medium text-gray-900" data-testid={`total-frais-maintenance-${sejourId}`}>
+      <p className="mt-2 font-mono text-sm font-bold text-ink" data-testid={`total-frais-maintenance-${sejourId}`}>
         Total frais de maintenance : {total.toFixed(2)} MAD
       </p>
 
@@ -86,7 +86,7 @@ export function FraisMaintenanceSection({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Description"
           aria-label="Description"
-          className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          className="min-w-0 flex-1 rounded-field border border-border-default px-3 py-1.5 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
         <input
           type="number"
@@ -96,18 +96,18 @@ export function FraisMaintenanceSection({
           onChange={(e) => setPrix(e.target.value)}
           placeholder="Prix"
           aria-label="Prix"
-          className="w-24 rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+          className="w-24 rounded-field border border-border-default px-3 py-1.5 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
         <button
           type="button"
           onClick={handleAdd}
           disabled={submitting}
-          className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-field bg-brand px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
         >
           {submitting ? 'Ajout...' : '+ Ajouter'}
         </button>
       </div>
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
     </div>
   )
 }

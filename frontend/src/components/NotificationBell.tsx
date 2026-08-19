@@ -50,9 +50,9 @@ export function NotificationBell({ onNavigateToSejour, onNavigateToTicketsMainte
   // badge color even when ménages à valider are also pending.
   const badgeStyle =
     problemesCount > 0
-      ? 'bg-red-600 text-white'
+      ? 'bg-danger text-white'
       : menagesCount > 0
-        ? 'bg-purple-600 text-white'
+        ? 'bg-warning text-white'
         : null
 
   const handleToggle = () => {
@@ -67,15 +67,15 @@ export function NotificationBell({ onNavigateToSejour, onNavigateToTicketsMainte
         onClick={handleToggle}
         aria-label="Notifications"
         aria-expanded={open}
-        className="relative flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+        className="relative flex h-9 w-9 items-center justify-center rounded-field border border-border-default bg-surface text-ink-tertiary hover:bg-table-header-bg"
       >
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
+        <span aria-hidden="true" className="text-lg">
+          🔔
+        </span>
         {totalCount > 0 && badgeStyle && (
           <span
             data-testid="notification-badge"
-            className={`absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white ${badgeStyle.replace('bg-', 'bg-').split(' ')[0]}`}
+            className={`absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white px-1 text-[10px] font-bold ${badgeStyle}`}
           >
             {totalCount}
           </span>
@@ -92,14 +92,14 @@ export function NotificationBell({ onNavigateToSejour, onNavigateToTicketsMainte
           ) : (
             <div className="max-h-96 space-y-3 overflow-y-auto p-3">
               {menagesCount > 0 && (
-                <div className="rounded-md border border-purple-200 bg-purple-50 p-3">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold text-purple-800">
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-amber-800">
                     Ménages à valider
-                    <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                       {menagesCount}
                     </span>
                   </h3>
-                  <ul className="mt-2 divide-y divide-purple-100">
+                  <ul className="mt-2 divide-y divide-amber-100">
                     {data?.menages_a_valider.map((menage) => (
                       <li key={menage.id}>
                         <button
@@ -108,7 +108,7 @@ export function NotificationBell({ onNavigateToSejour, onNavigateToTicketsMainte
                             setOpen(false)
                             onNavigateToSejour(menage.sejour_id)
                           }}
-                          className="w-full rounded-md px-1 py-2 text-left text-sm text-purple-900 hover:bg-purple-100"
+                          className="w-full rounded-md px-1 py-2 text-left text-sm text-amber-900 hover:bg-amber-100"
                         >
                           {menage.appartement
                             ? `${menage.appartement.nom} — ${menage.appartement.adresse}`

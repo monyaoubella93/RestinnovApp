@@ -63,28 +63,28 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
 
   return (
     <div className="space-y-4">
-      <button type="button" onClick={onBack} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+      <button type="button" onClick={onBack} className="text-sm font-semibold text-brand-light hover:text-brand">
         ← Retour à mes tickets
       </button>
 
-      <div className="rounded-2xl border-2 border-gray-200 bg-white p-4 shadow-sm">
+      <div className="rounded-card-agent-lg border-2 border-border-default bg-surface p-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-lg font-bold text-ink">
               {ticket.appartement?.nom ?? 'Appartement'}
-              <span className="ml-2 text-xs font-normal text-gray-400">{ticket.reference}</span>
+              <span className="ml-2 font-mono text-xs font-normal text-ink-tertiary">{ticket.reference}</span>
             </p>
-            <p className="text-sm text-gray-500">{ticket.appartement?.adresse}</p>
+            <p className="text-sm text-ink-tertiary">{ticket.appartement?.adresse}</p>
           </div>
           <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${URGENCE_STYLES[ticket.urgence]}`}
+            className={`shrink-0 rounded-badge px-2 py-0.5 text-xs font-bold ${URGENCE_STYLES[ticket.urgence]}`}
           >
             Urgence {URGENCE_LABELS[ticket.urgence]}
           </span>
         </div>
 
         {ticket.statut === 'a_refaire' && ticket.refus.length > 0 && (
-          <div data-testid="refus-banner" className="mt-3 space-y-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+          <div data-testid="refus-banner" className="mt-3 space-y-2 rounded-field bg-danger-bg px-3 py-2 text-sm font-semibold text-danger">
             <p className="flex items-center gap-2">
               <span aria-hidden="true">⚠️</span>
               Renvoyé par le Manager — à refaire
@@ -105,7 +105,7 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
         )}
 
         {ticket.description_manager && (
-          <p className="mt-3 text-sm text-gray-700">{ticket.description_manager}</p>
+          <p className="mt-3 text-sm text-ink-secondary">{ticket.description_manager}</p>
         )}
 
         {ticket.description_manager_audio_url && (
@@ -129,27 +129,27 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
       {resolu ? (
         <div
           data-testid="resolution-confirmation"
-          className="flex items-center gap-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-4"
+          className="flex items-center gap-3 rounded-card-agent-lg border-2 border-success-border bg-success-bg p-4"
         >
           <span aria-hidden="true" className="text-3xl">
             ✅
           </span>
-          <p className="text-base font-medium text-emerald-800">Envoyé au Manager pour validation</p>
+          <p className="text-base font-medium text-success-text">Envoyé au Manager pour validation</p>
         </div>
       ) : (
-        <div className="space-y-4 rounded-2xl border-2 border-gray-200 bg-white p-4 shadow-sm">
-          <h4 className="text-base font-semibold text-gray-900">Marquer comme résolu</h4>
+        <div className="space-y-4 rounded-card-agent-lg border-2 border-border-default bg-surface p-4">
+          <h4 className="text-base font-bold text-ink">Marquer comme résolu</h4>
 
           <div className="flex flex-col items-center gap-1">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               aria-label="Prendre une photo"
-              className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-indigo-200 bg-indigo-50 text-4xl hover:bg-indigo-100"
+              className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-brand-border bg-brand-pale text-4xl hover:brightness-95"
             >
               📷
             </button>
-            <span className="text-xs font-medium text-gray-500">Prendre une photo</span>
+            <span className="text-xs font-medium text-ink-tertiary">Prendre une photo</span>
             <input
               ref={fileInputRef}
               type="file"
@@ -165,7 +165,7 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
           </div>
 
           <div>
-            <label htmlFor="cout_reparation" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="cout_reparation" className="block text-sm font-semibold text-ink-secondary">
               Prix de la réparation (MAD)
             </label>
             <input
@@ -174,12 +174,12 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
               inputMode="decimal"
               value={coutReparation}
               onChange={(e) => setCoutReparation(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
             />
           </div>
 
           <div>
-            <label htmlFor="note_resolution" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="note_resolution" className="block text-sm font-semibold text-ink-secondary">
               Note (optionnel)
             </label>
             <textarea
@@ -187,12 +187,12 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
             />
           </div>
 
           {error && (
-            <p className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+            <p className="flex items-center gap-2 rounded-field bg-danger-bg px-3 py-2 text-sm font-medium text-danger">
               <span aria-hidden="true">⚠️</span>
               {error}
             </p>
@@ -202,7 +202,7 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-base font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-success px-4 py-2 text-base font-bold text-white hover:brightness-110 disabled:opacity-50"
           >
             <span aria-hidden="true" className="text-xl">
               ✓

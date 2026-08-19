@@ -10,9 +10,9 @@ const PRODUIT_STATUT_LABELS: Record<string, string> = {
 }
 
 const PRODUIT_STATUT_STYLES: Record<string, string> = {
-  en_attente: 'bg-amber-100 text-amber-800',
-  valide: 'bg-green-100 text-green-800',
-  rejete: 'bg-red-100 text-red-800',
+  en_attente: 'bg-warning-bg text-warning-text',
+  valide: 'bg-success-bg text-success-text',
+  rejete: 'bg-danger-bg text-danger',
 }
 
 interface MissionValidationDetailProps {
@@ -44,17 +44,17 @@ export function MissionValidationDetail({
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
-        className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+        className="text-sm font-semibold text-brand-light hover:text-brand"
       >
         {expanded ? 'Masquer le détail' : 'Voir le détail'}
       </button>
 
       {expanded && (
-        <div className="mt-2 space-y-4 rounded-md border border-gray-200 bg-white p-3">
+        <div className="mt-2 space-y-4 rounded-field border border-border-default bg-surface p-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Checklist</p>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">Checklist</p>
             {checklistItems.length === 0 ? (
-              <p className="mt-1 text-sm text-gray-500">Aucun item de checklist.</p>
+              <p className="mt-1 text-sm text-ink-tertiary">Aucun item de checklist.</p>
             ) : (
               <ul className="mt-2 space-y-2">
                 {checklistItems.map((item) => (
@@ -62,12 +62,12 @@ export function MissionValidationDetail({
                     <span
                       aria-label={item.coche ? 'Coché' : 'Non coché'}
                       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                        item.coche ? 'bg-emerald-600 text-white' : 'border border-gray-300 text-transparent'
+                        item.coche ? 'bg-success text-white' : 'border border-border-default text-transparent'
                       }`}
                     >
                       ✓
                     </span>
-                    <span className={item.coche ? 'text-gray-700' : 'text-gray-500'}>{item.libelle}</span>
+                    <span className={item.coche ? 'text-ink-secondary' : 'text-ink-tertiary'}>{item.libelle}</span>
                     {item.photo_url && (
                       <img
                         src={resolveStorageUrl(item.photo_url)}
@@ -83,16 +83,18 @@ export function MissionValidationDetail({
 
           {photosPreuve.length > 0 && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Photos de preuve du travail</p>
+              <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">
+                Photos de preuve du travail
+              </p>
               <ul className="mt-2 flex flex-wrap gap-2">
                 {photosPreuve.map((photo) => (
                   <li key={photo.id}>
                     <img
                       src={resolveStorageUrl(photo.photo_url)}
                       alt="Photo de preuve du travail"
-                      className="h-16 w-16 rounded object-cover"
+                      className="h-16 w-16 rounded-[8px] object-cover"
                     />
-                    {photo.note && <p className="mt-1 max-w-[4rem] truncate text-xs text-gray-600">{photo.note}</p>}
+                    {photo.note && <p className="mt-1 max-w-[4rem] truncate text-xs text-ink-tertiary">{photo.note}</p>}
                   </li>
                 ))}
               </ul>
@@ -100,9 +102,9 @@ export function MissionValidationDetail({
           )}
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Produits signalés</p>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">Produits signalés</p>
             {produitsSignales.length === 0 ? (
-              <p className="mt-1 text-sm text-gray-500">Aucun produit signalé.</p>
+              <p className="mt-1 text-sm text-ink-tertiary">Aucun produit signalé.</p>
             ) : (
               <ul className="mt-2 space-y-2">
                 {produitsSignales.map((produit) =>
@@ -118,13 +120,13 @@ export function MissionValidationDetail({
                       <img
                         src={resolveStorageUrl(produit.photo_url)}
                         alt="Photo du produit signalé"
-                        className="h-10 w-10 shrink-0 rounded object-cover"
+                        className="h-10 w-10 shrink-0 rounded-[8px] object-cover"
                       />
                       <div className="min-w-0">
-                        {produit.note && <p className="truncate text-gray-700">{produit.note}</p>}
+                        {produit.note && <p className="truncate text-ink-secondary">{produit.note}</p>}
                         <span
-                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                            PRODUIT_STATUT_STYLES[produit.statut] ?? 'bg-gray-100 text-gray-600'
+                          className={`inline-block rounded-badge px-2 py-0.5 text-xs font-medium ${
+                            PRODUIT_STATUT_STYLES[produit.statut] ?? 'bg-table-header-bg text-ink-tertiary'
                           }`}
                         >
                           {PRODUIT_STATUT_LABELS[produit.statut] ?? produit.statut}

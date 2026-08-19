@@ -136,42 +136,6 @@ function groupKeyForTab(tab: Tab): string | null {
   return NAV_GROUPS.find((group) => group.tabs.some(([t]) => t === tab))?.key ?? null
 }
 
-function getGroupIcon(key: string, isActive: boolean) {
-  const className = `mr-3 h-5 w-5 shrink-0 transition-colors duration-200 ${
-    isActive ? 'text-indigo-600' : 'text-gray-400'
-  }`
-
-  switch (key) {
-    case 'sejours':
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2m-9 0h10a2 2 0 012 2v9a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2zM4 12h16" />
-        </svg>
-      )
-    case 'appartements':
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
-      )
-    case 'menage':
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.8 15.9L9 18.75l-.8-2.85a4.5 4.5 0 00-3.1-3.1L2.25 12l2.85-.8a4.5 4.5 0 003.1-3.1L9 5.25l.8 2.85a4.5 4.5 0 003.1 3.1l2.85.8-2.85.8a4.5 4.5 0 00-3.1 3.1z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M18 3.75v3M16.5 5.25h3" />
-        </svg>
-      )
-    case 'maintenance':
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M14.7 6.3a4 4 0 00-5.09 4.99L4 17v3h3l5.71-5.61a4 4 0 004.99-5.09l-2.62 2.62-2-2z" />
-        </svg>
-      )
-    default:
-      return null
-  }
-}
-
 function App() {
   const [appartements, setAppartements] = useState<Appartement[]>([])
   const [proprietaires, setProprietaires] = useState<Proprietaire[]>([])
@@ -485,139 +449,202 @@ function App() {
     }
   }
 
+  const menagesAValiderCount = dashboardData?.menages_a_valider.length ?? 0
+  const urgencesMaintenanceCount = dashboardData?.problemes_signales.length ?? 0
+
+  const today = new Date().toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  const todayCapitalized = today.charAt(0).toUpperCase() + today.slice(1)
+
+  const railGroupCounter = (groupKey: string) => {
+    if (groupKey === 'appartements') {
+      return <span className="font-mono text-[11px] font-bold text-rail-meta">{appartements.length}</span>
+    }
+    if (groupKey === 'menage' && menagesAValiderCount > 0) {
+      return (
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-badge bg-warning px-1.5 text-[11px] font-bold text-white">
+          {menagesAValiderCount}
+        </span>
+      )
+    }
+    if (groupKey === 'maintenance' && urgencesMaintenanceCount > 0) {
+      return (
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-badge bg-danger px-1.5 text-[11px] font-bold text-white">
+          {urgencesMaintenanceCount}
+        </span>
+      )
+    }
+    return null
+  }
+
   return (
-    <div className="flex min-h-screen">
-      <nav className="flex w-64 shrink-0 flex-col border-r border-gray-100 bg-white p-5 select-none shadow-xs">
-        <div className="flex items-center justify-center py-4 mb-6">
-          <img src="/logo.png" alt="RestInnov" className="h-10 w-auto" />
+    <div className="flex min-h-screen bg-app-bg font-sans text-ink">
+      <nav className="flex w-[246px] shrink-0 flex-col bg-marine px-3.5 py-5">
+        <div className="flex items-center gap-2.5 px-2 pb-5">
+          <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] bg-white">
+            <img src="/logo.png" alt="RestInnov" className="h-[34px] w-auto" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[15px] font-bold tracking-[-0.01em] text-white">Restinnov</div>
+            <div className="text-[11px] uppercase tracking-[0.06em] text-rail-meta">Conciergerie</div>
+          </div>
         </div>
 
-        <ul className="space-y-1.5 flex-1 overflow-y-auto pr-1">
-          <li>
-            <button
-              type="button"
-              onClick={() => navigateTo('dashboard')}
-              className={`flex w-full items-center rounded-lg py-2.5 pr-3 text-left text-sm font-medium border-l-4 transition-all duration-200 ease-in-out cursor-pointer ${
-                activeTab === 'dashboard'
-                  ? 'bg-indigo-50/80 text-indigo-700 border-indigo-600 pl-2.5 shadow-xs'
-                  : 'text-gray-600 border-transparent pl-2.5 hover:bg-gray-50 hover:text-gray-900 hover:pl-3.5'
-              }`}
-            >
-              <svg className={`mr-3 h-5 w-5 shrink-0 transition-colors duration-200 ${
-                activeTab === 'dashboard' ? 'text-indigo-600' : 'text-gray-400'
-              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-              <span>Dashboard</span>
-            </button>
-          </li>
+        <div className="flex flex-col gap-0.5">
+          <div className="px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-rail-group-title">
+            Pilotage
+          </div>
+          <button
+            type="button"
+            onClick={() => navigateTo('dashboard')}
+            className={`flex items-center gap-2.5 rounded-field px-2.5 py-2.5 text-left text-sm font-semibold ${
+              activeTab === 'dashboard' ? 'bg-brand text-white' : 'text-rail-text hover:bg-white/5'
+            }`}
+          >
+            Dashboard
+          </button>
 
-          {NAV_GROUPS.map((group) => {
+          {NAV_GROUPS.slice(0, 2).map((group) => {
             const isExpanded = expandedGroup === group.key
             const isActiveGroup = groupKeyForTab(activeTab) === group.key
 
             return (
-              <li key={group.key} className="space-y-1">
+              <div key={group.key}>
                 <button
                   type="button"
                   onClick={() => toggleGroup(group)}
                   aria-expanded={isExpanded}
-                  className={`flex w-full items-center justify-between rounded-lg py-2.5 pr-3 text-left text-sm font-medium border-l-4 transition-all duration-200 ease-in-out cursor-pointer ${
-                    isActiveGroup
-                      ? 'bg-indigo-50/80 text-indigo-700 border-indigo-600 pl-2.5'
-                      : 'text-gray-600 border-transparent pl-2.5 hover:bg-gray-50 hover:text-gray-900 hover:pl-3.5'
+                  aria-label={group.label}
+                  className={`flex w-full items-center gap-2.5 rounded-field px-2.5 py-2.5 text-left text-sm font-semibold ${
+                    isActiveGroup ? 'bg-brand text-white' : 'text-rail-text hover:bg-white/5'
                   }`}
                 >
-                  <span className="flex items-center">
-                    {getGroupIcon(group.key, isActiveGroup)}
-                    <span>{group.label}</span>
-                  </span>
-                  <span className={`text-xs transition-transform duration-200 ${isExpanded ? 'rotate-90 text-indigo-600' : 'text-gray-400'}`} aria-hidden="true">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
+                  <span className="flex-1">{group.label}</span>
+                  {railGroupCounter(group.key)}
+                  <span className="text-xs" aria-hidden="true">
+                    {isExpanded ? '▾' : '▸'}
                   </span>
                 </button>
                 {isExpanded && (
-                  <ul className="mt-1 space-y-1 pl-7 border-l border-gray-100 ml-5 animate-slide-down">
-                    {group.tabs.map(([tab, label]) => {
-                      const isActiveTab = activeTab === tab
-                      return (
-                        <li key={tab}>
-                          <button
-                            type="button"
-                            onClick={() => handleSidebarNavigate(tab)}
-                            className={`block w-full rounded-md py-1.5 px-3 text-left text-sm transition-all duration-150 ease-in-out cursor-pointer ${
-                              isActiveTab
-                                ? 'bg-indigo-50/60 text-indigo-700 font-semibold shadow-xs'
-                                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 hover:pl-4'
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        </li>
-                      )
-                    })}
-                  </ul>
+                  <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
+                    {group.tabs.map(([tab, label]) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => handleSidebarNavigate(tab)}
+                        className={`block w-full rounded-field px-2.5 py-2 text-left text-[13px] ${
+                          activeTab === tab ? 'bg-brand font-semibold text-white' : 'text-rail-text hover:bg-white/5'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 )}
-              </li>
+              </div>
             )
           })}
-        </ul>
 
-        <div className="mt-auto pt-4 border-t border-gray-100">
+          <div className="px-2.5 pb-1.5 pt-3 text-[10px] font-bold uppercase tracking-[0.14em] text-rail-group-title">
+            Opérations
+          </div>
+          {NAV_GROUPS.slice(2, 4).map((group) => {
+            const isExpanded = expandedGroup === group.key
+            const isActiveGroup = groupKeyForTab(activeTab) === group.key
+
+            return (
+              <div key={group.key}>
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group)}
+                  aria-expanded={isExpanded}
+                  aria-label={group.label}
+                  className={`flex w-full items-center gap-2.5 rounded-field px-2.5 py-2.5 text-left text-sm font-semibold ${
+                    isActiveGroup ? 'bg-brand text-white' : 'text-rail-text hover:bg-white/5'
+                  }`}
+                >
+                  <span className="flex-1">{group.label}</span>
+                  {railGroupCounter(group.key)}
+                  <span className="text-xs" aria-hidden="true">
+                    {isExpanded ? '▾' : '▸'}
+                  </span>
+                </button>
+                {isExpanded && (
+                  <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
+                    {group.tabs.map(([tab, label]) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => handleSidebarNavigate(tab)}
+                        className={`block w-full rounded-field px-2.5 py-2 text-left text-[13px] ${
+                          activeTab === tab ? 'bg-brand font-semibold text-white' : 'text-rail-text hover:bg-white/5'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="mt-auto flex flex-col gap-3">
+          {user && (
+            <div className="flex items-center gap-2.5 border-t border-marine-border px-2.5 pt-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
+                {user.nom
+                  .trim()
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((part) => part[0])
+                  .join('')
+                  .toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-[13px] font-semibold text-[#E6EBF4]">{user.nom}</div>
+                <div className="text-[11px] text-rail-meta">Manager</div>
+              </div>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => {
               void logout()
             }}
-            className="flex w-full items-center rounded-lg py-2.5 pr-3 pl-2.5 text-left text-sm font-medium border-l-4 border-transparent text-gray-600 transition-all duration-200 ease-in-out hover:bg-red-50 hover:text-red-600 hover:border-red-500 hover:pl-3.5 cursor-pointer"
+            className="flex items-center gap-2.5 rounded-field px-2.5 py-2.5 text-left text-sm font-semibold text-rail-text hover:bg-white/5"
           >
-            <svg className="mr-3 h-5 w-5 shrink-0 text-gray-400 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            <span>Déconnexion</span>
+            Déconnexion
           </button>
         </div>
       </nav>
 
-      <main className="min-w-0 flex-1 px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{SECTION_TITLES[activeTab]}</h2>
-          
-          <div className="flex items-center gap-4">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border-default bg-surface px-6">
+          <h2 className="text-lg font-bold tracking-[-0.02em] text-ink">{SECTION_TITLES[activeTab]}</h2>
+          <div className="border-l border-border-default pl-4 text-[13px] text-ink-tertiary">{todayCapitalized}</div>
+          <div className="ml-auto flex items-center gap-2.5">
+            <div className="flex h-9 w-[260px] items-center gap-2 rounded-field border border-border-default bg-table-header-bg px-3 text-[13px] text-ink-disabled">
+              <span aria-hidden="true">⌕</span>
+              Rechercher un séjour, un appartement…
+            </div>
             <NotificationBell
               onNavigateToSejour={handleNavigateToSejourDetail}
               onNavigateToTicketsMaintenance={() => handleNavigateToTicketsMaintenance('ouvert')}
             />
-            
-            {/* User Profile Area */}
-            <div className="relative group">
-              <button 
-                type="button" 
-                className="flex items-center gap-3 rounded-full bg-white border border-gray-200 py-1.5 pl-1.5 pr-4 hover:border-gray-300 transition-colors"
-              >
-                <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold text-sm">
-                  {user?.nom.split(' ').map(n => n[0]).join('') ?? 'U'}
-                </div>
-                <span className="text-sm font-medium text-gray-700">{user?.nom ?? 'Utilisateur'}</span>
-              </button>
-              
-              {/* Dropdown Menu - Simple implementation */}
-              <div className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-white border border-gray-100 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
-                <button 
-                  onClick={() => { void logout() }}
-                  className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-xl"
-                >
-                  Déconnexion
-                </button>
-              </div>
-            </div>
           </div>
-        </div>
-        {loadError && <p className="mt-2 text-sm text-red-600">{loadError}</p>}
+        </header>
 
-        <div className="mt-6 space-y-6">
+        <main className="min-w-0 flex-1 overflow-auto p-6">
+          {loadError && <p className="mb-4 text-sm text-danger">{loadError}</p>}
+
+          <div className="space-y-6">
           {activeTab === 'dashboard' && (
             <DashboardSection
               data={dashboardData}
@@ -704,8 +731,9 @@ function App() {
           {activeTab === 'maintenance-tickets' && (
             <TicketsMaintenanceSection appartements={appartements} initialStatutFilter={pendingTicketStatutFilter} />
           )}
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

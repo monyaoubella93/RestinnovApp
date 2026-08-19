@@ -58,7 +58,7 @@ describe('MesTicketsSection', () => {
     expect(screen.getByText('MNT-0001')).toBeInTheDocument()
     const badge = screen.getByText('Refusé')
     expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('bg-red-100', 'text-red-800')
+    expect(badge).toHaveClass('bg-danger-bg', 'text-danger')
   })
 
   it('affiche un badge violet "En attente de validation" pour un ticket resolu_en_attente_validation', () => {
@@ -66,7 +66,7 @@ describe('MesTicketsSection', () => {
 
     const badge = screen.getByText('En attente de validation')
     expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('bg-purple-100', 'text-purple-800')
+    expect(badge).toHaveClass('bg-violet-bg', 'text-violet')
   })
 
   it("affiche le message vide passé en props quand la liste est vide", () => {

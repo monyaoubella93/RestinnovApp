@@ -108,12 +108,12 @@ export function RefuserModal({ title, onCancel, onConfirm }: RefuserModalProps) 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-lg">
-        <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
+      <div className="w-full max-w-md rounded-card-manager bg-surface p-5 shadow-lg">
+        <h3 className="text-base font-bold text-ink">{title}</h3>
 
         <div className="mt-3">
-          <label htmlFor="refuser_motif" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="refuser_motif" className="block text-sm font-semibold text-ink-secondary">
             Motif du refus (texte)
           </label>
           <textarea
@@ -121,7 +121,7 @@ export function RefuserModal({ title, onCancel, onConfirm }: RefuserModalProps) 
             value={motif}
             onChange={(e) => setMotif(e.target.value)}
             rows={3}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
             placeholder="Expliquez pourquoi ce n'est pas accepté..."
           />
         </div>
@@ -132,11 +132,11 @@ export function RefuserModal({ title, onCancel, onConfirm }: RefuserModalProps) 
               type="button"
               onClick={() => fileInputRef.current?.click()}
               aria-label="Ajouter une photo au motif de refus"
-              className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-red-200 bg-red-50 text-3xl hover:bg-red-100"
+              className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-danger-border bg-danger-bg text-3xl hover:brightness-95"
             >
               📷
             </button>
-            <span className="text-xs font-medium text-gray-500">Photo</span>
+            <span className="text-xs font-medium text-ink-tertiary">Photo</span>
             <input
               ref={fileInputRef}
               type="file"
@@ -152,18 +152,18 @@ export function RefuserModal({ title, onCancel, onConfirm }: RefuserModalProps) 
 
           <div className="flex flex-col items-center gap-1">
             {!micSupported ? (
-              <p className="max-w-[6rem] text-center text-xs text-gray-400">Audio non disponible</p>
+              <p className="max-w-[6rem] text-center text-xs text-ink-disabled">Audio non disponible</p>
             ) : recordingState === 'idle' ? (
               <>
                 <button
                   type="button"
                   onClick={startRecording}
                   aria-label="Enregistrer un message audio pour le motif de refus"
-                  className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-red-200 bg-red-50 text-3xl hover:bg-red-100"
+                  className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-danger-border bg-danger-bg text-3xl hover:brightness-95"
                 >
                   🎤
                 </button>
-                <span className="text-xs font-medium text-gray-500">Audio</span>
+                <span className="text-xs font-medium text-ink-tertiary">Audio</span>
               </>
             ) : recordingState === 'recording' ? (
               <>
@@ -172,14 +172,14 @@ export function RefuserModal({ title, onCancel, onConfirm }: RefuserModalProps) 
                   onClick={stopRecording}
                   aria-label="Arrêter l'enregistrement"
                   data-testid="refus-recording-indicator"
-                  className="relative flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-2xl text-white"
+                  className="relative flex h-16 w-16 items-center justify-center rounded-full bg-danger text-2xl text-white"
                 >
-                  <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-red-500 opacity-75" />
+                  <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-danger opacity-75" />
                   <span aria-hidden="true" className="relative">
                     ⏹
                   </span>
                 </button>
-                <span className="text-xs font-medium text-red-600">Enregistrement...</span>
+                <span className="text-xs font-medium text-danger">Enregistrement...</span>
               </>
             ) : (
               <div className="flex flex-col items-center gap-2">
@@ -191,7 +191,7 @@ export function RefuserModal({ title, onCancel, onConfirm }: RefuserModalProps) 
                   type="button"
                   onClick={resetAudio}
                   aria-label="Recommencer l'enregistrement audio"
-                  className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-gray-300 text-lg hover:bg-gray-50"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-border-default text-lg hover:bg-table-header-bg"
                 >
                   🔄
                 </button>
@@ -200,14 +200,14 @@ export function RefuserModal({ title, onCancel, onConfirm }: RefuserModalProps) 
           </div>
         </div>
 
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        {error && <p className="mt-3 text-sm text-danger">{error}</p>}
 
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
             disabled={submitting}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-field border border-border-default px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
           >
             Annuler
           </button>
@@ -215,7 +215,7 @@ export function RefuserModal({ title, onCancel, onConfirm }: RefuserModalProps) 
             type="button"
             onClick={handleConfirm}
             disabled={submitting || (!motif.trim() && !audioFile && !photo)}
-            className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            className="rounded-field bg-danger px-3 py-1.5 text-sm font-bold text-white hover:brightness-110 disabled:opacity-50"
           >
             {submitting ? 'Envoi...' : 'Confirmer le refus'}
           </button>

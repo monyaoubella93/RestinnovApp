@@ -66,12 +66,12 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
   if (!expanded) {
     return (
       <div
-        className={`rounded-xl border-2 p-4 shadow-sm ${
-          misEnAvant ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white'
+        className={`rounded-card-agent-lg border-2 p-4 ${
+          misEnAvant ? 'border-brand-light bg-brand-pale' : 'border-border-default bg-surface'
         }`}
       >
         {misEnAvant && (
-          <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-800">
+          <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-brand">
             <span aria-hidden="true" className="text-lg">
               💡
             </span>
@@ -84,7 +84,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
             setExpanded(true)
             setSent(false)
           }}
-          className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-base font-bold text-white hover:bg-blue-700"
+          className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-base font-bold text-white hover:bg-brand-light"
         >
           <span aria-hidden="true" className="text-2xl">
             📸
@@ -93,7 +93,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
         </button>
         {sent && (
           <p
-            className="mt-2 flex items-center gap-2 text-sm font-medium text-emerald-700"
+            className="mt-2 flex items-center gap-2 text-sm font-medium text-success-text"
             data-testid="photo-preuve-confirmation"
           >
             <span aria-hidden="true" className="text-lg">
@@ -107,19 +107,19 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
   }
 
   return (
-    <div className="space-y-4 rounded-xl border-2 border-blue-200 bg-white p-4 shadow-sm">
-      <h4 className="text-base font-semibold text-gray-900">Ajouter une photo de mon travail</h4>
+    <div className="space-y-4 rounded-card-agent-lg border-2 border-brand-border bg-surface p-4">
+      <h4 className="text-base font-bold text-ink">Ajouter une photo de mon travail</h4>
 
       <div className="flex flex-col items-center gap-2">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           aria-label="Ouvrir l'appareil photo"
-          className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-blue-200 bg-blue-50 text-4xl hover:bg-blue-100"
+          className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-brand-border bg-brand-pale text-4xl hover:brightness-95"
         >
           📷
         </button>
-        <span className="text-xs font-medium text-gray-500">Photo(s)</span>
+        <span className="text-xs font-medium text-ink-tertiary">Photo(s)</span>
         <input
           ref={fileInputRef}
           type="file"
@@ -147,7 +147,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
                   type="button"
                   onClick={() => removePhoto(index)}
                   aria-label={`Retirer la photo ${index + 1}`}
-                  className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white hover:bg-red-700"
+                  className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs font-bold text-white hover:brightness-110"
                 >
                   ✕
                 </button>
@@ -158,7 +158,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
       </div>
 
       <div>
-        <label htmlFor={`photo_preuve_note_${missionMenageId}`} className="block text-sm font-medium text-gray-700">
+        <label htmlFor={`photo_preuve_note_${missionMenageId}`} className="block text-sm font-semibold text-ink-secondary">
           Note (optionnel)
         </label>
         <textarea
@@ -166,12 +166,12 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
       </div>
 
       {error && (
-        <p className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+        <p className="flex items-center gap-2 rounded-field bg-danger-bg px-3 py-2 text-sm font-medium text-danger">
           <span aria-hidden="true">⚠️</span>
           {error}
         </p>
@@ -184,7 +184,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
             resetForm()
             setExpanded(false)
           }}
-          className="min-h-14 flex-1 rounded-xl border-2 border-gray-300 px-4 py-2 text-base font-medium text-gray-700 hover:bg-gray-50"
+          className="min-h-14 flex-1 rounded-xl border-2 border-border-default px-4 py-2 text-base font-medium text-ink-secondary hover:bg-table-header-bg"
         >
           Annuler
         </button>
@@ -192,7 +192,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
           type="button"
           onClick={handleSubmit}
           disabled={submitting}
-          className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-base font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+          className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2 text-base font-bold text-white hover:bg-brand-light disabled:opacity-50"
         >
           <span aria-hidden="true" className="text-xl">
             ✓

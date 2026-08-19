@@ -19,14 +19,14 @@ const IDENTITIES: Record<'manager' | 'menage' | 'maintenance', PwaIdentity> = {
   menage: {
     title: 'Ménage — Mes missions',
     manifestHref: '/manifest-menage.json',
-    themeColor: '#059669',
+    themeColor: '#0C1A31',
     appleTitle: 'Ménage',
     iconHref: '/icons/icon-192-menage.png',
   },
   maintenance: {
     title: 'Maintenance — Mes tickets',
     manifestHref: '/manifest-maintenance.json',
-    themeColor: '#d97706',
+    themeColor: '#0C1A31',
     appleTitle: 'Maintenance',
     iconHref: '/icons/icon-192-maintenance.png',
   },

@@ -13,9 +13,9 @@ const STATUT_LABELS: Record<Sejour['statut'], string> = {
 }
 
 const STATUT_STYLES: Record<Sejour['statut'], string> = {
-  a_venir: 'bg-blue-100 text-blue-800',
-  en_cours: 'bg-amber-100 text-amber-800',
-  termine: 'bg-green-100 text-green-800',
+  a_venir: 'bg-brand-pale text-brand',
+  en_cours: 'bg-warning-bg text-warning-text',
+  termine: 'bg-table-header-bg text-ink-tertiary',
 }
 
 function formatDate(iso: string): string {
@@ -27,11 +27,11 @@ function RefusHistoriqueMenage({ mission }: { mission: MissionMenage }) {
 
   return (
     <div>
-      <p className="text-xs font-medium text-gray-600">Historique des refus</p>
+      <p className="text-xs font-semibold text-ink-secondary">Historique des refus</p>
       <ul className="mt-1 space-y-2">
         {mission.refus.map((refus) => (
-          <li key={refus.id} className="space-y-1 rounded-md bg-red-50 p-2 text-sm text-red-700">
-            <p className="text-xs text-red-500">{formatDate(refus.created_at)}</p>
+          <li key={refus.id} className="space-y-1 rounded-field bg-danger-bg p-2 text-sm text-danger">
+            <p className="font-mono text-xs text-danger">{formatDate(refus.created_at)}</p>
             {refus.motif && <p>{refus.motif}</p>}
             {refus.motif_audio_url && (
               // eslint-disable-next-line jsx-a11y/media-has-caption
@@ -110,46 +110,46 @@ export function SejourCard({
   }
 
   return (
-    <li className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <li className="rounded-card-manager border border-border-default bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-medium text-gray-400" data-testid="sejour-reference">
+          <p className="font-mono text-xs text-ink-tertiary" data-testid="sejour-reference">
             {sejour.reference}
           </p>
-          <p className="font-medium text-gray-900">{sejour.nom_voyageur}</p>
-          <p className="text-sm text-gray-600">{sejour.appartement?.nom ?? `Appartement #${sejour.appartement_id}`}</p>
-          <p className="text-sm text-gray-500">
+          <p className="font-semibold text-ink">{sejour.nom_voyageur}</p>
+          <p className="text-sm text-ink-secondary">{sejour.appartement?.nom ?? `Appartement #${sejour.appartement_id}`}</p>
+          <p className="font-mono text-sm text-ink-tertiary">
             {sejour.date_arrivee} → {sejour.date_depart}
           </p>
         </div>
-        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${STATUT_STYLES[sejour.statut]}`}>
+        <span className={`shrink-0 rounded-badge px-3 py-1 text-xs font-bold ${STATUT_STYLES[sejour.statut]}`}>
           {STATUT_LABELS[sejour.statut]}
         </span>
       </div>
 
       {sejour.mission_menage && (
-        <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm">
-          <p className="flex items-center gap-2 font-medium text-gray-700">
+        <div className="mt-3 rounded-field bg-table-header-bg p-3 text-sm">
+          <p className="flex items-center gap-2 font-semibold text-ink-secondary">
             Mission de ménage créée
             {!sejour.mission_menage.vue && (
               <span
                 data-testid="mission-nouvelle-badge"
-                className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-semibold text-white"
+                className="rounded-badge bg-brand px-2 py-0.5 text-xs font-bold text-white"
               >
                 Nouveau
               </span>
             )}
           </p>
-          <p className="text-gray-600">
+          <p className="text-ink-tertiary">
             Agent assigné :{' '}
-            <span className="font-medium">
+            <span className="font-medium text-ink">
               {sejour.mission_menage.agent?.nom ?? 'non assigné'}
             </span>
           </p>
 
           {sejour.mission_menage.statut === 'en_attente_validation' && (
             <div className="mt-2">
-              <p className="mb-2 font-medium text-purple-700">En attente de validation</p>
+              <p className="mb-2 font-semibold text-violet">En attente de validation</p>
               <MissionValidationDetail
                 mission={sejour.mission_menage}
                 onValiderProduitSignale={onValiderProduitSignale}
@@ -160,7 +160,7 @@ export function SejourCard({
                   type="button"
                   onClick={handleValider}
                   disabled={validating}
-                  className="rounded-md bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+                  className="rounded-field bg-success px-3 py-1.5 text-sm font-bold text-white hover:brightness-110 disabled:opacity-50"
                 >
                   {validating ? 'Validation...' : 'Valider'}
                 </button>
@@ -168,12 +168,12 @@ export function SejourCard({
                   type="button"
                   onClick={() => setShowRefuserModal(true)}
                   disabled={validating}
-                  className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                  className="rounded-field bg-danger px-3 py-1.5 text-sm font-bold text-white hover:brightness-110 disabled:opacity-50"
                 >
                   Refuser
                 </button>
               </div>
-              {validerError && <p className="mt-1 text-sm text-red-600">{validerError}</p>}
+              {validerError && <p className="mt-1 text-sm text-danger">{validerError}</p>}
 
               {showRefuserModal && (
                 <RefuserModal
@@ -190,7 +190,7 @@ export function SejourCard({
 
           {sejour.mission_menage.statut === 'non_conforme' && (
             <div className="mt-2 space-y-2" data-testid="mission-non-conforme">
-              <p className="font-medium text-red-700">Refusée — en attente de correction par l'agent</p>
+              <p className="font-semibold text-danger">Refusée — en attente de correction par l'agent</p>
               <MissionValidationDetail mission={sejour.mission_menage} />
               <RefusHistoriqueMenage mission={sejour.mission_menage} />
             </div>
@@ -204,11 +204,11 @@ export function SejourCard({
             type="button"
             onClick={handleCheckout}
             disabled={checkingOut}
-            className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            className="rounded-field bg-success px-3 py-1.5 text-sm font-bold text-white hover:brightness-110 disabled:opacity-50"
           >
             {checkingOut ? 'Confirmation...' : 'Confirmer le checkout'}
           </button>
-          {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+          {error && <p className="mt-1 text-sm text-danger">{error}</p>}
         </div>
       )}
 

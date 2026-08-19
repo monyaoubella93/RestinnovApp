@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { DashboardSection } from './DashboardSection'
@@ -58,12 +58,23 @@ describe('DashboardSection', () => {
     expect(screen.getByTestId('dashboard-resultat-net')).toHaveTextContent('1350.00 MAD')
   })
 
+  it('donne un fond marine à la carte "Résultat net", blanc aux trois autres', () => {
+    render(<DashboardSection data={data} loading={false} error={null} />)
+
+    expect(screen.getByTestId('dashboard-revenus-totaux').closest('div.rounded-card-manager')).toHaveClass('bg-surface')
+    expect(screen.getByTestId('dashboard-frais-menage-totaux').closest('div.rounded-card-manager')).toHaveClass('bg-surface')
+    expect(screen.getByTestId('dashboard-frais-maintenance-totaux').closest('div.rounded-card-manager')).toHaveClass(
+      'bg-surface',
+    )
+    expect(screen.getByTestId('dashboard-resultat-net').closest('div.rounded-card-manager')).toHaveClass('bg-marine')
+  })
+
   it('affiche le nombre de séjours par statut sous forme de mini-cartes cliquables', () => {
     render(<DashboardSection data={data} loading={false} error={null} />)
 
-    expect(screen.getByRole('button', { name: /à venir\s*2/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /en cours\s*1/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /terminé\s*3/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /2\s*à venir/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /1\s*en cours/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /3\s*terminé/i })).toBeInTheDocument()
   })
 
   it('bascule vers la liste des séjours filtrée au clic sur une mini-carte de statut', async () => {
@@ -78,7 +89,7 @@ describe('DashboardSection', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: /à venir\s*2/i }))
+    await user.click(screen.getByRole('button', { name: /2\s*à venir/i }))
 
     expect(onNavigateToSejoursListe).toHaveBeenCalledWith('a_venir')
   })
@@ -89,11 +100,10 @@ describe('DashboardSection', () => {
     expect(screen.getByText('Loft Bastille')).toBeInTheDocument()
     expect(screen.getByText('Disponible')).toBeInTheDocument()
     expect(screen.getByRole('cell', { name: '3' })).toBeInTheDocument()
-    // Note: The original test expected the date string '05/03/2026', 
-    // but the table design was changed and this column removed.
-    // I will adjust to not check for the date as it is no longer in the UI.
+    expect(screen.getByText('05/03/2026')).toBeInTheDocument()
     expect(screen.getByText('Zenith')).toBeInTheDocument()
     expect(screen.getByText('Occupé')).toBeInTheDocument()
+    expect(screen.getByText('Aucun')).toBeInTheDocument()
   })
 
   it('affiche le badge "En ménage" pour un appartement en_menage', () => {
@@ -117,7 +127,7 @@ describe('DashboardSection', () => {
       />,
     )
 
-    expect(screen.getByText('Maintenance')).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: 'Maintenance' })).toBeInTheDocument()
   })
 
   it('affiche les problèmes signalés avec adresse et badge d\'urgence, cliquable', async () => {
@@ -230,6 +240,46 @@ describe('DashboardSection', () => {
     render(<DashboardSection data={{ ...data, resolutions_a_valider: [] }} loading={false} error={null} />)
 
     expect(screen.getByText('Aucune résolution en attente.')).toBeInTheDocument()
+  })
+
+  it('affiche le total combiné des 3 catégories dans le badge "À traiter aujourd\'hui"', () => {
+    render(
+      <DashboardSection
+        data={{
+          ...data,
+          menages_a_valider: [
+            { id: 1, sejour_id: 10, nom_voyageur: 'Jean Dupont', appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' } },
+          ],
+          problemes_signales: [
+            { id: 1, photo_url: null, description: null, urgence: 'haute', statut: 'ouvert', appartement: { id: 2, nom: 'Zenith', adresse: '5 avenue de la Paix' } },
+          ],
+          resolutions_a_valider: [
+            { id: 1, photo_apres: null, cout_reparation: '45.50', description_manager: null, statut: 'resolu_en_attente_validation', appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' } },
+          ],
+        }}
+        loading={false}
+        error={null}
+      />,
+    )
+
+    const heading = screen.getByText("À traiter aujourd'hui")
+    expect(heading).toBeInTheDocument()
+    expect(within(heading.parentElement as HTMLElement).getByText('3')).toBeInTheDocument()
+  })
+
+  it('calcule la répartition ménage/maintenance du donut à partir des totaux réels', () => {
+    render(<DashboardSection data={data} loading={false} error={null} />)
+
+    expect(screen.getByText('Répartition des charges')).toBeInTheDocument()
+    // frais_menage_totaux: 100, frais_maintenance_totaux: 350 => 22 % / 78 %
+    expect(screen.getByText(/22\s*%/)).toBeInTheDocument()
+    expect(screen.getByText(/78\s*%/)).toBeInTheDocument()
+  })
+
+  it('précise que le résultat net n\'inclut pas la commission propriétaire', () => {
+    render(<DashboardSection data={data} loading={false} error={null} />)
+
+    expect(screen.getByText(/commission propriétaire/i)).toBeInTheDocument()
   })
 
   it('bascule vers la section Appartements au clic sur une ligne du tableau', async () => {

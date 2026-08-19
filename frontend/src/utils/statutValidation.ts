@@ -11,7 +11,7 @@ export const STATUT_VALIDATION_LABELS: Record<StatutValidationSemantique, string
 }
 
 export const STATUT_VALIDATION_STYLES: Record<StatutValidationSemantique, string> = {
-  en_attente: 'bg-purple-100 text-purple-800',
-  refuse: 'bg-red-100 text-red-800',
-  valide: 'bg-green-100 text-green-800',
+  en_attente: 'bg-violet-bg text-violet',
+  refuse: 'bg-danger-bg text-danger',
+  valide: 'bg-success-bg text-success-text',
 }

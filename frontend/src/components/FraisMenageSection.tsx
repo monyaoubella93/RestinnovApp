@@ -91,11 +91,11 @@ export function FraisMenageSection({
   }
 
   return (
-    <div className="mt-3 rounded-md border border-gray-200 p-3">
-      <p className="text-sm font-semibold text-gray-700">Frais de ménage</p>
+    <div className="mt-3 rounded-field border border-border-default p-3">
+      <p className="text-sm font-bold text-ink">Frais de ménage</p>
 
       <div className="mt-2">
-        <label htmlFor={`forfait_${missionMenage.id}`} className="block text-sm font-medium text-gray-700">
+        <label htmlFor={`forfait_${missionMenage.id}`} className="block text-sm font-semibold text-ink-secondary">
           Forfait femme de ménage
         </label>
         <input
@@ -105,50 +105,61 @@ export function FraisMenageSection({
           step="0.01"
           value={forfait}
           onChange={(e) => setForfait(e.target.value)}
-          className="mt-1 block w-32 rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-32 rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
       </div>
 
       {catalogueActif.length > 0 && (
-        <div className="mt-3 space-y-1">
-          {catalogueActif.map((produit) => (
-            <label key={produit.id} className="flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={checkedIds.includes(produit.id)}
-                onChange={() => toggleProduit(produit.id)}
-                className="h-4 w-4 rounded border-gray-300"
-              />
-              {produit.photo_url && (
-                <img
-                  src={resolveStorageUrl(produit.photo_url)}
-                  alt={`Photo de "${produit.nom}"`}
-                  className="h-6 w-6 rounded object-cover"
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {catalogueActif.map((produit) => {
+            const checked = checkedIds.includes(produit.id)
+            return (
+              <label
+                key={produit.id}
+                className={`flex items-center gap-2 rounded-field border px-3 py-2 text-sm ${
+                  checked ? 'border-brand-border bg-brand-pale text-ink' : 'border-border-default text-ink-secondary'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleProduit(produit.id)}
+                  className="h-4 w-4 shrink-0 rounded border-border-default accent-brand"
                 />
-              )}
-              {produit.nom}
-              <span className="text-gray-500">({Number(produit.prix).toFixed(2)} MAD)</span>
-            </label>
-          ))}
+                {produit.photo_url && (
+                  <img
+                    src={resolveStorageUrl(produit.photo_url)}
+                    alt={`Photo de "${produit.nom}"`}
+                    className="h-6 w-6 rounded object-cover"
+                  />
+                )}
+                <span className="flex-1">{produit.nom}</span>
+                <span className="font-mono text-xs text-ink-tertiary">{Number(produit.prix).toFixed(2)}</span>
+              </label>
+            )
+          })}
         </div>
       )}
 
-      <p className="mt-3 text-sm font-medium text-gray-900" data-testid={`total-frais-menage-${missionMenage.id}`}>
+      <p
+        className="mt-3 font-mono text-sm font-bold text-ink"
+        data-testid={`total-frais-menage-${missionMenage.id}`}
+      >
         Total frais de ménage : {totalFraisMenage.toFixed(2)} MAD
       </p>
 
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
 
       <button
         type="button"
         onClick={handleSave}
         disabled={saving}
-        className="mt-2 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+        className="mt-2 rounded-field bg-brand px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
       >
         {saving ? 'Enregistrement...' : 'Enregistrer les frais de ménage'}
       </button>
 
-      <div className="mt-3 border-t border-gray-100 pt-3">
+      <div className="mt-3 border-t border-border-light pt-3">
         {!showSignalerForm ? (
           <button
             type="button"
@@ -156,7 +167,7 @@ export function FraisMenageSection({
               setShowSignalerForm(true)
               setSignalerSuccess(false)
             }}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+            className="text-sm font-semibold text-brand-light hover:text-brand"
           >
             + Signaler un nouveau produit
           </button>
@@ -164,7 +175,7 @@ export function FraisMenageSection({
           <div className="space-y-2">
             <label
               htmlFor={`signaler_photo_${missionMenage.id}`}
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-semibold text-ink-secondary"
             >
               Photo du produit
             </label>
@@ -175,7 +186,7 @@ export function FraisMenageSection({
               onChange={(e) => setSignalerPhoto(e.target.files?.[0] ?? null)}
               className="block w-full text-sm"
             />
-            <label htmlFor={`signaler_note_${missionMenage.id}`} className="block text-sm font-medium text-gray-700">
+            <label htmlFor={`signaler_note_${missionMenage.id}`} className="block text-sm font-semibold text-ink-secondary">
               Note (optionnel)
             </label>
             <input
@@ -183,14 +194,14 @@ export function FraisMenageSection({
               type="text"
               value={signalerNote}
               onChange={(e) => setSignalerNote(e.target.value)}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
             />
-            {signalerError && <p className="text-sm text-red-600">{signalerError}</p>}
+            {signalerError && <p className="text-sm text-danger">{signalerError}</p>}
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setShowSignalerForm(false)}
-                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-field border border-border-default px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-table-header-bg"
               >
                 Annuler
               </button>
@@ -198,7 +209,7 @@ export function FraisMenageSection({
                 type="button"
                 onClick={handleSignaler}
                 disabled={signalerSubmitting}
-                className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="rounded-field bg-success px-3 py-1.5 text-sm font-bold text-white hover:brightness-110 disabled:opacity-50"
               >
                 {signalerSubmitting ? 'Envoi...' : 'Envoyer'}
               </button>
@@ -206,7 +217,7 @@ export function FraisMenageSection({
           </div>
         )}
         {signalerSuccess && (
-          <p className="mt-2 text-sm text-emerald-600">Produit signalé, en attente de validation par le Manager.</p>
+          <p className="mt-2 text-sm text-success-text">Produit signalé, en attente de validation par le Manager.</p>
         )}
       </div>
     </div>

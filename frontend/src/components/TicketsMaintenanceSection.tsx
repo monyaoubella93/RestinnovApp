@@ -36,8 +36,8 @@ const STATUT_LABELS: Record<TicketMaintenanceStatut, string> = {
 }
 
 const STATUT_STYLES: Record<TicketMaintenanceStatut, string> = {
-  ouvert: 'bg-amber-100 text-amber-800',
-  assigne: 'bg-indigo-100 text-indigo-800',
+  ouvert: 'bg-warning-bg text-warning-text',
+  assigne: 'bg-brand-pale text-brand',
   resolu_en_attente_validation: STATUT_VALIDATION_STYLES.en_attente,
   a_refaire: STATUT_VALIDATION_STYLES.refuse,
   resolu: STATUT_VALIDATION_STYLES.valide,
@@ -146,15 +146,15 @@ function AssignerForm({
   return (
     <>
       <div className="mt-3">
-        <p className="block text-xs font-medium text-gray-600">Message pour l'agent de maintenance</p>
+        <p className="block text-xs font-semibold text-ink-secondary">Message pour l'agent de maintenance</p>
         <div className="mt-1 flex gap-1" role="tablist">
           <button
             type="button"
             role="tab"
             aria-selected={expressionMode === 'texte'}
             onClick={() => setExpressionMode('texte')}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              expressionMode === 'texte' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            className={`rounded-field px-3 py-1.5 text-sm font-medium ${
+              expressionMode === 'texte' ? 'bg-brand text-white' : 'bg-table-header-bg text-ink-secondary hover:bg-border-light'
             }`}
           >
             Écrire
@@ -164,8 +164,8 @@ function AssignerForm({
             role="tab"
             aria-selected={expressionMode === 'audio'}
             onClick={() => setExpressionMode('audio')}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              expressionMode === 'audio' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            className={`rounded-field px-3 py-1.5 text-sm font-medium ${
+              expressionMode === 'audio' ? 'bg-brand text-white' : 'bg-table-header-bg text-ink-secondary hover:bg-border-light'
             }`}
           >
             Enregistrer un audio
@@ -179,17 +179,17 @@ function AssignerForm({
             value={descriptionManager}
             onChange={(e) => setDescriptionManager(e.target.value)}
             rows={2}
-            className="mt-2 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-2 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         ) : (
           <div className="mt-2">
             {!micSupported ? (
-              <p className="text-xs text-gray-400">Enregistrement audio non disponible.</p>
+              <p className="text-xs text-ink-disabled">Enregistrement audio non disponible.</p>
             ) : recordingState === 'idle' ? (
               <button
                 type="button"
                 onClick={startRecording}
-                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-field border border-border-default px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-table-header-bg"
               >
                 🎤 Démarrer l'enregistrement
               </button>
@@ -198,7 +198,7 @@ function AssignerForm({
                 type="button"
                 onClick={stopRecording}
                 data-testid={`recording-indicator-${ticket.id}`}
-                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white"
+                className="rounded-field bg-danger px-3 py-1.5 text-sm font-bold text-white"
               >
                 ⏹ Arrêter l'enregistrement
               </button>
@@ -211,7 +211,7 @@ function AssignerForm({
                 <button
                   type="button"
                   onClick={resetAudio}
-                  className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  className="rounded-field border border-border-default px-2 py-1 text-xs font-medium text-ink-secondary hover:bg-table-header-bg"
                 >
                   Recommencer
                 </button>
@@ -222,7 +222,7 @@ function AssignerForm({
       </div>
 
       {ticket.photo_url && (
-        <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+        <label className="mt-3 flex items-center gap-2 text-sm text-ink-secondary">
           <input
             type="checkbox"
             checked={photoTransferee}
@@ -234,14 +234,14 @@ function AssignerForm({
 
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <div className="min-w-0 flex-1">
-          <label htmlFor={`ticket_agent_${ticket.id}`} className="block text-xs font-medium text-gray-600">
+          <label htmlFor={`ticket_agent_${ticket.id}`} className="block text-xs font-semibold text-ink-secondary">
             Agent de maintenance
           </label>
           <select
             id={`ticket_agent_${ticket.id}`}
             value={agentId}
             onChange={(e) => setAgentId(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           >
             <option value="">Sélectionner un agent</option>
             {agents.map((agent) => (
@@ -255,12 +255,12 @@ function AssignerForm({
           type="button"
           onClick={handleAssigner}
           disabled={submitting || !hasExpression}
-          className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-field bg-brand px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
         >
           {submitting ? 'Assignation...' : 'Assigner'}
         </button>
       </div>
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
     </>
   )
 }
@@ -270,11 +270,11 @@ function RefusHistorique({ ticket }: { ticket: TicketMaintenance }) {
 
   return (
     <div>
-      <p className="text-xs font-medium text-gray-600">Historique des refus</p>
+      <p className="text-xs font-semibold text-ink-secondary">Historique des refus</p>
       <ul className="mt-1 space-y-2">
         {ticket.refus.map((refus) => (
-          <li key={refus.id} className="space-y-1 rounded-md bg-red-50 p-2 text-sm text-red-700">
-            <p className="text-xs text-red-500">
+          <li key={refus.id} className="space-y-1 rounded-field bg-danger-bg p-2 text-sm text-danger">
+            <p className="font-mono text-xs text-danger">
               {formatDate(refus.created_at)}
               {refus.manager?.nom && ` · ${refus.manager.nom}`}
             </p>
@@ -332,16 +332,16 @@ function ValiderRefuserActions({
         />
       )}
       {ticket.cout_reparation != null && (
-        <p className="text-sm font-medium text-gray-900">Coût : {ticket.cout_reparation} MAD</p>
+        <p className="font-mono text-sm font-bold text-ink">Coût : {ticket.cout_reparation} MAD</p>
       )}
-      {ticket.note_resolution && <p className="text-sm text-gray-700">{ticket.note_resolution}</p>}
+      {ticket.note_resolution && <p className="text-sm text-ink-secondary">{ticket.note_resolution}</p>}
 
       <div className="flex gap-2">
         <button
           type="button"
           onClick={handleValider}
           disabled={submitting}
-          className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-field bg-success px-3 py-1.5 text-sm font-bold text-white hover:brightness-110 disabled:opacity-50"
         >
           {submitting ? 'Validation...' : 'Valider'}
         </button>
@@ -349,12 +349,12 @@ function ValiderRefuserActions({
           type="button"
           onClick={() => setShowRefuserModal(true)}
           disabled={submitting}
-          className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          className="rounded-field bg-danger px-3 py-1.5 text-sm font-bold text-white hover:brightness-110 disabled:opacity-50"
         >
           Refuser
         </button>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       {showRefuserModal && (
         <RefuserModal
@@ -386,7 +386,7 @@ function TicketMaintenanceCard({
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <li className="rounded-md border border-gray-200">
+    <li className="rounded-field border border-border-default">
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
@@ -394,12 +394,12 @@ function TicketMaintenanceCard({
         className="flex w-full flex-wrap items-start justify-between gap-2 p-4 text-left"
       >
         <div className="min-w-0">
-          <p className="flex items-center gap-2 font-medium text-gray-900">
+          <p className="flex items-center gap-2 font-semibold text-ink">
             <span className="truncate">{ticket.appartement?.nom ?? `Appartement #${ticket.appartement_id}`}</span>
-            <span className="shrink-0 text-xs font-normal text-gray-400">{ticket.reference}</span>
+            <span className="shrink-0 font-mono text-xs font-normal text-ink-tertiary">{ticket.reference}</span>
           </p>
-          <p className="truncate text-sm text-gray-700">{ticket.description || 'Aucune description.'}</p>
-          <p className="text-xs text-gray-400">{formatDate(ticket.created_at)}</p>
+          <p className="truncate text-sm text-ink-secondary">{ticket.description || 'Aucune description.'}</p>
+          <p className="font-mono text-xs text-ink-tertiary">{formatDate(ticket.created_at)}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${URGENCE_STYLES[ticket.urgence]}`}>
@@ -412,9 +412,9 @@ function TicketMaintenanceCard({
       </button>
 
       {expanded && (
-        <div className="space-y-3 border-t border-gray-100 p-4 pt-3">
+        <div className="space-y-3 border-t border-border-light p-4 pt-3">
           {ticket.mission_origine?.sejour && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-ink-tertiary">
               Signalé pendant le séjour de {ticket.mission_origine.sejour.nom_voyageur} (
               {ticket.mission_origine.sejour.reference})
               {ticket.mission_origine.agent?.nom && ` · par ${ticket.mission_origine.agent.nom}`}
@@ -443,20 +443,20 @@ function TicketMaintenanceCard({
           {(ticket.statut === 'assigne' || ticket.statut === 'a_refaire' || ticket.statut === 'resolu') && (
             <div className="space-y-3">
               {ticket.description_manager && (
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Message pour l'agent : </span>
+                <p className="text-sm text-ink-secondary">
+                  <span className="font-semibold">Message pour l'agent : </span>
                   {ticket.description_manager}
                 </p>
               )}
               {ticket.agent && (
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Agent assigné : </span>
+                <p className="text-sm text-ink-secondary">
+                  <span className="font-semibold">Agent assigné : </span>
                   {ticket.agent.nom}
                 </p>
               )}
               {ticket.statut === 'resolu' && ticket.photo_apres && (
                 <div>
-                  <p className="text-xs font-medium text-gray-600">Photo après réparation</p>
+                  <p className="text-xs font-semibold text-ink-secondary">Photo après réparation</p>
                   <img
                     src={resolveStorageUrl(ticket.photo_apres)}
                     alt="Photo après réparation"
@@ -465,7 +465,7 @@ function TicketMaintenanceCard({
                 </div>
               )}
               {ticket.statut === 'resolu' && ticket.cout_reparation != null && (
-                <p className="text-sm font-medium text-gray-900">Coût : {ticket.cout_reparation} MAD</p>
+                <p className="font-mono text-sm font-bold text-ink">Coût : {ticket.cout_reparation} MAD</p>
               )}
               <RefusHistorique ticket={ticket} />
             </div>
@@ -492,7 +492,7 @@ function AppartementGroupeCard({
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <li className="rounded-md border border-gray-200">
+    <li className="rounded-field border border-border-default">
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
@@ -500,31 +500,31 @@ function AppartementGroupeCard({
         className="flex w-full flex-wrap items-start justify-between gap-2 p-4 text-left"
       >
         <div className="min-w-0">
-          <p className="flex items-center gap-2 font-medium text-gray-900">
+          <p className="flex items-center gap-2 font-semibold text-ink">
             <span className="truncate">{groupe.appartement?.nom ?? 'Appartement inconnu'}</span>
             {groupe.recurrent && (
               <span
                 data-testid={`recurrent-badge-${groupe.appartement?.id}`}
-                className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800"
+                className="shrink-0 rounded-badge bg-danger-bg px-2 py-0.5 text-xs font-bold text-danger"
               >
                 Récurrent
               </span>
             )}
           </p>
-          <p className="truncate text-sm text-gray-500">{groupe.appartement?.adresse}</p>
+          <p className="truncate text-sm text-ink-tertiary">{groupe.appartement?.adresse}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+          <span className="rounded-badge bg-table-header-bg px-2 py-0.5 text-xs font-medium text-ink-secondary">
             {groupe.tickets_count} ticket{groupe.tickets_count > 1 ? 's' : ''}
           </span>
-          <span className="text-sm font-bold text-gray-900" data-testid={`cout-cumule-${groupe.appartement?.id}`}>
+          <span className="font-mono text-sm font-bold text-ink" data-testid={`cout-cumule-${groupe.appartement?.id}`}>
             {groupe.cout_cumule.toFixed(2)} MAD
           </span>
         </div>
       </button>
 
       {expanded && (
-        <ul className="space-y-2 border-t border-gray-100 p-4 pt-3">
+        <ul className="space-y-2 border-t border-border-light p-4 pt-3">
           {groupe.tickets.map((ticket) => (
             <TicketMaintenanceCard
               key={ticket.id}
@@ -648,22 +648,22 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter }:
   const totalVisible = vue === 'liste' ? visibleTickets.length : visibleGroupes.reduce((total, g) => total + g.tickets_count, 0)
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+    <div className="rounded-card-manager border border-border-default bg-surface p-6">
+      <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
         Tickets de maintenance
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+        <span className="rounded-badge bg-warning-bg px-2 py-0.5 text-xs font-bold text-warning-text">
           {totalVisible}
         </span>
       </h2>
 
-      <div className="mt-3 flex gap-1 rounded-lg bg-gray-100 p-1" role="tablist" aria-label="Mode d'affichage de l'historique">
+      <div className="mt-3 flex gap-1 rounded-field bg-table-header-bg p-1" role="tablist" aria-label="Mode d'affichage de l'historique">
         <button
           type="button"
           role="tab"
           aria-selected={vue === 'liste'}
           onClick={() => setVue('liste')}
           className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-            vue === 'liste' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            vue === 'liste' ? 'bg-surface text-brand shadow-sm' : 'text-ink-tertiary hover:text-ink-secondary'
           }`}
         >
           Vue chronologique
@@ -674,23 +674,23 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter }:
           aria-selected={vue === 'groupe'}
           onClick={() => setVue('groupe')}
           className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-            vue === 'groupe' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            vue === 'groupe' ? 'bg-surface text-brand shadow-sm' : 'text-ink-tertiary hover:text-ink-secondary'
           }`}
         >
           Groupé par appartement
         </button>
       </div>
 
-      <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="mt-3 grid grid-cols-1 gap-3 rounded-card-manager border border-border-default bg-table-header-bg p-4 sm:grid-cols-2 lg:grid-cols-6">
         <div>
-          <label htmlFor="tickets_statut" className="block text-xs font-medium text-gray-500">
+          <label htmlFor="tickets_statut" className="block text-xs font-semibold text-ink-secondary">
             Statut
           </label>
           <select
             id="tickets_statut"
             value={statutFilter}
             onChange={(e) => setStatutFilter(e.target.value as TicketMaintenanceStatut | '')}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           >
             <option value="">Tous</option>
             <option value="ouvert">Ouvert</option>
@@ -701,14 +701,14 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter }:
           </select>
         </div>
         <div>
-          <label htmlFor="tickets_urgence" className="block text-xs font-medium text-gray-500">
+          <label htmlFor="tickets_urgence" className="block text-xs font-semibold text-ink-secondary">
             Urgence
           </label>
           <select
             id="tickets_urgence"
             value={urgenceFilter}
             onChange={(e) => setUrgenceFilter(e.target.value as TicketMaintenance['urgence'] | '')}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           >
             <option value="">Toutes</option>
             <option value="haute">Haute</option>
@@ -717,14 +717,14 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter }:
           </select>
         </div>
         <div>
-          <label htmlFor="tickets_appartement" className="block text-xs font-medium text-gray-500">
+          <label htmlFor="tickets_appartement" className="block text-xs font-semibold text-ink-secondary">
             Appartement
           </label>
           <select
             id="tickets_appartement"
             value={appartementFilter}
             onChange={(e) => setAppartementFilter(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           >
             <option value="">Tous</option>
             {appartements.map((appartement) => (
@@ -735,7 +735,7 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter }:
           </select>
         </div>
         <div>
-          <label htmlFor="tickets_date_debut" className="block text-xs font-medium text-gray-500">
+          <label htmlFor="tickets_date_debut" className="block text-xs font-semibold text-ink-secondary">
             Du
           </label>
           <input
@@ -743,11 +743,11 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter }:
             type="date"
             value={dateDebut}
             onChange={(e) => setDateDebut(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
         <div>
-          <label htmlFor="tickets_date_fin" className="block text-xs font-medium text-gray-500">
+          <label htmlFor="tickets_date_fin" className="block text-xs font-semibold text-ink-secondary">
             Au
           </label>
           <input
@@ -755,11 +755,11 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter }:
             type="date"
             value={dateFin}
             onChange={(e) => setDateFin(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
         <div>
-          <label htmlFor="tickets_recherche" className="block text-xs font-medium text-gray-500">
+          <label htmlFor="tickets_recherche" className="block text-xs font-semibold text-ink-secondary">
             Recherche
           </label>
           <input
@@ -768,16 +768,16 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter }:
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Référence, appartement..."
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
       </div>
 
-      {loading && <p className="mt-2 text-sm text-gray-500">Chargement...</p>}
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {loading && <p className="mt-2 text-sm text-ink-tertiary">Chargement...</p>}
+      {error && <p className="mt-2 text-sm text-danger">{error}</p>}
 
       {!loading && !error && vue === 'liste' && visibleTickets.length === 0 && (
-        <p className="mt-2 text-sm text-gray-500">Aucun ticket de maintenance.</p>
+        <p className="mt-2 text-sm text-ink-tertiary">Aucun ticket de maintenance.</p>
       )}
 
       {!loading && !error && vue === 'liste' && visibleTickets.length > 0 && (
@@ -796,7 +796,7 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter }:
       )}
 
       {!loading && !error && vue === 'groupe' && visibleGroupes.length === 0 && (
-        <p className="mt-2 text-sm text-gray-500">Aucun ticket de maintenance.</p>
+        <p className="mt-2 text-sm text-ink-tertiary">Aucun ticket de maintenance.</p>
       )}
 
       {!loading && !error && vue === 'groupe' && visibleGroupes.length > 0 && (

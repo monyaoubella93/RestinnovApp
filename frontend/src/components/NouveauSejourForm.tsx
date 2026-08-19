@@ -177,13 +177,13 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-900">
+    <form onSubmit={handleSubmit} className="space-y-4 rounded-card-manager border border-border-default bg-surface p-6">
+      <h2 className="text-lg font-bold text-ink">
         {sejourToEdit ? 'Modifier le séjour' : 'Nouveau séjour'}
       </h2>
 
       <div>
-        <label htmlFor="appartement_id" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="appartement_id" className="block text-sm font-semibold text-ink-secondary">
           Appartement
         </label>
         {appartementsSelectionnables.length > 0 ? (
@@ -191,7 +191,7 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
             id="appartement_id"
             value={appartementId}
             onChange={(e) => setAppartementId(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           >
             <option value="">Sélectionner un appartement</option>
             {appartementsSelectionnables.map((appartement) => (
@@ -208,14 +208,14 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
             value={appartementId}
             onChange={(e) => setAppartementId(e.target.value)}
             placeholder="ID de l'appartement"
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="date_arrivee" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="date_arrivee" className="block text-sm font-semibold text-ink-secondary">
             Date d'arrivée
           </label>
           <input
@@ -224,11 +224,11 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
             required
             value={dateArrivee}
             onChange={(e) => setDateArrivee(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
         <div>
-          <label htmlFor="date_depart" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="date_depart" className="block text-sm font-semibold text-ink-secondary">
             Date de départ
           </label>
           <input
@@ -237,27 +237,27 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
             required
             value={dateDepart}
             onChange={(e) => setDateDepart(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
       </div>
 
       {nombreNuits !== null && (
-        <p className="text-sm text-gray-600" data-testid="nombre-nuits">
+        <p className="text-sm text-ink-tertiary" data-testid="nombre-nuits">
           {nombreNuits} {nombreNuits > 1 ? 'nuits' : 'nuit'}
         </p>
       )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <span className="block text-sm font-medium text-gray-700">Adultes</span>
+          <span className="block text-sm font-semibold text-ink-secondary">Adultes</span>
           <div className="mt-1 flex items-center gap-3">
             <button
               type="button"
               onClick={() => removeLastOfType('adulte')}
               disabled={adultesCount <= 1}
               aria-label="Diminuer le nombre d'adultes"
-              className="h-8 w-8 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="h-8 w-8 rounded-field border border-border-default text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
             >
               −
             </button>
@@ -268,7 +268,7 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
               type="button"
               onClick={() => addVoyageur('adulte')}
               aria-label="Augmenter le nombre d'adultes"
-              className="h-8 w-8 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+              className="h-8 w-8 rounded-field border border-border-default text-ink-secondary hover:bg-table-header-bg"
             >
               +
             </button>
@@ -276,14 +276,14 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
         </div>
 
         <div>
-          <span className="block text-sm font-medium text-gray-700">Enfants</span>
+          <span className="block text-sm font-semibold text-ink-secondary">Enfants</span>
           <div className="mt-1 flex items-center gap-3">
             <button
               type="button"
               onClick={() => removeLastOfType('enfant')}
               disabled={enfantsCount <= 0}
               aria-label="Diminuer le nombre d'enfants"
-              className="h-8 w-8 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="h-8 w-8 rounded-field border border-border-default text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
             >
               −
             </button>
@@ -294,7 +294,7 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
               type="button"
               onClick={() => addVoyageur('enfant')}
               aria-label="Augmenter le nombre d'enfants"
-              className="h-8 w-8 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+              className="h-8 w-8 rounded-field border border-border-default text-ink-secondary hover:bg-table-header-bg"
             >
               +
             </button>
@@ -303,7 +303,7 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
       </div>
 
       <div>
-        <span className="block text-sm font-medium text-gray-700">Plateforme d'origine</span>
+        <span className="block text-sm font-semibold text-ink-secondary">Plateforme d'origine</span>
         <div className="mt-1 flex gap-2" role="group" aria-label="Plateforme d'origine">
           {PLATEFORMES.map((plateforme) => (
             <button
@@ -313,8 +313,8 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
               onClick={() => setPlateformeOrigine(plateforme.value)}
               className={`rounded-full px-4 py-1.5 text-sm font-medium ${
                 plateformeOrigine === plateforme.value
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-brand text-white'
+                  : 'bg-table-header-bg text-ink-secondary hover:bg-border-light'
               }`}
             >
               {plateforme.label}
@@ -324,7 +324,7 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
       </div>
 
       <div>
-        <label htmlFor="montant_mad" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="montant_mad" className="block text-sm font-semibold text-ink-secondary">
           Montant du séjour (MAD)
         </label>
         <input
@@ -334,20 +334,20 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
           step="0.01"
           value={montantMad}
           onChange={(e) => setMontantMad(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         {montantParNuit !== null && (
-          <p className="mt-1 text-sm text-gray-600" data-testid="montant-par-nuit">
+          <p className="mt-1 text-sm text-ink-tertiary" data-testid="montant-par-nuit">
             Soit {montantParNuit.toFixed(2)} MAD / nuit
           </p>
         )}
       </div>
 
       <div>
-        <p className="text-sm text-gray-600" data-testid="resume-voyageurs">
+        <p className="text-sm text-ink-tertiary" data-testid="resume-voyageurs">
           {adultesCount + enfantsCount} voyageurs ({adultesCount} adultes, {enfantsCount} enfants)
         </p>
-        <span className="mt-2 block text-sm font-medium text-gray-700">Voyageurs</span>
+        <span className="mt-2 block text-sm font-semibold text-ink-secondary">Voyageurs</span>
         <div className="mt-2 space-y-3">
           {voyageurs.map((voyageur, index) => (
             <VoyageurFieldset
@@ -363,7 +363,7 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       <div className="flex gap-3">
         <button
@@ -372,14 +372,14 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
             resetForm()
             onCancel?.()
           }}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="rounded-field border border-border-default px-4 py-2 text-sm font-medium text-ink-secondary hover:bg-table-header-bg"
         >
           Annuler
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-field bg-brand px-4 py-2 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
         >
           {submitting
             ? 'Enregistrement...'

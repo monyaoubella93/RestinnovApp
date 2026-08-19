@@ -6,8 +6,8 @@
   "start_url": "/menage",
   "scope": "/menage",
   "display": "standalone",
-  "background_color": "#f9fafb",
-  "theme_color": "#059669",
+  "background_color": "#F4F6FA",
+  "theme_color": "#0C1A31",
   "icons": [
     {
       "src": "/icons/icon-192-menage.png",
@@ -20,6 +20,18 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192-menage.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512-menage.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

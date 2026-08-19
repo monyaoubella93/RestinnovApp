@@ -40,7 +40,7 @@ describe('NotificationBell', () => {
     expect(screen.queryByTestId('notification-badge')).not.toBeInTheDocument()
   })
 
-  it('affiche un badge violet quand seuls des ménages sont à valider', async () => {
+  it('affiche un badge ambre quand seuls des ménages sont à valider', async () => {
     globalThis.fetch = mockFetch(
       notificationsFixture({
         menages_a_valider_count: 2,
@@ -55,7 +55,7 @@ describe('NotificationBell', () => {
 
     const badge = await screen.findByTestId('notification-badge')
     expect(badge).toHaveTextContent('2')
-    expect(badge).toHaveClass('bg-purple-600')
+    expect(badge).toHaveClass('bg-warning')
   })
 
   it('affiche un badge rouge dès qu\'un problème est signalé, même avec des ménages en attente', async () => {
@@ -76,7 +76,7 @@ describe('NotificationBell', () => {
 
     const badge = await screen.findByTestId('notification-badge')
     expect(badge).toHaveTextContent('2')
-    expect(badge).toHaveClass('bg-red-600')
+    expect(badge).toHaveClass('bg-danger')
   })
 
   it('ouvre un panneau avec les deux sections colorées, nom + adresse par ligne', async () => {
@@ -105,7 +105,7 @@ describe('NotificationBell', () => {
     expect(screen.getByText('Zenith — 5 avenue de la Paix')).toBeInTheDocument()
 
     const menagesSection = screen.getByText('Ménages à valider').closest('div')
-    expect(menagesSection).toHaveClass('border-purple-200')
+    expect(menagesSection).toHaveClass('border-amber-200')
     const problemesSection = screen.getByText('Problèmes signalés').closest('div')
     expect(problemesSection).toHaveClass('border-red-200')
   })

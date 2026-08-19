@@ -1,16 +1,81 @@
 @import "tailwindcss";
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Design tokens — refonte UI (voir design_handoff_refonte_ui/README.md).
+   Défini une seule fois ici plutôt que d'être répété en dur dans les
+   composants : Tailwind v4 dérive automatiquement les utilitaires
+   (couleurs, polices, rayons, ombres) des variables de ce bloc @theme. */
+@theme {
+  /* Marine (rail, surfaces sombres) */
+  --color-marine: #0c1a31;
+  --color-marine-border: #1c2c48;
+
+  /* Bleu de marque */
+  --color-brand: #1b3e9b;
+  --color-brand-light: #2b5be3;
+  --color-brand-pale: #eef2fd;
+  --color-brand-border: #cbd9f3;
+  --color-brand-series-2: #5b7bc9;
+  --color-brand-series-3: #c7d2ea;
+
+  /* États sémantiques */
+  --color-success: #0e8a5f;
+  --color-success-text: #0b6e4c;
+  --color-success-bg: #e7f5ef;
+  --color-success-border: #c6e4d6;
+
+  --color-warning: #b4690e;
+  --color-warning-text: #8a5209;
+  --color-warning-bg: #fdf3e3;
+  --color-warning-border: #f0e3cc;
+
+  --color-danger: #c0342b;
+  --color-danger-bg: #fbeae8;
+  --color-danger-border: #f2d5d2;
+
+  --color-violet: #6b3fa0;
+  --color-violet-bg: #f1ecf9;
+  --color-violet-border: #e2d9f0;
+
+  /* Texte */
+  --color-ink: #0f1b2e;
+  --color-ink-secondary: #475569;
+  --color-ink-tertiary: #64748b;
+  --color-ink-tertiary-2: #7a8699;
+  --color-ink-disabled: #94a3b8;
+
+  /* Fonds et surfaces */
+  --color-app-bg: #f4f6fa;
+  --color-page-bg: #edeff4;
+  --color-surface: #ffffff;
+  --color-border-default: #e3e7ef;
+  --color-border-light: #eef1f6;
+  --color-border-lighter: #f2f5f9;
+  --color-table-header-bg: #f8fafc;
+
+  /* Rail (nav sombre) */
+  --color-rail-text: #aebbd0;
+  --color-rail-group-title: #5c6d8c;
+  --color-rail-meta: #7c8ba6;
+
+  /* Typographie */
+  --font-sans: "Instrument Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-arabic: "Noto Sans Arabic", sans-serif;
+
+  /* Rayons */
+  --radius-badge: 6px;
+  --radius-field: 9px;
+  --radius-card-agent: 12px;
+  --radius-card-manager: 14px;
+  --radius-card-agent-lg: 16px;
+  --radius-phone: 20px;
+
+  /* Ombre de présentation (shells uniquement, les cartes réelles n'ont
+     qu'une bordure de 1 pixel) */
+  --shadow-shell: 0 24px 60px -30px rgba(15, 27, 46, 0.4);
 }
 
-.animate-slide-down {
-  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+body {
+  background: var(--color-page-bg);
+  -webkit-font-smoothing: antialiased;
 }

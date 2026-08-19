@@ -209,6 +209,29 @@ describe('MissionDetailAgent', () => {
     expect(screen.queryByRole('button', { name: /marquer terminé/i })).not.toBeInTheDocument()
   })
 
+  it('coche l\'item localement même hors ligne, et ne montre aucune erreur', async () => {
+    const user = userEvent.setup()
+    const baseFetch = mockFetch(missionFixture())
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input))
+      if (url.pathname.match(/^\/api\/checklist-items\/\d+$/)) {
+        throw new TypeError('Failed to fetch')
+      }
+      return baseFetch(input, init)
+    })
+    globalThis.fetch = fetchMock as typeof fetch
+
+    render(<MissionDetailAgent missionId={10} catalogue={[]} onBack={vi.fn()} onMissionTerminee={vi.fn()} />)
+
+    await screen.findByText("Passer l'aspirateur")
+    await user.click(screen.getByRole('checkbox', { name: "Passer l'aspirateur" }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: "Passer l'aspirateur" })).toHaveAttribute('aria-checked', 'true'),
+    )
+    expect(screen.queryByText(/hors ligne/i)).not.toBeInTheDocument()
+  })
+
   it('le bouton "Signaler un problème" ouvre le formulaire de signalement', async () => {
     const user = userEvent.setup()
     globalThis.fetch = mockFetch(missionFixture()) as typeof fetch
@@ -284,11 +307,11 @@ describe('MissionDetailAgent', () => {
     render(<MissionDetailAgent missionId={10} catalogue={[]} onBack={vi.fn()} onMissionTerminee={vi.fn()} />)
 
     const checkbox = await screen.findByRole('checkbox', { name: "Passer l'aspirateur" })
-    expect(checkbox).not.toHaveClass('bg-emerald-600')
+    expect(checkbox).not.toHaveClass('bg-success')
 
     await user.click(checkbox)
 
-    await waitFor(() => expect(screen.getByRole('checkbox', { name: "Passer l'aspirateur" })).toHaveClass('bg-emerald-600'))
+    await waitFor(() => expect(screen.getByRole('checkbox', { name: "Passer l'aspirateur" })).toHaveClass('bg-success'))
   })
 
   it('regroupe les items de checklist par modèle d\'origine avec un sous-titre par groupe', async () => {

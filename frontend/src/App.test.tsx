@@ -308,7 +308,7 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Nom'), 'Marie Curie')
     await user.click(screen.getByRole('button', { name: /enregistrer le séjour/i }))
 
-    expect(await screen.findByRole('button', { name: 'Liste des séjours' })).toHaveClass(/bg-indigo-50/)
+    expect(await screen.findByRole('button', { name: 'Liste des séjours' })).toHaveClass(/bg-brand/)
   })
 
   it('modifie un séjour à venir via l\'icône crayon, préremplit le formulaire', async () => {
@@ -347,7 +347,7 @@ describe('App', () => {
 
     await user.click(await screen.findByRole('button', { name: /modifier le séjour de jean dupont/i }))
     expect(await screen.findByRole('heading', { name: 'Modifier le séjour' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Créer un séjour' })).toHaveClass(/bg-indigo-50/)
+    expect(screen.getByRole('button', { name: 'Créer un séjour' })).toHaveClass(/bg-brand/)
 
     // Direct sidebar click (not "Annuler", not "+ Nouveau séjour") must
     // still reset the pending edit -- otherwise "Créer un séjour" stays
@@ -356,7 +356,7 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: 'Nouveau séjour' })).toBeInTheDocument()
     expect(screen.getByLabelText(/Date d'arrivée/i)).toHaveValue('')
-    expect(screen.getByRole('button', { name: 'Créer un séjour' })).toHaveClass(/bg-indigo-50/)
+    expect(screen.getByRole('button', { name: 'Créer un séjour' })).toHaveClass(/bg-brand/)
   })
 
   it('désactive l\'icône crayon pour un séjour déjà terminé', async () => {
@@ -427,13 +427,13 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: /modifier l'appartement loft bastille/i }))
     expect(await screen.findByRole('heading', { name: "Modifier l'appartement" })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Créer un appartement' })).toHaveClass(/bg-indigo-50/)
+    expect(screen.getByRole('button', { name: 'Créer un appartement' })).toHaveClass(/bg-brand/)
 
     await user.click(screen.getByRole('button', { name: 'Créer un appartement' }))
 
     expect(await screen.findByRole('heading', { name: 'Nouvel appartement' })).toBeInTheDocument()
     expect(screen.getByLabelText(/nom d'appartement/i)).toHaveValue('')
-    expect(screen.getByRole('button', { name: 'Créer un appartement' })).toHaveClass(/bg-indigo-50/)
+    expect(screen.getByRole('button', { name: 'Créer un appartement' })).toHaveClass(/bg-brand/)
   })
 
   it('l\'entrée surlignée correspond toujours à l\'écran affiché : formulaire agent vidé après édition puis retour via le groupe Ménage', async () => {
@@ -490,7 +490,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /jean dupont/i }))
 
     expect(await screen.findByText(/confirmer le checkout/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Liste des séjours' })).toHaveClass(/bg-indigo-50/)
+    expect(screen.getByRole('button', { name: 'Liste des séjours' })).toHaveClass(/bg-brand/)
   })
 
   it('bascule vers la liste des séjours filtrée au clic sur une mini-carte de statut du dashboard', async () => {
@@ -506,9 +506,9 @@ describe('App', () => {
     renderApp()
 
     await screen.findByTestId('dashboard-revenus-totaux')
-    await user.click(screen.getByRole('button', { name: /📅\s*À venir\s*1/i }))
+    await user.click(screen.getByRole('button', { name: /1\s*à venir/i }))
 
-    expect(await screen.findByRole('button', { name: 'Liste des séjours' })).toHaveClass(/bg-indigo-50/)
+    expect(await screen.findByRole('button', { name: 'Liste des séjours' })).toHaveClass(/bg-brand/)
     expect(screen.getByLabelText(/^statut$/i)).toHaveValue('a_venir')
   })
 

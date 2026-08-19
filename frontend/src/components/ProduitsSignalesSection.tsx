@@ -51,17 +51,17 @@ export function ProduitSignaleCard({
   }
 
   return (
-    <li className="rounded-md border border-gray-200 p-3">
+    <li className="rounded-field border border-border-default p-3">
       <img
         src={resolveStorageUrl(produitSignale.photo_url)}
         alt="Produit signalé"
         className="h-32 w-32 rounded-md object-cover"
       />
-      {produitSignale.note && <p className="mt-1 text-sm text-gray-600">Note : {produitSignale.note}</p>}
+      {produitSignale.note && <p className="mt-1 text-sm text-ink-secondary">Note : {produitSignale.note}</p>}
 
       <div className="mt-2 flex flex-wrap items-end gap-2">
         <div className="min-w-0 flex-1">
-          <label htmlFor={`valider_nom_${produitSignale.id}`} className="block text-xs font-medium text-gray-600">
+          <label htmlFor={`valider_nom_${produitSignale.id}`} className="block text-xs font-semibold text-ink-secondary">
             Nom
           </label>
           <input
@@ -69,11 +69,11 @@ export function ProduitSignaleCard({
             type="text"
             value={nom}
             onChange={(e) => setNom(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
         <div className="w-28">
-          <label htmlFor={`valider_prix_${produitSignale.id}`} className="block text-xs font-medium text-gray-600">
+          <label htmlFor={`valider_prix_${produitSignale.id}`} className="block text-xs font-semibold text-ink-secondary">
             Prix (MAD)
           </label>
           <input
@@ -83,14 +83,14 @@ export function ProduitSignaleCard({
             step="0.01"
             value={prix}
             onChange={(e) => setPrix(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
         <button
           type="button"
           onClick={handleValider}
           disabled={submitting}
-          className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-field bg-success px-3 py-1.5 text-sm font-bold text-white hover:brightness-110 disabled:opacity-50"
         >
           Valider
         </button>
@@ -98,12 +98,12 @@ export function ProduitSignaleCard({
           type="button"
           onClick={handleRejeter}
           disabled={submitting}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="rounded-field border border-border-default px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
         >
           Rejeter
         </button>
       </div>
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
     </li>
   )
 }
@@ -114,16 +114,16 @@ export function ProduitsSignalesSection({
   onRejeter,
 }: ProduitsSignalesSectionProps) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+    <div className="rounded-card-manager border border-border-default bg-surface p-6">
+      <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
         Produits signalés en attente
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+        <span className="rounded-badge bg-warning-bg px-2 py-0.5 text-xs font-bold text-warning-text">
           {produitsSignales.length}
         </span>
       </h2>
 
       {produitsSignales.length === 0 ? (
-        <p className="mt-2 text-sm text-gray-500">Aucun produit signalé en attente.</p>
+        <p className="mt-2 text-sm text-ink-tertiary">Aucun produit signalé en attente.</p>
       ) : (
         <ul className="mt-3 space-y-3">
           {produitsSignales.map((produitSignale) => (
