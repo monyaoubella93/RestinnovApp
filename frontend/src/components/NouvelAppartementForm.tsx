@@ -188,13 +188,13 @@ export function NouvelAppartementForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-900">
+    <form onSubmit={handleSubmit} className="space-y-4 rounded-card-manager border border-border-default bg-surface p-6">
+      <h2 className="text-lg font-bold text-ink">
         {appartementToEdit ? "Modifier l'appartement" : 'Nouvel appartement'}
       </h2>
 
       <div>
-        <label htmlFor="appartement_nom" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="appartement_nom" className="block text-sm font-semibold text-ink-secondary">
           Nom d'appartement
         </label>
         <input
@@ -204,12 +204,12 @@ export function NouvelAppartementForm({
           value={nom}
           onChange={(e) => setNom(e.target.value)}
           placeholder="ex. Zenith 3ème étage"
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
       </div>
 
       <div>
-        <label htmlFor="appartement_adresse" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="appartement_adresse" className="block text-sm font-semibold text-ink-secondary">
           Adresse complète
         </label>
         <input
@@ -218,12 +218,12 @@ export function NouvelAppartementForm({
           required
           value={adresse}
           onChange={(e) => setAdresse(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
       </div>
 
       <div>
-        <span className="block text-sm font-medium text-gray-700">Photo principale</span>
+        <span className="block text-sm font-semibold text-ink-secondary">Photo principale</span>
         <div
           onClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => {
@@ -235,11 +235,11 @@ export function NouvelAppartementForm({
           role="button"
           tabIndex={0}
           className={`mt-1 flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed px-4 py-6 text-center text-sm ${
-            dragOver ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 text-gray-500'
+            dragOver ? 'border-brand-light bg-brand-pale' : 'border-border-default text-ink-tertiary'
           }`}
         >
           {photo ? (
-            <p className="font-medium text-gray-700">{photo.name}</p>
+            <p className="font-semibold text-ink-secondary">{photo.name}</p>
           ) : (
             <p>Glissez-déposez une image ici, ou cliquez pour choisir un fichier (JPG, PNG)</p>
           )}
@@ -255,19 +255,19 @@ export function NouvelAppartementForm({
       </div>
 
       <div>
-        <span className="block text-sm font-medium text-gray-700">Checklists de ménage</span>
-        <p className="mt-1 text-xs text-gray-500">
+        <span className="block text-sm font-semibold text-ink-secondary">Checklists de ménage</span>
+        <p className="mt-1 text-xs text-ink-tertiary">
           Un ou plusieurs modèles peuvent être assignés ; leurs items seront tous générés à chaque nouvelle mission.
         </p>
         <div className="mt-2 space-y-1">
-          {checklistModeles.length === 0 && <p className="text-sm text-gray-400">Aucun modèle pour l'instant.</p>}
+          {checklistModeles.length === 0 && <p className="text-sm text-ink-disabled">Aucun modèle pour l'instant.</p>}
           {checklistModeles.map((modele) => (
-            <label key={modele.id} className="flex items-center gap-2 text-sm text-gray-700">
+            <label key={modele.id} className="flex items-center gap-2 text-sm text-ink-secondary">
               <input
                 type="checkbox"
                 checked={checklistModeleIds.includes(modele.id)}
                 onChange={() => toggleChecklistModele(modele.id)}
-                className="h-4 w-4 rounded border-gray-300"
+                className="h-4 w-4 rounded border-border-default accent-brand"
               />
               {modele.nom}
             </label>
@@ -281,13 +281,13 @@ export function NouvelAppartementForm({
               value={newChecklistNom}
               onChange={(e) => setNewChecklistNom(e.target.value)}
               placeholder="Nom du nouveau modèle"
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
             />
             <button
               type="button"
               onClick={handleCreateChecklistModele}
               disabled={creatingChecklist}
-              className="shrink-0 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="shrink-0 rounded-field bg-brand px-3 py-2 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
             >
               Ajouter
             </button>
@@ -296,7 +296,7 @@ export function NouvelAppartementForm({
           <button
             type="button"
             onClick={() => setShowNewChecklistInput(true)}
-            className="mt-1 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+            className="mt-1 text-sm font-semibold text-brand-light hover:text-brand"
           >
             + Créer un nouveau modèle
           </button>
@@ -316,14 +316,14 @@ export function NouvelAppartementForm({
       </div>
 
       <div>
-        <label htmlFor="agent_habituel_id" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="agent_habituel_id" className="block text-sm font-semibold text-ink-secondary">
           Agent de ménage habituel (optionnel)
         </label>
         <select
           id="agent_habituel_id"
           value={agentHabituelId}
           onChange={(e) => setAgentHabituelId(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         >
           <option value="">Aucun agent habituel</option>
           {agentsMenage.map((agent) => (
@@ -335,14 +335,14 @@ export function NouvelAppartementForm({
       </div>
 
       <div>
-        <label htmlFor="proprietaire_id" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="proprietaire_id" className="block text-sm font-semibold text-ink-secondary">
           Propriétaire
         </label>
         <select
           id="proprietaire_id"
           value={proprietaireId}
           onChange={(e) => setProprietaireId(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         >
           <option value="">Aucun propriétaire</option>
           {proprietaires.map((proprietaire) => (
@@ -353,33 +353,33 @@ export function NouvelAppartementForm({
         </select>
 
         {showNewProprietaireInput ? (
-          <div className="mt-2 space-y-2 rounded-md border border-gray-200 p-3">
+          <div className="mt-2 space-y-2 rounded-field border border-border-default p-3">
             <input
               type="text"
               value={newProprietaireNom}
               onChange={(e) => setNewProprietaireNom(e.target.value)}
               placeholder="Nom du propriétaire"
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
             />
             <input
               type="tel"
               value={newProprietaireTelephone}
               onChange={(e) => setNewProprietaireTelephone(e.target.value)}
               placeholder="Téléphone (optionnel)"
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
             />
             <input
               type="email"
               value={newProprietaireEmail}
               onChange={(e) => setNewProprietaireEmail(e.target.value)}
               placeholder="Email (optionnel)"
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
             />
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setShowNewProprietaireInput(false)}
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-field border border-border-default px-3 py-2 text-sm font-semibold text-ink-secondary hover:bg-table-header-bg"
               >
                 Annuler
               </button>
@@ -387,7 +387,7 @@ export function NouvelAppartementForm({
                 type="button"
                 onClick={handleCreateProprietaire}
                 disabled={creatingProprietaire}
-                className="shrink-0 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="shrink-0 rounded-field bg-brand px-3 py-2 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
               >
                 Créer
               </button>
@@ -397,7 +397,7 @@ export function NouvelAppartementForm({
           <button
             type="button"
             onClick={() => setShowNewProprietaireInput(true)}
-            className="mt-1 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+            className="mt-1 text-sm font-semibold text-brand-light hover:text-brand"
           >
             + Créer un nouveau propriétaire
           </button>
@@ -405,14 +405,14 @@ export function NouvelAppartementForm({
       </div>
 
       <div>
-        <span className="block text-sm font-medium text-gray-700">Mode de gestion</span>
+        <span className="block text-sm font-semibold text-ink-secondary">Mode de gestion</span>
         <div className="mt-1 flex gap-2">
           <button
             type="button"
             aria-pressed={modeGestion === 'mandat'}
             onClick={() => setModeGestion('mandat')}
             className={`rounded-md px-3 py-2 text-sm font-medium ${
-              modeGestion === 'mandat' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              modeGestion === 'mandat' ? 'bg-brand text-white' : 'bg-table-header-bg text-ink-secondary hover:bg-border-light'
             }`}
           >
             Mandat
@@ -423,8 +423,8 @@ export function NouvelAppartementForm({
             onClick={() => setModeGestion('sous_location')}
             className={`rounded-md px-3 py-2 text-sm font-medium ${
               modeGestion === 'sous_location'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-brand text-white'
+                : 'bg-table-header-bg text-ink-secondary hover:bg-border-light'
             }`}
           >
             Sous-location
@@ -433,7 +433,7 @@ export function NouvelAppartementForm({
 
         {modeGestion === 'mandat' ? (
           <div className="mt-2">
-            <label htmlFor="taux_commission" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="taux_commission" className="block text-sm font-semibold text-ink-secondary">
               Taux de commission (%)
             </label>
             <input
@@ -444,12 +444,12 @@ export function NouvelAppartementForm({
               step="0.01"
               value={tauxCommission}
               onChange={(e) => setTauxCommission(e.target.value)}
-              className="mt-1 block w-32 rounded-md border border-gray-300 px-3 py-2 text-sm [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              className="mt-1 block w-32 rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
         ) : (
           <div className="mt-2">
-            <label htmlFor="loyer_fixe_mensuel" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="loyer_fixe_mensuel" className="block text-sm font-semibold text-ink-secondary">
               Loyer fixe mensuel (MAD)
             </label>
             <input
@@ -459,25 +459,25 @@ export function NouvelAppartementForm({
               step="0.01"
               value={loyerFixeMensuel}
               onChange={(e) => setLoyerFixeMensuel(e.target.value)}
-              className="mt-1 block w-32 rounded-md border border-gray-300 px-3 py-2 text-sm [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              className="mt-1 block w-32 rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
         )}
       </div>
 
       <div>
-        <span className="block text-sm font-medium text-gray-700">Statut</span>
+        <span className="block text-sm font-semibold text-ink-secondary">Statut</span>
         <div className="mt-1">
-          <span className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
+          <span className="inline-block rounded-badge bg-success-bg px-3 py-1 text-xs font-medium text-success-text">
             {STATUT_LABELS[appartementToEdit?.statut ?? 'disponible'] ?? appartementToEdit?.statut}
           </span>
         </div>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-ink-tertiary">
           Ce champ est géré automatiquement et ne peut pas être modifié manuellement.
         </p>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       <div className="flex gap-3">
         <button
@@ -486,14 +486,14 @@ export function NouvelAppartementForm({
             resetForm()
             onCancel?.()
           }}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="rounded-field border border-border-default px-4 py-2 text-sm font-semibold text-ink-secondary hover:bg-table-header-bg"
         >
           Annuler
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-field bg-brand px-4 py-2 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
         >
           {submitting
             ? 'Enregistrement...'

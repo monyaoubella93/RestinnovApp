@@ -45,9 +45,9 @@ const STATUT_BADGE_LABELS: Record<SejourStatut, string> = {
 }
 
 const STATUT_BADGE_STYLES: Record<SejourStatut, string> = {
-  a_venir: 'bg-blue-100 text-blue-800',
-  en_cours: 'bg-amber-100 text-amber-800',
-  termine: 'bg-green-100 text-green-800',
+  a_venir: 'bg-brand-pale text-brand',
+  en_cours: 'bg-warning-bg text-warning-text',
+  termine: 'bg-table-header-bg text-ink-tertiary',
 }
 
 const PLATEFORME_LABELS: Record<PlateformeOrigine, string> = {
@@ -58,10 +58,17 @@ const PLATEFORME_LABELS: Record<PlateformeOrigine, string> = {
 }
 
 const PLATEFORME_STYLES: Record<PlateformeOrigine, string> = {
-  airbnb: 'bg-rose-100 text-rose-800',
-  booking: 'bg-blue-100 text-blue-800',
-  direct: 'bg-emerald-100 text-emerald-800',
-  autre: 'bg-gray-100 text-gray-700',
+  airbnb: 'bg-violet-bg text-violet',
+  booking: 'bg-brand-pale text-brand',
+  direct: 'bg-success-bg text-success-text',
+  autre: 'bg-table-header-bg text-ink-tertiary',
+}
+
+function formatMontant(value: string | number | null): string {
+  if (value == null) return '—'
+  const num = typeof value === 'string' ? Number(value) : value
+  if (Number.isNaN(num)) return '—'
+  return num.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function initiales(nom: string): string {
@@ -93,8 +100,8 @@ function PencilIcon() {
 }
 
 function SortArrow({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
-  if (!active) return <span className="ml-1 text-gray-300">↕</span>
-  return <span className="ml-1 text-indigo-600">{dir === 'asc' ? '↑' : '↓'}</span>
+  if (!active) return <span className="ml-1 text-ink-disabled">↕</span>
+  return <span className="ml-1 text-brand">{dir === 'asc' ? '↑' : '↓'}</span>
 }
 
 export function SejoursListeSection({
@@ -292,7 +299,7 @@ export function SejoursListeSection({
         <button
           type="button"
           onClick={() => setSelectedSejourId(null)}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+          className="text-sm font-semibold text-brand-light hover:text-brand"
         >
           ← Retour à la liste
         </button>
@@ -319,21 +326,21 @@ export function SejoursListeSection({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Séjours</h3>
-          <p className="text-sm text-gray-500">{meta.total} séjours trouvés</p>
+          <h3 className="text-xl font-bold tracking-[-0.02em] text-ink">Séjours</h3>
+          <p className="text-[13px] text-ink-tertiary">{meta.total} séjours trouvés</p>
         </div>
         <button
           type="button"
           onClick={onNavigateToCreer}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          className="rounded-field bg-brand px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-light"
         >
           + Nouveau séjour
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 rounded-card-manager border border-border-default bg-surface p-4 sm:grid-cols-2 lg:grid-cols-5">
         <div>
-          <label htmlFor="sejours_search" className="block text-xs font-medium text-gray-500">
+          <label htmlFor="sejours_search" className="block text-xs font-semibold text-ink-secondary">
             Recherche
           </label>
           <input
@@ -345,11 +352,11 @@ export function SejoursListeSection({
               setPage(1)
             }}
             placeholder="Voyageur ou appartement"
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
         <div>
-          <label htmlFor="sejours_statut" className="block text-xs font-medium text-gray-500">
+          <label htmlFor="sejours_statut" className="block text-xs font-semibold text-ink-secondary">
             Statut
           </label>
           <select
@@ -359,7 +366,7 @@ export function SejoursListeSection({
               setStatutFilter(e.target.value as SejourStatut | '')
               setPage(1)
             }}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           >
             {STATUT_FILTER_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -369,7 +376,7 @@ export function SejoursListeSection({
           </select>
         </div>
         <div>
-          <label htmlFor="sejours_appartement" className="block text-xs font-medium text-gray-500">
+          <label htmlFor="sejours_appartement" className="block text-xs font-semibold text-ink-secondary">
             Appartement
           </label>
           <select
@@ -379,7 +386,7 @@ export function SejoursListeSection({
               setAppartementFilter(e.target.value)
               setPage(1)
             }}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           >
             <option value="">Tous</option>
             {appartements.map((appartement) => (
@@ -390,7 +397,7 @@ export function SejoursListeSection({
           </select>
         </div>
         <div>
-          <label htmlFor="sejours_date_debut" className="block text-xs font-medium text-gray-500">
+          <label htmlFor="sejours_date_debut" className="block text-xs font-semibold text-ink-secondary">
             Arrivée du
           </label>
           <input
@@ -401,11 +408,11 @@ export function SejoursListeSection({
               setDateDebut(e.target.value)
               setPage(1)
             }}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
         <div>
-          <label htmlFor="sejours_date_fin" className="block text-xs font-medium text-gray-500">
+          <label htmlFor="sejours_date_fin" className="block text-xs font-semibold text-ink-secondary">
             Arrivée au
           </label>
           <input
@@ -416,74 +423,81 @@ export function SejoursListeSection({
               setDateFin(e.target.value)
               setPage(1)
             }}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Chargement...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {loading && <p className="text-sm text-ink-tertiary">Chargement...</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       {!loading && !error && sejours.length === 0 && (
-        <p className="text-sm text-gray-500">Aucun séjour trouvé.</p>
+        <p className="text-sm text-ink-tertiary">Aucun séjour trouvé.</p>
       )}
 
       {!loading && !error && sejours.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
+        <div className="overflow-x-auto rounded-card-manager border border-border-default bg-surface">
+          <table className="min-w-full divide-y divide-border-default text-sm">
             <thead>
-              <tr className="text-left text-xs font-medium uppercase text-gray-500">
-                <th className="px-4 py-2">Référence</th>
-                <th className="px-4 py-2">Voyageur principal</th>
-                <th className="px-4 py-2">Appartement</th>
-                <th className="px-4 py-2">
+              <tr className="bg-table-header-bg text-left text-[11px] font-bold uppercase tracking-[0.08em] text-ink-tertiary-2">
+                <th className="px-4 py-2.5">Référence</th>
+                <th className="px-4 py-2.5">Voyageur principal</th>
+                <th className="px-4 py-2.5">Appartement</th>
+                <th className="px-4 py-2.5">
                   <button type="button" onClick={() => handleSort('date_arrivee')} className="flex items-center">
                     Arrivée
                     <SortArrow active={sortBy === 'date_arrivee'} dir={sortDir} />
                   </button>
                 </th>
-                <th className="px-4 py-2">
+                <th className="px-4 py-2.5">
                   <button type="button" onClick={() => handleSort('date_depart')} className="flex items-center">
                     Départ
                     <SortArrow active={sortBy === 'date_depart'} dir={sortDir} />
                   </button>
                 </th>
-                <th className="px-4 py-2">Nb voyageurs</th>
-                <th className="px-4 py-2">Plateforme</th>
-                <th className="px-4 py-2">Statut</th>
-                <th className="px-4 py-2">Actions</th>
+                <th className="px-4 py-2.5">Nb voyageurs</th>
+                <th className="px-4 py-2.5 text-right">Montant</th>
+                <th className="px-4 py-2.5">Plateforme</th>
+                <th className="px-4 py-2.5">Statut</th>
+                <th className="px-4 py-2.5">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border-light">
               {sejours.map((sejour) => (
                 <tr key={sejour.id}>
-                  <td className="px-4 py-3 text-gray-700" data-testid={`sejour-reference-${sejour.id}`}>
+                  <td
+                    className="px-4 py-3 font-mono text-ink-tertiary"
+                    data-testid={`sejour-reference-${sejour.id}`}
+                  >
                     {sejour.reference}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-pale text-[11px] font-bold text-brand">
                         {initiales(sejour.nom_voyageur)}
                       </span>
-                      <span className="font-medium text-gray-900">{sejour.nom_voyageur}</span>
+                      <span className="font-semibold text-ink">{sejour.nom_voyageur}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-700">
+                  <td className="px-4 py-3 text-ink-secondary">
                     {sejour.appartement?.nom ?? `Appartement #${sejour.appartement_id}`}
                   </td>
-                  <td className="px-4 py-3 text-gray-700">{sejour.date_arrivee}</td>
-                  <td className="px-4 py-3 text-gray-700">{sejour.date_depart}</td>
-                  <td className="px-4 py-3 text-gray-700">{sejour.voyageurs_count ?? sejour.voyageurs?.length ?? 0}</td>
+                  <td className="px-4 py-3 font-mono text-ink-secondary">{sejour.date_arrivee}</td>
+                  <td className="px-4 py-3 font-mono text-ink-secondary">{sejour.date_depart}</td>
+                  <td className="px-4 py-3 text-ink-secondary">{sejour.voyageurs_count ?? sejour.voyageurs?.length ?? 0}</td>
+                  <td className="px-4 py-3 text-right font-mono font-bold text-ink">
+                    {formatMontant(sejour.montant_mad)}
+                  </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${PLATEFORME_STYLES[sejour.plateforme_origine]}`}
+                      className={`rounded-badge px-2 py-0.5 text-xs font-medium ${PLATEFORME_STYLES[sejour.plateforme_origine]}`}
                     >
                       {PLATEFORME_LABELS[sejour.plateforme_origine]}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUT_BADGE_STYLES[sejour.statut]}`}
+                      className={`rounded-badge px-2 py-0.5 text-xs font-bold ${STATUT_BADGE_STYLES[sejour.statut]}`}
                     >
                       {STATUT_BADGE_LABELS[sejour.statut]}
                     </span>
@@ -500,7 +514,7 @@ export function SejoursListeSection({
                         }
                         disabled={sejour.statut === 'termine'}
                         onClick={() => onEditSejour(sejour)}
-                        className="text-gray-500 hover:text-indigo-600 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:text-gray-300"
+                        className="text-ink-tertiary hover:text-brand disabled:cursor-not-allowed disabled:text-ink-disabled disabled:hover:text-ink-disabled"
                       >
                         <PencilIcon />
                       </button>
@@ -508,7 +522,7 @@ export function SejoursListeSection({
                         type="button"
                         aria-label={`Voir le détail du séjour de ${sejour.nom_voyageur}`}
                         onClick={() => setSelectedSejourId(sejour.id)}
-                        className="text-gray-500 hover:text-indigo-600"
+                        className="text-ink-tertiary hover:text-brand"
                       >
                         <EyeIcon />
                       </button>
@@ -527,7 +541,7 @@ export function SejoursListeSection({
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={meta.current_page <= 1}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-field border border-border-default px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
           >
             Précédent
           </button>
@@ -538,10 +552,8 @@ export function SejoursListeSection({
                 type="button"
                 onClick={() => setPage(p)}
                 aria-current={p === meta.current_page ? 'page' : undefined}
-                className={`h-8 w-8 rounded-md text-sm font-medium ${
-                  p === meta.current_page
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
+                className={`h-8 w-8 rounded-field text-sm font-medium ${
+                  p === meta.current_page ? 'bg-brand text-white' : 'text-ink-secondary hover:bg-table-header-bg'
                 }`}
               >
                 {p}
@@ -552,7 +564,7 @@ export function SejoursListeSection({
             type="button"
             onClick={() => setPage((p) => Math.min(meta.last_page, p + 1))}
             disabled={meta.current_page >= meta.last_page}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-field border border-border-default px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
           >
             Suivant
           </button>

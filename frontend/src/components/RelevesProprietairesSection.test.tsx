@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RelevesProprietairesSection } from './RelevesProprietairesSection'
@@ -75,16 +75,55 @@ describe('RelevesProprietairesSection', () => {
     vi.restoreAllMocks()
   })
 
-  it('affiche le tableau avec appartement, propriétaire, revenus, frais et montant dû', async () => {
+  it('affiche le tableau avec appartement, propriétaire, mode, revenus, frais et montant dû', async () => {
     globalThis.fetch = mockFetch([appartementFixture()], { 1: releveFixture() }) as typeof fetch
 
     render(<RelevesProprietairesSection />)
 
     expect(await screen.findByText('Loft Bastille')).toBeInTheDocument()
     expect(screen.getByText('Karim Alaoui')).toBeInTheDocument()
-    expect(screen.getByText('1000.00 MAD')).toBeInTheDocument()
-    expect(screen.getByText('150.00 MAD')).toBeInTheDocument() // 100 menage + 50 maintenance
-    expect(screen.getByText('680.00 MAD')).toBeInTheDocument()
+    expect(screen.getByText('MANDAT')).toBeInTheDocument()
+
+    const table = screen.getByRole('table')
+    expect(within(table).getByText('1000.00 MAD')).toBeInTheDocument()
+    expect(within(table).getByText('150.00 MAD')).toBeInTheDocument() // 100 menage + 50 maintenance
+    expect(within(table).getByText('680.00 MAD')).toBeInTheDocument()
+  })
+
+  it('affiche les 3 KPI (revenus bruts, reversé aux propriétaires, commission Restinnov)', async () => {
+    globalThis.fetch = mockFetch([appartementFixture()], { 1: releveFixture() }) as typeof fetch
+
+    render(<RelevesProprietairesSection />)
+    await screen.findByText('Loft Bastille')
+
+    expect(screen.getByText('Revenus bruts')).toBeInTheDocument()
+    expect(screen.getByText('Reversé aux propriétaires')).toBeInTheDocument()
+    expect(screen.getByText('Commission Restinnov')).toBeInTheDocument()
+    expect(screen.getByText('170.00 MAD')).toBeInTheDocument()
+  })
+
+  it('le bouton "Générer tous les PDF" télécharge le relevé de chaque appartement', async () => {
+    const fetchMock = mockFetch(
+      [appartementFixture({ id: 1 }), appartementFixture({ id: 2, nom: 'Zenith' })],
+      { 1: releveFixture(), 2: releveFixture({ appartement: { ...releveFixture().appartement, id: 2 } }) },
+    )
+    globalThis.fetch = fetchMock as typeof fetch
+    const user = userEvent.setup()
+
+    URL.createObjectURL = vi.fn().mockReturnValue('blob:fake-url')
+    URL.revokeObjectURL = vi.fn()
+
+    render(<RelevesProprietairesSection />)
+    await screen.findByText('Loft Bastille')
+
+    await user.click(screen.getByRole('button', { name: /générer tous les pdf/i }))
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/appartements/1/releve/pdf?mois='), expect.anything()),
+    )
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/appartements/2/releve/pdf?mois='), expect.anything()),
+    )
   })
 
   it('affiche un message quand il n\'y a aucun appartement', async () => {
