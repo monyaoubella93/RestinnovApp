@@ -506,7 +506,7 @@ describe('App', () => {
     renderApp()
 
     await screen.findByTestId('dashboard-revenus-totaux')
-    await user.click(screen.getByRole('button', { name: /1\s*à venir/i }))
+    await user.click(screen.getByRole('button', { name: /📅\s*À venir\s*1/i }))
 
     expect(await screen.findByRole('button', { name: 'Liste des séjours' })).toHaveClass(/bg-brand/)
     expect(screen.getByLabelText(/^statut$/i)).toHaveValue('a_venir')
@@ -702,7 +702,7 @@ describe('App', () => {
     renderApp()
     expect(await screen.findByTestId('dashboard-revenus-totaux')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Déconnexion' }))
+    await user.click(screen.getAllByRole('button', { name: 'Déconnexion' })[0])
 
     await waitFor(() => expect(localStorage.getItem('auth_token')).toBeNull())
     expect(localStorage.getItem('auth_user')).toBeNull()

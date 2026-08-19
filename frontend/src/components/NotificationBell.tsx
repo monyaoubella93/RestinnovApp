@@ -72,7 +72,7 @@ export function NotificationBell({ onNavigateToSejour, onNavigateToTicketsMainte
         <span aria-hidden="true" className="text-lg">
           🔔
         </span>
-        {badgeStyle && (
+        {totalCount > 0 && badgeStyle && (
           <span
             data-testid="notification-badge"
             className={`absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white px-1 text-[10px] font-bold ${badgeStyle}`}
