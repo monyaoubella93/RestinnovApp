@@ -155,7 +155,7 @@ function App() {
   const [pendingSejourId, setPendingSejourId] = useState<number | null>(null)
   const [pendingStatutFilter, setPendingStatutFilter] = useState<SejourStatut | ''>('')
   const [pendingTicketStatutFilter, setPendingTicketStatutFilter] = useState<TicketMaintenanceStatut | ''>('')
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
 
   usePwaIdentity('manager')
 
@@ -449,93 +449,202 @@ function App() {
     }
   }
 
-  return (
-    <div className="flex min-h-screen">
-      <nav className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white px-4 py-8">
-        <img src="/logo.png" alt="RestInnov" className="h-9 w-auto px-2" />
-        <h1 className="mt-3 px-2 text-xl font-bold text-gray-900">Séjours & ménage</h1>
-        <ul className="mt-6 space-y-1">
-          <li>
-            <button
-              type="button"
-              onClick={() => navigateTo('dashboard')}
-              className={`block w-full rounded-md px-3 py-2 text-left text-sm font-medium ${
-                activeTab === 'dashboard'
-                  ? 'bg-indigo-50 text-indigo-600'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              Dashboard
-            </button>
-          </li>
+  const menagesAValiderCount = dashboardData?.menages_a_valider.length ?? 0
+  const urgencesMaintenanceCount = dashboardData?.problemes_signales.length ?? 0
 
-          {NAV_GROUPS.map((group) => {
+  const today = new Date().toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  const todayCapitalized = today.charAt(0).toUpperCase() + today.slice(1)
+
+  const railGroupCounter = (groupKey: string) => {
+    if (groupKey === 'appartements') {
+      return <span className="font-mono text-[11px] font-bold text-rail-meta">{appartements.length}</span>
+    }
+    if (groupKey === 'menage' && menagesAValiderCount > 0) {
+      return (
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-badge bg-warning px-1.5 text-[11px] font-bold text-white">
+          {menagesAValiderCount}
+        </span>
+      )
+    }
+    if (groupKey === 'maintenance' && urgencesMaintenanceCount > 0) {
+      return (
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-badge bg-danger px-1.5 text-[11px] font-bold text-white">
+          {urgencesMaintenanceCount}
+        </span>
+      )
+    }
+    return null
+  }
+
+  return (
+    <div className="flex min-h-screen bg-app-bg font-sans text-ink">
+      <nav className="flex w-[246px] shrink-0 flex-col bg-marine px-3.5 py-5">
+        <div className="flex items-center gap-2.5 px-2 pb-5">
+          <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] bg-white">
+            <img src="/logo.png" alt="RestInnov" className="h-[34px] w-auto" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[15px] font-bold tracking-[-0.01em] text-white">Restinnov</div>
+            <div className="text-[11px] uppercase tracking-[0.06em] text-rail-meta">Conciergerie</div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-0.5">
+          <div className="px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-rail-group-title">
+            Pilotage
+          </div>
+          <button
+            type="button"
+            onClick={() => navigateTo('dashboard')}
+            className={`flex items-center gap-2.5 rounded-field px-2.5 py-2.5 text-left text-sm font-semibold ${
+              activeTab === 'dashboard' ? 'bg-brand text-white' : 'text-rail-text hover:bg-white/5'
+            }`}
+          >
+            Dashboard
+          </button>
+
+          {NAV_GROUPS.slice(0, 2).map((group) => {
             const isExpanded = expandedGroup === group.key
             const isActiveGroup = groupKeyForTab(activeTab) === group.key
 
             return (
-              <li key={group.key}>
+              <div key={group.key}>
                 <button
                   type="button"
                   onClick={() => toggleGroup(group)}
                   aria-expanded={isExpanded}
-                  className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-medium ${
-                    isActiveGroup
-                      ? 'bg-indigo-50 text-indigo-600'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  aria-label={group.label}
+                  className={`flex w-full items-center gap-2.5 rounded-field px-2.5 py-2.5 text-left text-sm font-semibold ${
+                    isActiveGroup ? 'bg-brand text-white' : 'text-rail-text hover:bg-white/5'
                   }`}
                 >
-                  {group.label}
+                  <span className="flex-1">{group.label}</span>
+                  {railGroupCounter(group.key)}
                   <span className="text-xs" aria-hidden="true">
                     {isExpanded ? '▾' : '▸'}
                   </span>
                 </button>
                 {isExpanded && (
-                  <ul className="mt-1 space-y-1 pl-3">
+                  <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
                     {group.tabs.map(([tab, label]) => (
-                      <li key={tab}>
-                        <button
-                          type="button"
-                          onClick={() => handleSidebarNavigate(tab)}
-                          className={`block w-full rounded-md px-3 py-1.5 text-left text-sm ${
-                            activeTab === tab
-                              ? 'bg-indigo-50 text-indigo-600 font-medium'
-                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      </li>
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => handleSidebarNavigate(tab)}
+                        className={`block w-full rounded-field px-2.5 py-2 text-left text-[13px] ${
+                          activeTab === tab ? 'bg-brand font-semibold text-white' : 'text-rail-text hover:bg-white/5'
+                        }`}
+                      >
+                        {label}
+                      </button>
                     ))}
-                  </ul>
+                  </div>
                 )}
-              </li>
+              </div>
             )
           })}
-        </ul>
 
-        <button
-          type="button"
-          onClick={() => {
-            void logout()
-          }}
-          className="mt-auto rounded-md px-3 py-2 text-left text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-        >
-          Déconnexion
-        </button>
+          <div className="px-2.5 pb-1.5 pt-3 text-[10px] font-bold uppercase tracking-[0.14em] text-rail-group-title">
+            Opérations
+          </div>
+          {NAV_GROUPS.slice(2, 4).map((group) => {
+            const isExpanded = expandedGroup === group.key
+            const isActiveGroup = groupKeyForTab(activeTab) === group.key
+
+            return (
+              <div key={group.key}>
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group)}
+                  aria-expanded={isExpanded}
+                  aria-label={group.label}
+                  className={`flex w-full items-center gap-2.5 rounded-field px-2.5 py-2.5 text-left text-sm font-semibold ${
+                    isActiveGroup ? 'bg-brand text-white' : 'text-rail-text hover:bg-white/5'
+                  }`}
+                >
+                  <span className="flex-1">{group.label}</span>
+                  {railGroupCounter(group.key)}
+                  <span className="text-xs" aria-hidden="true">
+                    {isExpanded ? '▾' : '▸'}
+                  </span>
+                </button>
+                {isExpanded && (
+                  <div className="mt-0.5 flex flex-col gap-0.5 pl-2">
+                    {group.tabs.map(([tab, label]) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => handleSidebarNavigate(tab)}
+                        className={`block w-full rounded-field px-2.5 py-2 text-left text-[13px] ${
+                          activeTab === tab ? 'bg-brand font-semibold text-white' : 'text-rail-text hover:bg-white/5'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="mt-auto flex flex-col gap-3">
+          {user && (
+            <div className="flex items-center gap-2.5 border-t border-marine-border px-2.5 pt-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
+                {user.nom
+                  .trim()
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((part) => part[0])
+                  .join('')
+                  .toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-[13px] font-semibold text-[#E6EBF4]">{user.nom}</div>
+                <div className="text-[11px] text-rail-meta">Manager</div>
+              </div>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              void logout()
+            }}
+            className="flex items-center gap-2.5 rounded-field px-2.5 py-2.5 text-left text-sm font-semibold text-rail-text hover:bg-white/5"
+          >
+            Déconnexion
+          </button>
+        </div>
       </nav>
 
-      <main className="min-w-0 flex-1 px-6 py-8">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">{SECTION_TITLES[activeTab]}</h2>
-          <NotificationBell
-            onNavigateToSejour={handleNavigateToSejourDetail}
-            onNavigateToTicketsMaintenance={() => handleNavigateToTicketsMaintenance('ouvert')}
-          />
-        </div>
-        {loadError && <p className="mt-2 text-sm text-red-600">{loadError}</p>}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border-default bg-surface px-6">
+          <h2 className="text-lg font-bold tracking-[-0.02em] text-ink">{SECTION_TITLES[activeTab]}</h2>
+          <div className="border-l border-border-default pl-4 text-[13px] text-ink-tertiary">{todayCapitalized}</div>
+          <div className="ml-auto flex items-center gap-2.5">
+            <div className="flex h-9 w-[260px] items-center gap-2 rounded-field border border-border-default bg-table-header-bg px-3 text-[13px] text-ink-disabled">
+              <span aria-hidden="true">⌕</span>
+              Rechercher un séjour, un appartement…
+            </div>
+            <NotificationBell
+              onNavigateToSejour={handleNavigateToSejourDetail}
+              onNavigateToTicketsMaintenance={() => handleNavigateToTicketsMaintenance('ouvert')}
+            />
+          </div>
+        </header>
 
-        <div className="mt-6 space-y-6">
+        <main className="min-w-0 flex-1 overflow-auto p-6">
+          {loadError && <p className="mb-4 text-sm text-danger">{loadError}</p>}
+
+          <div className="space-y-6">
           {activeTab === 'dashboard' && (
             <DashboardSection
               data={dashboardData}
@@ -622,8 +731,9 @@ function App() {
           {activeTab === 'maintenance-tickets' && (
             <TicketsMaintenanceSection appartements={appartements} initialStatutFilter={pendingTicketStatutFilter} />
           )}
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
     </div>
   )
 }
