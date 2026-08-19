@@ -75,13 +75,13 @@ export function NouvelAgentForm({ appartements, onSubmit, onCancel, agentToEdit 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-900">
+    <form onSubmit={handleSubmit} className="space-y-4 rounded-card-manager border border-border-default bg-surface p-6">
+      <h2 className="text-lg font-bold text-ink">
         {agentToEdit ? "Modifier l'agent de ménage" : 'Nouvel agent de ménage'}
       </h2>
 
       <div>
-        <label htmlFor="agent_nom" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="agent_nom" className="block text-sm font-semibold text-ink-secondary">
           Nom
         </label>
         <input
@@ -91,12 +91,12 @@ export function NouvelAgentForm({ appartements, onSubmit, onCancel, agentToEdit 
           value={nom}
           onChange={(e) => setNom(e.target.value)}
           placeholder="Fatima Zahra"
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
       </div>
 
       <div>
-        <label htmlFor="agent_telephone" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="agent_telephone" className="block text-sm font-semibold text-ink-secondary">
           Téléphone
         </label>
         <input
@@ -105,12 +105,12 @@ export function NouvelAgentForm({ appartements, onSubmit, onCancel, agentToEdit 
           value={telephone}
           onChange={(e) => setTelephone(e.target.value)}
           placeholder="Optionnel"
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
       </div>
 
       <div>
-        <label htmlFor="agent_adresse" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="agent_adresse" className="block text-sm font-semibold text-ink-secondary">
           Adresse
         </label>
         <input
@@ -119,12 +119,12 @@ export function NouvelAgentForm({ appartements, onSubmit, onCancel, agentToEdit 
           value={adresse}
           onChange={(e) => setAdresse(e.target.value)}
           placeholder="Optionnel"
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
       </div>
 
       <div>
-        <label htmlFor="agent_password" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="agent_password" className="block text-sm font-semibold text-ink-secondary">
           Mot de passe
         </label>
         <input
@@ -134,9 +134,9 @@ export function NouvelAgentForm({ appartements, onSubmit, onCancel, agentToEdit 
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder={agentToEdit ? 'Laisser vide pour ne pas changer' : undefined}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-ink-tertiary">
           {agentToEdit
             ? "Laissez ce champ vide pour conserver le mot de passe actuel de l'agent"
             : 'Vous pourrez communiquer ce mot de passe à l\'agent'}
@@ -145,22 +145,22 @@ export function NouvelAgentForm({ appartements, onSubmit, onCancel, agentToEdit 
 
       {!agentToEdit && (
         <div>
-          <span className="block text-sm font-medium text-gray-700">Appartements assignés</span>
+          <span className="block text-sm font-semibold text-ink-secondary">Appartements assignés</span>
           {appartements.length === 0 ? (
-            <p className="mt-1 text-sm text-gray-500">Aucun appartement disponible pour le moment.</p>
+            <p className="mt-1 text-sm text-ink-tertiary">Aucun appartement disponible pour le moment.</p>
           ) : (
             <div className="mt-2 space-y-2">
               {appartements.map((appartement) => (
-                <label key={appartement.id} className="flex items-center gap-2 text-sm text-gray-700">
+                <label key={appartement.id} className="flex items-center gap-2 text-sm text-ink-secondary">
                   <input
                     type="checkbox"
                     checked={appartementIds.includes(appartement.id)}
                     onChange={() => toggleAppartement(appartement.id)}
-                    className="h-4 w-4 rounded border-gray-300"
+                    className="h-4 w-4 rounded border-border-default accent-brand"
                   />
                   {appartement.nom}
                   {appartement.agent_habituel && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-ink-tertiary">
                       (actuellement : {appartement.agent_habituel.nom})
                     </span>
                   )}
@@ -171,7 +171,7 @@ export function NouvelAgentForm({ appartements, onSubmit, onCancel, agentToEdit 
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       <div className="flex gap-3">
         <button
@@ -180,14 +180,14 @@ export function NouvelAgentForm({ appartements, onSubmit, onCancel, agentToEdit 
             resetForm()
             onCancel?.()
           }}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="rounded-field border border-border-default px-4 py-2 text-sm font-medium text-ink-secondary hover:bg-table-header-bg"
         >
           Annuler
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-field bg-brand px-4 py-2 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
         >
           {submitting ? 'Enregistrement...' : agentToEdit ? 'Enregistrer les modifications' : 'Créer le compte'}
         </button>

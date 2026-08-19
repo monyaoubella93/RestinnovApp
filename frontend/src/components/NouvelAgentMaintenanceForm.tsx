@@ -49,11 +49,11 @@ export function NouvelAgentMaintenanceForm({ onSubmit, onCancel }: NouvelAgentMa
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-900">Nouvel agent de maintenance</h2>
+    <form onSubmit={handleSubmit} className="space-y-4 rounded-card-manager border border-border-default bg-surface p-6">
+      <h2 className="text-lg font-bold text-ink">Nouvel agent de maintenance</h2>
 
       <div>
-        <label htmlFor="agent_maintenance_nom" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="agent_maintenance_nom" className="block text-sm font-semibold text-ink-secondary">
           Nom
         </label>
         <input
@@ -63,12 +63,12 @@ export function NouvelAgentMaintenanceForm({ onSubmit, onCancel }: NouvelAgentMa
           value={nom}
           onChange={(e) => setNom(e.target.value)}
           placeholder="Karim Benali"
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
       </div>
 
       <div>
-        <label htmlFor="agent_maintenance_telephone" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="agent_maintenance_telephone" className="block text-sm font-semibold text-ink-secondary">
           Téléphone
         </label>
         <input
@@ -77,12 +77,12 @@ export function NouvelAgentMaintenanceForm({ onSubmit, onCancel }: NouvelAgentMa
           value={telephone}
           onChange={(e) => setTelephone(e.target.value)}
           placeholder="Optionnel"
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
       </div>
 
       <div>
-        <label htmlFor="agent_maintenance_adresse" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="agent_maintenance_adresse" className="block text-sm font-semibold text-ink-secondary">
           Adresse
         </label>
         <input
@@ -91,12 +91,12 @@ export function NouvelAgentMaintenanceForm({ onSubmit, onCancel }: NouvelAgentMa
           value={adresse}
           onChange={(e) => setAdresse(e.target.value)}
           placeholder="Optionnel"
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
       </div>
 
       <div>
-        <label htmlFor="agent_maintenance_password" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="agent_maintenance_password" className="block text-sm font-semibold text-ink-secondary">
           Mot de passe
         </label>
         <input
@@ -105,12 +105,12 @@ export function NouvelAgentMaintenanceForm({ onSubmit, onCancel }: NouvelAgentMa
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
-        <p className="mt-1 text-xs text-gray-500">Vous pourrez communiquer ce mot de passe à l'agent</p>
+        <p className="mt-1 text-xs text-ink-tertiary">Vous pourrez communiquer ce mot de passe à l'agent</p>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       <div className="flex gap-3">
         <button
@@ -119,14 +119,14 @@ export function NouvelAgentMaintenanceForm({ onSubmit, onCancel }: NouvelAgentMa
             resetForm()
             onCancel?.()
           }}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="rounded-field border border-border-default px-4 py-2 text-sm font-medium text-ink-secondary hover:bg-table-header-bg"
         >
           Annuler
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-field bg-brand px-4 py-2 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
         >
           {submitting ? 'Enregistrement...' : 'Créer le compte'}
         </button>

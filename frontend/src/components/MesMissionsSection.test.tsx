@@ -70,7 +70,7 @@ describe('MesMissionsSection', () => {
 
     const badge = screen.getByText('En attente de validation')
     expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('bg-purple-100', 'text-purple-800')
+    expect(badge).toHaveClass('bg-violet-bg', 'text-violet')
   })
 
   it('affiche un badge rouge "Refusé" pour une mission non_conforme', () => {
@@ -78,7 +78,7 @@ describe('MesMissionsSection', () => {
 
     const badge = screen.getByText('Refusé')
     expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('bg-red-100', 'text-red-800')
+    expect(badge).toHaveClass('bg-danger-bg', 'text-danger')
   })
 
   it("n'affiche aucun badge de statut pour une mission a_faire ou en_cours", () => {

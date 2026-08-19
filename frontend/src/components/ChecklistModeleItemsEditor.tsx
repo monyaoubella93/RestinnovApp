@@ -40,8 +40,8 @@ export function ChecklistModeleItemsEditor({
   }
 
   return (
-    <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 p-3">
-      <p className="text-xs font-medium text-gray-500">
+    <div className="mt-2 rounded-field border border-border-default bg-table-header-bg p-3">
+      <p className="text-xs font-semibold text-ink-secondary">
         Items de « {checklistModele.nom} » (générés automatiquement sur chaque nouvelle mission)
       </p>
 
@@ -50,7 +50,7 @@ export function ChecklistModeleItemsEditor({
           {items.map((item, index) => (
             <li
               key={item.id}
-              className="flex items-center justify-between gap-2 rounded-md bg-white px-2 py-1.5 text-sm shadow-sm"
+              className="flex items-center justify-between gap-2 rounded-field bg-surface px-2 py-1.5 text-sm border border-border-light"
             >
               <span className="flex min-w-0 items-center gap-2">
                 {item.photo_url && (
@@ -60,7 +60,7 @@ export function ChecklistModeleItemsEditor({
                     className="h-8 w-8 shrink-0 rounded object-cover"
                   />
                 )}
-                <span className="truncate text-gray-700">{item.libelle}</span>
+                <span className="truncate text-ink-secondary">{item.libelle}</span>
               </span>
               <div className="flex shrink-0 items-center gap-1">
                 <button
@@ -68,7 +68,7 @@ export function ChecklistModeleItemsEditor({
                   aria-label={`Monter "${item.libelle}"`}
                   disabled={index === 0}
                   onClick={() => onDeplacerItem(item.id, 'haut')}
-                  className="rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+                  className="rounded px-1.5 py-0.5 text-ink-tertiary hover:bg-border-light disabled:opacity-30"
                 >
                   ↑
                 </button>
@@ -77,7 +77,7 @@ export function ChecklistModeleItemsEditor({
                   aria-label={`Descendre "${item.libelle}"`}
                   disabled={index === items.length - 1}
                   onClick={() => onDeplacerItem(item.id, 'bas')}
-                  className="rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+                  className="rounded px-1.5 py-0.5 text-ink-tertiary hover:bg-border-light disabled:opacity-30"
                 >
                   ↓
                 </button>
@@ -85,7 +85,7 @@ export function ChecklistModeleItemsEditor({
                   type="button"
                   aria-label={`Retirer "${item.libelle}"`}
                   onClick={() => onDeleteItem(item.id)}
-                  className="rounded px-1.5 py-0.5 text-red-500 hover:bg-red-50"
+                  className="rounded px-1.5 py-0.5 text-danger hover:bg-danger-bg"
                 >
                   ✕
                 </button>
@@ -94,7 +94,7 @@ export function ChecklistModeleItemsEditor({
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-sm text-gray-400">Aucun item pour l'instant.</p>
+        <p className="mt-2 text-sm text-ink-disabled">Aucun item pour l'instant.</p>
       )}
 
       <div className="mt-2 flex flex-wrap items-end gap-2">
@@ -105,13 +105,13 @@ export function ChecklistModeleItemsEditor({
             onChange={(e) => setLibelle(e.target.value)}
             placeholder="ex. Passer l'aspirateur"
             aria-label={`Nouvel item pour ${checklistModele.nom}`}
-            className="block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="block w-full rounded-field border border-border-default px-3 py-1.5 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
         <div>
           <label
             htmlFor={`nouvel_item_photo_${checklistModele.id}`}
-            className="block text-xs font-medium text-gray-500"
+            className="block text-xs font-semibold text-ink-secondary"
           >
             Photo de référence (optionnel)
           </label>
@@ -129,12 +129,12 @@ export function ChecklistModeleItemsEditor({
           type="button"
           onClick={handleAdd}
           disabled={adding}
-          className="shrink-0 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="shrink-0 rounded-field bg-brand px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
         >
           + Ajouter
         </button>
       </div>
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
     </div>
   )
 }

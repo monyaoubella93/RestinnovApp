@@ -10,7 +10,7 @@ export const URGENCE_LABELS: Record<TicketMaintenanceUrgence, string> = {
 }
 
 export const URGENCE_STYLES: Record<TicketMaintenanceUrgence, string> = {
-  basse: 'bg-gray-100 text-gray-600',
-  normale: 'bg-blue-100 text-blue-800',
-  haute: 'bg-red-100 text-red-800',
+  basse: 'bg-table-header-bg text-ink-tertiary',
+  normale: 'bg-brand-pale text-brand',
+  haute: 'bg-danger-bg text-danger',
 }

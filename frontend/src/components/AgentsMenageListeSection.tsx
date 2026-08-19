@@ -22,8 +22,8 @@ function PencilIcon() {
 function StatutBadge({ actif }: { actif: boolean }) {
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-        actif ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+      className={`rounded-badge px-2 py-0.5 text-xs font-bold ${
+        actif ? 'bg-success-bg text-success-text' : 'bg-table-header-bg text-ink-tertiary'
       }`}
     >
       {actif ? 'Actif' : 'Inactif'}
@@ -112,12 +112,12 @@ export function AgentsMenageListeSection({ onEditAgent, onAgentsChanged }: Agent
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900">Agents de ménage</h3>
-        <p className="text-sm text-gray-500">{agents.length} agents trouvés</p>
+        <h3 className="text-xl font-bold tracking-\[-0.02em\] text-ink">Agents de ménage</h3>
+        <p className="text-[13px] text-ink-tertiary">{agents.length} agents trouvés</p>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <label htmlFor="agents_search" className="block text-xs font-medium text-gray-500">
+      <div className="rounded-card-manager border border-border-default bg-surface p-4">
+        <label htmlFor="agents_search" className="block text-xs font-semibold text-ink-secondary">
           Recherche
         </label>
         <input
@@ -126,21 +126,21 @@ export function AgentsMenageListeSection({ onEditAgent, onAgentsChanged }: Agent
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Nom de l'agent"
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm sm:max-w-sm"
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none sm:max-w-sm"
         />
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Chargement...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+      {loading && <p className="text-sm text-ink-tertiary">Chargement...</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
+      {actionError && <p className="text-sm text-danger">{actionError}</p>}
 
-      {!loading && !error && agents.length === 0 && <p className="text-sm text-gray-500">Aucun agent trouvé.</p>}
+      {!loading && !error && agents.length === 0 && <p className="text-sm text-ink-tertiary">Aucun agent trouvé.</p>}
 
       {!loading && !error && agents.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
+        <div className="overflow-x-auto rounded-card-manager border border-border-default bg-surface">
+          <table className="min-w-full divide-y divide-border-default text-sm">
             <thead>
-              <tr className="text-left text-xs font-medium uppercase text-gray-500">
+              <tr className="bg-table-header-bg text-left text-\[11px\] font-bold uppercase tracking-\[0.08em\] text-ink-tertiary-2">
                 <th className="px-4 py-2">Nom</th>
                 <th className="px-4 py-2">Téléphone</th>
                 <th className="px-4 py-2">Adresse</th>
@@ -150,37 +150,37 @@ export function AgentsMenageListeSection({ onEditAgent, onAgentsChanged }: Agent
                 <th className="px-4 py-2">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border-light">
               {agents.map((agent) => {
                 const hasHistory = (agent.appartements_habituel_count ?? 0) > 0 || (agent.mission_menages_count ?? 0) > 0
                 const busy = busyAgentId === agent.id
 
                 return (
                   <tr key={agent.id}>
-                    <td className="px-4 py-3 font-medium text-gray-900">{agent.nom}</td>
-                    <td className="px-4 py-3 text-gray-700">{agent.telephone ?? 'Aucun'}</td>
-                    <td className="px-4 py-3 text-gray-700">{agent.adresse ?? 'Aucune'}</td>
-                    <td className="px-4 py-3 text-gray-700">{agent.appartements_habituel_count ?? 0}</td>
-                    <td className="px-4 py-3 text-gray-700">{agent.mission_menages_count ?? 0}</td>
+                    <td className="px-4 py-3 font-semibold text-ink">{agent.nom}</td>
+                    <td className="px-4 py-3 text-ink-secondary">{agent.telephone ?? 'Aucun'}</td>
+                    <td className="px-4 py-3 text-ink-secondary">{agent.adresse ?? 'Aucune'}</td>
+                    <td className="px-4 py-3 text-ink-secondary">{agent.appartements_habituel_count ?? 0}</td>
+                    <td className="px-4 py-3 text-ink-secondary">{agent.mission_menages_count ?? 0}</td>
                     <td className="px-4 py-3">
                       <StatutBadge actif={agent.actif ?? true} />
                     </td>
                     <td className="px-4 py-3">
                       {confirmingDeleteId === agent.id ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-600">Supprimer définitivement ?</span>
+                          <span className="text-xs text-ink-secondary">Supprimer définitivement ?</span>
                           <button
                             type="button"
                             disabled={busy}
                             onClick={() => handleDelete(agent)}
-                            className="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                            className="rounded-field bg-danger px-2 py-1 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50"
                           >
                             Oui, supprimer
                           </button>
                           <button
                             type="button"
                             onClick={() => setConfirmingDeleteId(null)}
-                            className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                            className="rounded-field border border-border-default px-2 py-1 text-xs font-medium text-ink-secondary hover:bg-table-header-bg"
                           >
                             Annuler
                           </button>
@@ -191,7 +191,7 @@ export function AgentsMenageListeSection({ onEditAgent, onAgentsChanged }: Agent
                             type="button"
                             aria-label={`Modifier l'agent ${agent.nom}`}
                             onClick={() => onEditAgent(agent)}
-                            className="text-gray-500 hover:text-indigo-600"
+                            className="text-ink-tertiary hover:text-brand"
                           >
                             <PencilIcon />
                           </button>
@@ -201,7 +201,7 @@ export function AgentsMenageListeSection({ onEditAgent, onAgentsChanged }: Agent
                                 type="button"
                                 disabled={busy}
                                 onClick={() => handleDesactiver(agent)}
-                                className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                className="rounded-field border border-border-default px-2 py-1 text-xs font-medium text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
                               >
                                 Désactiver
                               </button>
@@ -210,7 +210,7 @@ export function AgentsMenageListeSection({ onEditAgent, onAgentsChanged }: Agent
                                 type="button"
                                 disabled={busy}
                                 onClick={() => handleReactiver(agent)}
-                                className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                className="rounded-field border border-border-default px-2 py-1 text-xs font-medium text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
                               >
                                 Réactiver
                               </button>
@@ -219,7 +219,7 @@ export function AgentsMenageListeSection({ onEditAgent, onAgentsChanged }: Agent
                             <button
                               type="button"
                               onClick={() => setConfirmingDeleteId(agent.id)}
-                              className="rounded-md border border-red-300 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                              className="rounded-field border border-danger-border px-2 py-1 text-xs font-medium text-danger hover:bg-danger-bg"
                             >
                               Supprimer
                             </button>
