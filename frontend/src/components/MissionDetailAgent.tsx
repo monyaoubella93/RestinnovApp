@@ -68,7 +68,7 @@ function ChecklistItemRow({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   return (
-    <li className="flex items-center gap-3 rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm">
+    <li className="flex items-center gap-3 rounded-card-agent-lg border-2 border-border-default bg-surface p-4">
       <button
         type="button"
         role="checkbox"
@@ -77,8 +77,8 @@ function ChecklistItemRow({
         onClick={() => onToggle(item)}
         className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border-4 text-2xl font-bold ${
           item.coche
-            ? 'border-emerald-600 bg-emerald-600 text-white'
-            : 'border-gray-300 bg-white text-transparent hover:border-indigo-400'
+            ? 'border-success bg-success text-white'
+            : 'border-border-default bg-surface text-transparent hover:border-brand-light'
         }`}
       >
         ✓
@@ -88,7 +88,7 @@ function ChecklistItemRow({
         {checklistIcon(item.libelle)}
       </span>
 
-      <span className={`flex-1 text-base ${item.coche ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+      <span className={`flex-1 text-base ${item.coche ? 'text-ink-disabled line-through' : 'text-ink'}`}>
         {item.libelle}
       </span>
 
@@ -106,8 +106,8 @@ function ChecklistItemRow({
         onClick={() => fileInputRef.current?.click()}
         className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border-2 text-2xl ${
           item.photo_url
-            ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-            : 'border-gray-300 text-gray-500 hover:bg-gray-50'
+            ? 'border-success-border bg-success-bg text-success-text'
+            : 'border-border-default text-ink-tertiary hover:bg-table-header-bg'
         }`}
       >
         📷
@@ -218,22 +218,22 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
 
   return (
     <div>
-      <button type="button" onClick={onBack} className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+      <button type="button" onClick={onBack} className="text-sm font-semibold text-brand-light hover:text-brand">
         ← Retour à mes missions
       </button>
 
-      {loading && <p className="mt-4 text-sm text-gray-500">Chargement...</p>}
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {loading && <p className="mt-4 text-sm text-ink-tertiary">Chargement...</p>}
+      {error && <p className="mt-4 text-sm text-danger">{error}</p>}
 
       {mission && (
         <div className="mt-4 space-y-4">
           <div>
-            <h3 className="text-xl font-bold text-gray-900">{mission.sejour?.appartement?.nom ?? 'Appartement'}</h3>
-            <p className="text-sm text-gray-500">{mission.sejour?.appartement?.adresse}</p>
+            <h3 className="text-xl font-bold text-ink">{mission.sejour?.appartement?.nom ?? 'Appartement'}</h3>
+            <p className="text-sm text-ink-tertiary">{mission.sejour?.appartement?.adresse}</p>
           </div>
 
           {mission.statut === 'non_conforme' && mission.refus && mission.refus.length > 0 && (
-            <div data-testid="refus-banner" className="space-y-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+            <div data-testid="refus-banner" className="space-y-2 rounded-field bg-danger-bg px-3 py-2 text-sm font-semibold text-danger">
               <p className="flex items-center gap-2">
                 <span aria-hidden="true">⚠️</span>
                 Renvoyé par le Manager — à refaire avant de marquer terminé à nouveau.
@@ -267,29 +267,29 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
                 aria-valuenow={doneItems}
                 aria-valuemin={0}
                 aria-valuemax={totalItems}
-                className="h-4 w-full overflow-hidden rounded-full bg-gray-200"
+                className="h-4 w-full overflow-hidden rounded-full bg-table-header-bg"
               >
                 <div
-                  className="h-full rounded-full bg-emerald-500"
+                  className="h-full rounded-full bg-success"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-              <p className="mt-1 text-right text-xs text-gray-400">
+              <p className="mt-1 text-right font-mono text-xs text-ink-tertiary">
                 {doneItems}/{totalItems}
               </p>
             </div>
           )}
 
           <div>
-            <h4 className="text-base font-semibold text-gray-900">Checklist</h4>
+            <h4 className="text-base font-bold text-ink">Checklist</h4>
             {checklistItems.length === 0 ? (
-              <p className="mt-2 text-sm text-gray-500">Aucun item de checklist pour cet appartement.</p>
+              <p className="mt-2 text-sm text-ink-tertiary">Aucun item de checklist pour cet appartement.</p>
             ) : (
               <div className="mt-2 space-y-4">
                 {groupChecklistItems(checklistItems).map((group, index) => (
                   <div key={group.nom ?? `groupe-${index}`}>
                     {group.nom && (
-                      <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">{group.nom}</p>
+                      <p className="mb-2 text-sm font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">{group.nom}</p>
                     )}
                     <ul className="space-y-2">
                       {group.items.map((item) => (
@@ -311,10 +311,10 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
 
           <SignalerProblemeSection missionMenageId={mission.id} onSignaler={handleSignalerProbleme} />
 
-          {terminerError && <p className="text-sm text-red-600">{terminerError}</p>}
+          {terminerError && <p className="text-sm text-danger">{terminerError}</p>}
 
           {mission.statut === 'en_attente_validation' ? (
-            <p className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-50 px-4 py-4 text-center text-base font-semibold text-emerald-700">
+            <p className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-success-bg px-4 py-4 text-center text-base font-semibold text-success-text">
               <span aria-hidden="true" className="text-xl">
                 ✅
               </span>
@@ -326,7 +326,7 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
               disabled={!toutesCochees || terminating}
               onClick={handleTerminer}
               title={!toutesCochees ? 'Cochez tous les items de la checklist pour terminer la mission.' : undefined}
-              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-4 text-lg font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-success px-4 py-4 text-lg font-bold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:bg-border-default disabled:text-ink-disabled"
             >
               <span aria-hidden="true" className="text-xl">
                 ✓

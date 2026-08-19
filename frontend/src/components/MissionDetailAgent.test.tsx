@@ -284,11 +284,11 @@ describe('MissionDetailAgent', () => {
     render(<MissionDetailAgent missionId={10} catalogue={[]} onBack={vi.fn()} onMissionTerminee={vi.fn()} />)
 
     const checkbox = await screen.findByRole('checkbox', { name: "Passer l'aspirateur" })
-    expect(checkbox).not.toHaveClass('bg-emerald-600')
+    expect(checkbox).not.toHaveClass('bg-success')
 
     await user.click(checkbox)
 
-    await waitFor(() => expect(screen.getByRole('checkbox', { name: "Passer l'aspirateur" })).toHaveClass('bg-emerald-600'))
+    await waitFor(() => expect(screen.getByRole('checkbox', { name: "Passer l'aspirateur" })).toHaveClass('bg-success'))
   })
 
   it('regroupe les items de checklist par modèle d\'origine avec un sous-titre par groupe', async () => {

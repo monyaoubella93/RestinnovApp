@@ -55,19 +55,19 @@ export function MesTicketsSection({ tickets, loading, error, heading, emptyMessa
 
   return (
     <div>
-      {heading && <h3 className="text-lg font-semibold text-gray-900">{heading}</h3>}
+      {heading && <h3 className="text-lg font-bold text-ink">{heading}</h3>}
 
-      {loading && <p className="mt-4 text-sm text-gray-500">Chargement...</p>}
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {loading && <p className="mt-4 text-sm text-ink-tertiary">Chargement...</p>}
+      {error && <p className="mt-4 text-sm text-danger">{error}</p>}
       {!loading && !error && tickets.length === 0 && (
         <div className="mt-8 flex flex-col items-center gap-3 py-6 text-center">
           <div
             aria-hidden="true"
-            className="flex h-24 w-24 items-center justify-center rounded-full bg-emerald-100 text-5xl"
+            className="flex h-24 w-24 items-center justify-center rounded-full bg-success-bg text-5xl"
           >
             {emptyIcon}
           </div>
-          <p className="text-base text-gray-500">{emptyMessage}</p>
+          <p className="text-base text-ink-tertiary">{emptyMessage}</p>
         </div>
       )}
 
@@ -77,31 +77,31 @@ export function MesTicketsSection({ tickets, loading, error, heading, emptyMessa
             <button
               type="button"
               onClick={() => setSelectedTicket(ticket)}
-              className="w-full rounded-2xl border-2 border-gray-200 bg-white p-4 text-left shadow-sm hover:border-indigo-300 hover:shadow-md"
+              className="w-full rounded-card-agent-lg border-2 border-border-default bg-surface p-4 text-left hover:border-brand-border hover:shadow-md"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate text-lg font-semibold text-gray-900">
+                  <p className="truncate text-lg font-bold text-ink">
                     {ticket.appartement?.nom ?? 'Appartement'}
-                    <span className="ml-2 text-xs font-normal text-gray-400">{ticket.reference}</span>
+                    <span className="ml-2 font-mono text-xs font-normal text-ink-tertiary">{ticket.reference}</span>
                   </p>
-                  <p className="truncate text-sm text-gray-500">{ticket.appartement?.adresse}</p>
+                  <p className="truncate text-sm text-ink-tertiary">{ticket.appartement?.adresse}</p>
                 </div>
                 <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${URGENCE_STYLES[ticket.urgence]}`}
+                  className={`shrink-0 rounded-badge px-2 py-0.5 text-xs font-bold ${URGENCE_STYLES[ticket.urgence]}`}
                 >
                   Urgence {URGENCE_LABELS[ticket.urgence]}
                 </span>
               </div>
               {STATUT_BADGES[ticket.statut] && (
                 <span
-                  className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUT_BADGES[ticket.statut]!.style}`}
+                  className={`mt-1 inline-block rounded-badge px-2 py-0.5 text-xs font-bold ${STATUT_BADGES[ticket.statut]!.style}`}
                 >
                   {STATUT_BADGES[ticket.statut]!.label}
                 </span>
               )}
               {ticket.description_manager && (
-                <p className="mt-2 truncate text-sm text-gray-700">{ticket.description_manager}</p>
+                <p className="mt-2 truncate text-sm text-ink-secondary">{ticket.description_manager}</p>
               )}
             </button>
           </li>
