@@ -485,8 +485,8 @@ function App() {
     <div className="flex min-h-screen bg-app-bg font-sans text-ink">
       <nav className="flex w-[246px] shrink-0 flex-col bg-marine px-3.5 py-5">
         <div className="flex items-center gap-2.5 px-2 pb-5">
-          <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] bg-white">
-            <img src="/logo.png" alt="RestInnov" className="h-[34px] w-auto" />
+          <div className="flex h-[38px] w-fit shrink-0 items-center justify-center rounded-[10px] bg-white px-2">
+            <img src="/logo.png" alt="RestInnov" className="h-[26px] w-auto object-contain" />
           </div>
           <div className="min-w-0">
             <div className="text-[15px] font-bold tracking-[-0.01em] text-white">Restinnov</div>

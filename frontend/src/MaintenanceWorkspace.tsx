@@ -73,8 +73,8 @@ export function MaintenanceWorkspace() {
         aria-label="Navigation agent maintenance"
       >
         <div className="flex items-center gap-2.5 px-1 pb-5">
-          <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-field bg-white">
-            <img src="/logo.png" alt="" className="h-[34px] w-[34px] object-contain" />
+          <span className="flex h-[38px] w-fit shrink-0 items-center justify-center rounded-field bg-white px-2">
+            <img src="/logo.png" alt="" className="h-[26px] w-auto object-contain" />
           </span>
           <div className="min-w-0">
             <p className="truncate text-[15px] font-bold text-white">Restinnov</p>
