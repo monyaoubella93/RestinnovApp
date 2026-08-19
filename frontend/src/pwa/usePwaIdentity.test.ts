@@ -18,7 +18,7 @@ describe('usePwaIdentity', () => {
   it('points the manifest, theme-color, icon and apple-touch-icon at the manager identity', () => {
     renderHook(() => usePwaIdentity('manager'))
 
-    expect(document.title).toBe('Séjours & ménage')
+    expect(document.title).toBe('RestInnov')
     expect(linkHref('manifest')).toContain('/manifest.json')
     expect(metaContent('theme-color')).toBe('#4f46e5')
     expect(metaContent('apple-mobile-web-app-title')).toBe('Séjours')

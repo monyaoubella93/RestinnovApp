@@ -12,7 +12,7 @@ export function InstallPromptCard() {
 
   return (
     <div className="mb-4 flex items-center gap-3 rounded-card-agent-lg border-2 border-brand-border bg-brand-pale p-4">
-      <img src="/logo.png" alt="" className="h-[42px] w-[42px] shrink-0 rounded-xl object-contain" />
+      <img src="/logo.png" alt="" className="h-[34px] w-auto shrink-0 object-contain" />
       <div className="min-w-0 flex-1">
         <p className="text-base font-bold text-ink">Installer sur le téléphone</p>
         <p className="text-sm text-ink-tertiary">Accès rapide depuis l'écran d'accueil, même hors ligne.</p>

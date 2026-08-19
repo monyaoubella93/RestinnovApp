@@ -27,7 +27,10 @@ export function LoginScreen() {
         onSubmit={handleSubmit}
         className="w-full max-w-sm space-y-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
       >
-        <h1 className="text-lg font-semibold text-gray-900">Séjours & ménage</h1>
+        <div className="flex flex-col items-center gap-3 text-center">
+          <img src="/logo.png" alt="RestInnov" className="h-14 w-auto object-contain" />
+          <h1 className="text-lg font-semibold text-gray-900">RestInnov</h1>
+        </div>
         <p className="text-sm text-gray-500">Connectez-vous pour continuer.</p>
 
         <div>
