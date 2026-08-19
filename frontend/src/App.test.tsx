@@ -506,7 +506,7 @@ describe('App', () => {
     renderApp()
 
     await screen.findByTestId('dashboard-revenus-totaux')
-    await user.click(screen.getByRole('button', { name: /📅\s*À venir\s*1/i }))
+    await user.click(screen.getByRole('button', { name: /1\s*à venir/i }))
 
     expect(await screen.findByRole('button', { name: 'Liste des séjours' })).toHaveClass(/bg-brand/)
     expect(screen.getByLabelText(/^statut$/i)).toHaveValue('a_venir')
