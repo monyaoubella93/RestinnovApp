@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { DashboardSection } from './DashboardSection'
@@ -58,19 +58,15 @@ describe('DashboardSection', () => {
     expect(screen.getByTestId('dashboard-resultat-net')).toHaveTextContent('1350.00 MAD')
   })
 
-  it('donne une couleur d\'accent distincte à chacune des 4 cartes de statistiques', () => {
+  it('donne un fond marine à la carte "Résultat net", blanc aux trois autres', () => {
     render(<DashboardSection data={data} loading={false} error={null} />)
 
-    expect(screen.getByTestId('dashboard-revenus-totaux').closest('div.rounded-lg')).toHaveClass('border-emerald-200')
-    expect(screen.getByTestId('dashboard-frais-menage-totaux').closest('div.rounded-lg')).toHaveClass('border-orange-200')
-    expect(screen.getByTestId('dashboard-frais-maintenance-totaux').closest('div.rounded-lg')).toHaveClass('border-red-200')
-    expect(screen.getByTestId('dashboard-resultat-net').closest('div.rounded-lg')).toHaveClass('border-blue-200')
-  })
-
-  it('affiche un effet de survol sur les cartes de statistiques', () => {
-    render(<DashboardSection data={data} loading={false} error={null} />)
-
-    expect(screen.getByTestId('dashboard-revenus-totaux').closest('div.rounded-lg')).toHaveClass('hover:shadow-md')
+    expect(screen.getByTestId('dashboard-revenus-totaux').closest('div.rounded-card-manager')).toHaveClass('bg-surface')
+    expect(screen.getByTestId('dashboard-frais-menage-totaux').closest('div.rounded-card-manager')).toHaveClass('bg-surface')
+    expect(screen.getByTestId('dashboard-frais-maintenance-totaux').closest('div.rounded-card-manager')).toHaveClass(
+      'bg-surface',
+    )
+    expect(screen.getByTestId('dashboard-resultat-net').closest('div.rounded-card-manager')).toHaveClass('bg-marine')
   })
 
   it('affiche le nombre de séjours par statut sous forme de mini-cartes cliquables', () => {
@@ -131,7 +127,7 @@ describe('DashboardSection', () => {
       />,
     )
 
-    expect(screen.getByText('Maintenance')).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: 'Maintenance' })).toBeInTheDocument()
   })
 
   it('affiche les problèmes signalés avec adresse et badge d\'urgence, cliquable', async () => {
@@ -244,6 +240,40 @@ describe('DashboardSection', () => {
     render(<DashboardSection data={{ ...data, resolutions_a_valider: [] }} loading={false} error={null} />)
 
     expect(screen.getByText('Aucune résolution en attente.')).toBeInTheDocument()
+  })
+
+  it('affiche le total combiné des 3 catégories dans le badge "À traiter aujourd\'hui"', () => {
+    render(
+      <DashboardSection
+        data={{
+          ...data,
+          menages_a_valider: [
+            { id: 1, sejour_id: 10, nom_voyageur: 'Jean Dupont', appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' } },
+          ],
+          problemes_signales: [
+            { id: 1, photo_url: null, description: null, urgence: 'haute', statut: 'ouvert', appartement: { id: 2, nom: 'Zenith', adresse: '5 avenue de la Paix' } },
+          ],
+          resolutions_a_valider: [
+            { id: 1, photo_apres: null, cout_reparation: '45.50', description_manager: null, statut: 'resolu_en_attente_validation', appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' } },
+          ],
+        }}
+        loading={false}
+        error={null}
+      />,
+    )
+
+    const heading = screen.getByText("À traiter aujourd'hui")
+    expect(heading).toBeInTheDocument()
+    expect(within(heading.parentElement as HTMLElement).getByText('3')).toBeInTheDocument()
+  })
+
+  it('calcule la répartition ménage/maintenance du donut à partir des totaux réels', () => {
+    render(<DashboardSection data={data} loading={false} error={null} />)
+
+    expect(screen.getByText('Répartition des charges')).toBeInTheDocument()
+    // frais_menage_totaux: 100, frais_maintenance_totaux: 350 => 22 % / 78 %
+    expect(screen.getByText(/22\s*%/)).toBeInTheDocument()
+    expect(screen.getByText(/78\s*%/)).toBeInTheDocument()
   })
 
   it('précise que le résultat net n\'inclut pas la commission propriétaire', () => {
