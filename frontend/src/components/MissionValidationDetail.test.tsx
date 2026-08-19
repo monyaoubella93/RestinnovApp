@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { MissionValidationDetail } from './MissionValidationDetail'
@@ -201,5 +201,55 @@ describe('MissionValidationDetail', () => {
     const image = screen.getByAltText('Photo de preuve du travail')
     expect(image).toHaveAttribute('src', expect.stringContaining('missions-menage-photos-preuve/preuve.jpg'))
     expect(screen.getByText('Corrigé')).toBeInTheDocument()
+  })
+
+  it('agrandit une photo de preuve du travail au clic, et la referme', async () => {
+    const user = userEvent.setup()
+    render(
+      <MissionValidationDetail
+        mission={missionFixture({
+          photos_preuve: [
+            { id: 1, mission_menage_id: 10, photo_url: 'missions-menage-photos-preuve/preuve.jpg', note: null, created_at: '2026-08-17T10:00:00Z' },
+          ],
+        })}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /voir le détail/i }))
+    await user.click(screen.getByRole('button', { name: /agrandir la photo de preuve du travail/i }))
+
+    const dialog = screen.getByRole('dialog')
+    const enlarged = within(dialog).getAllByAltText('Photo de preuve du travail')[0]
+    expect(enlarged).toHaveAttribute('src', expect.stringContaining('missions-menage-photos-preuve/preuve.jpg'))
+
+    await user.click(screen.getByRole('button', { name: /fermer l'aperçu/i }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('agrandit la photo d\'un item de checklist au clic', async () => {
+    const user = userEvent.setup()
+    render(
+      <MissionValidationDetail
+        mission={missionFixture({
+          checklist_items: [
+            {
+              id: 1,
+              mission_menage_id: 10,
+              libelle: 'Changer les draps',
+              coche: true,
+              photo_url: 'checklist-items/preuve.jpg',
+              photo_reference_url: null,
+              ordre: 0,
+            },
+          ],
+        })}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /voir le détail/i }))
+    await user.click(screen.getByRole('button', { name: /agrandir la photo de "changer les draps"/i }))
+
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getAllByAltText('Photo de "Changer les draps"').length).toBeGreaterThan(0)
   })
 })
