@@ -81,7 +81,8 @@
       "photoProduit": "Photo du produit",
       "photoOf": "Photo de \"{{nom}}\"",
       "photoRequise": "Une photo est obligatoire.",
-      "signale": "Produit signalé, en attente de validation par le Manager."
+      "signale": "Produit signalé, en attente de validation par le Manager.",
+      "photoTooLarge": "Photo trop lourde, réessayez avec une photo plus légère."
     },
     "photoPreuve": {
       "refuseeHint": "Mission refusée : montrez au Manager le travail corrigé.",
@@ -92,7 +93,8 @@
       "inputLabel": "Photos de preuve de travail",
       "previewAlt": "Aperçu photo de preuve {{index}}",
       "removePhoto": "Retirer la photo {{index}}",
-      "atLeastOnePhoto": "Ajoutez au moins une photo."
+      "atLeastOnePhoto": "Ajoutez au moins une photo.",
+      "photoTooLarge": "Photo trop lourde, réessayez avec une photo plus légère."
     },
     "signalerProbleme": {
       "button": "Signaler un problème",
@@ -109,7 +111,9 @@
       "restartRecording": "Recommencer l'enregistrement audio",
       "descriptionLabel": "Description (optionnel)",
       "micError": "Impossible d'accéder au micro.",
-      "atLeastOne": "Ajoutez au moins une photo, un audio ou une description."
+      "atLeastOne": "Ajoutez au moins une photo, un audio ou une description.",
+      "photoTooLarge": "Photo trop lourde, réessayez avec une photo plus légère.",
+      "audioTooLarge": "Enregistrement audio trop lourd, recommencez un enregistrement plus court."
     }
   },
   "maintenance": {
@@ -149,7 +153,8 @@
       "prix": "Prix de la réparation (MAD)",
       "photoRequise": "Prenez une photo de la réparation.",
       "prixRequis": "Indiquez le prix de la réparation.",
-      "resoudre": "Marquer résolu"
+      "resoudre": "Marquer résolu",
+      "photoTooLarge": "Photo trop lourde, réessayez avec une photo plus légère."
     }
   },
   "install": {

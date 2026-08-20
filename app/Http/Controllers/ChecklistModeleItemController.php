@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HasFriendlyUploadMessages;
 use App\Models\ChecklistModele;
 use App\Models\ChecklistModeleItem;
 use Illuminate\Http\JsonResponse;
@@ -9,6 +10,8 @@ use Illuminate\Http\Request;
 
 class ChecklistModeleItemController extends Controller
 {
+    use HasFriendlyUploadMessages;
+
     /**
      * Add a new item at the end of a checklist modele. The reference photo
      * is optional -- shown to the agent as guidance on the mission's
@@ -18,8 +21,8 @@ class ChecklistModeleItemController extends Controller
     {
         $validated = $request->validate([
             'libelle' => ['required', 'string', 'max:255'],
-            'photo' => ['sometimes', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
-        ]);
+            'photo' => ['sometimes', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+        ], $this->uploadValidationMessages());
 
         $nextOrdre = ($checklistModele->items()->max('ordre') ?? -1) + 1;
 

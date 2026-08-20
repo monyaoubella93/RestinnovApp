@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { marquerTicketMaintenanceRefusVu, resoudreTicketMaintenance, resolveStorageUrl } from '../api'
 import type { MonTicketMaintenance } from '../types'
 import { URGENCE_STYLES } from '../utils/urgence'
+import { friendlyUploadErrorMessage } from '../utils/uploadError'
 
 interface TicketDetailAgentProps {
   ticket: MonTicketMaintenance
@@ -57,7 +58,12 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
       setResolu(true)
       onResolu()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common.genericError'))
+      setError(
+        friendlyUploadErrorMessage(err, {
+          tooLarge: t('maintenance.detail.photoTooLarge'),
+          generic: t('common.genericError'),
+        }),
+      )
     } finally {
       setSubmitting(false)
     }

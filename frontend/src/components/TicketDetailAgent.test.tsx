@@ -184,4 +184,18 @@ describe('TicketDetailAgent', () => {
     // Stays visible -- no redirect back to the list.
     expect(screen.getByRole('button', { name: /retour à mes tickets/i })).toBeInTheDocument()
   })
+
+  it('affiche un message clair quand la photo de réparation est trop lourde', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = vi.fn(async () => new Response(null, { status: 413 })) as typeof fetch
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    const photo = new File(['x'], 'reparation.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText(/photo de la réparation/i), photo)
+    await user.type(screen.getByLabelText(/prix de la réparation/i), '45')
+    await user.click(screen.getByRole('button', { name: /marquer résolu/i }))
+
+    expect(await screen.findByText(/photo trop lourde, réessayez avec une photo plus légère/i)).toBeInTheDocument()
+  })
 })

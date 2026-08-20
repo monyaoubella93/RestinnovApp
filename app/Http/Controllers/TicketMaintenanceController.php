@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\AuthorizesTicketAccess;
+use App\Http\Controllers\Concerns\HasFriendlyUploadMessages;
 use App\Models\TicketMaintenance;
 use App\Models\TicketMaintenanceRefus;
 use App\Models\Utilisateur;
@@ -15,6 +16,7 @@ use Illuminate\Validation\Rule;
 class TicketMaintenanceController extends Controller
 {
     use AuthorizesTicketAccess;
+    use HasFriendlyUploadMessages;
 
     private const DETAIL_RELATIONS = ['appartement', 'missionOrigine.sejour', 'agent', 'refus.manager'];
 
@@ -176,12 +178,12 @@ class TicketMaintenanceController extends Controller
             // photo/audio stay Manager-only, never shown to maintenance.
             // Either written or spoken works, at least one is required.
             'description_manager' => ['nullable', 'string', 'max:1000'],
-            'description_manager_audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:10240'],
+            'description_manager_audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:5120'],
             // The Manager's explicit, opt-in decision to also hand the
             // ménage agent's original signalement photo down to
             // maintenance -- never automatic.
             'photo_transferee' => ['sometimes', 'boolean'],
-        ]);
+        ], $this->uploadValidationMessages());
 
         $validator->after(function ($validator) use ($request) {
             $hasDescription = trim((string) $request->input('description_manager', '')) !== '';
@@ -347,10 +349,10 @@ class TicketMaintenanceController extends Controller
         }
 
         $validated = $request->validate([
-            'photo_apres' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
+            'photo_apres' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'cout_reparation' => ['required', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:1000'],
-        ]);
+        ], $this->uploadValidationMessages());
 
         $photoApresUrl = $request->file('photo_apres')->store('tickets-maintenance', 'public');
 
@@ -407,9 +409,9 @@ class TicketMaintenanceController extends Controller
 
         $validator = Validator::make($request->all(), [
             'motif' => ['nullable', 'string', 'max:1000'],
-            'motif_audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:10240'],
-            'motif_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
-        ]);
+            'motif_audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:5120'],
+            'motif_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+        ], $this->uploadValidationMessages());
 
         $validator->after(function ($validator) use ($request) {
             $hasMotif = trim((string) $request->input('motif', '')) !== '';

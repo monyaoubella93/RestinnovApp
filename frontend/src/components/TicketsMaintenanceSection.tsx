@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   assignerTicketMaintenance,
   fetchTicketsMaintenance,
@@ -13,12 +13,13 @@ import type { Agent, Appartement, TicketMaintenance, TicketMaintenanceParApparte
 import { STATUT_VALIDATION_STYLES } from '../utils/statutValidation'
 import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 import { RefuserModal } from './RefuserModal'
+import { useAudioRecorder, MAX_RECORDING_SECONDS } from '../hooks/useAudioRecorder'
+import { RecordingIndicator } from './RecordingIndicator'
+import { friendlyUploadErrorMessage } from '../utils/uploadError'
 
 type Vue = 'liste' | 'groupe'
 
 type ExpressionMode = 'texte' | 'audio'
-
-type RecordingState = 'idle' | 'recording' | 'recorded'
 
 interface AssignerValues {
   agentId: number
@@ -59,63 +60,26 @@ function AssignerForm({
   const [agentId, setAgentId] = useState('')
   const [expressionMode, setExpressionMode] = useState<ExpressionMode>('texte')
   const [descriptionManager, setDescriptionManager] = useState('')
-  const [recordingState, setRecordingState] = useState<RecordingState>('idle')
-  const [audioFile, setAudioFile] = useState<File | null>(null)
-  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null)
   const [photoTransferee, setPhotoTransferee] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
-  const streamRef = useRef<MediaStream | null>(null)
-
-  const micSupported =
-    typeof window !== 'undefined' &&
-    typeof window.MediaRecorder !== 'undefined' &&
-    typeof navigator !== 'undefined' &&
-    !!navigator.mediaDevices?.getUserMedia
+  const {
+    recordingState,
+    audioFile,
+    audioPreviewUrl,
+    elapsedSeconds,
+    error: micError,
+    micSupported,
+    startRecording,
+    stopRecording,
+    resetAudio,
+  } = useAudioRecorder({
+    filename: 'instruction-manager.webm',
+    micErrorMessage: "Impossible d'accéder au micro.",
+  })
 
   const hasExpression = descriptionManager.trim() !== '' || audioFile !== null
-
-  const startRecording = async () => {
-    setError(null)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream
-      const recorder = new MediaRecorder(stream)
-      audioChunksRef.current = []
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunksRef.current.push(event.data)
-      }
-      recorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
-        const file = new File([blob], 'instruction-manager.webm', { type: blob.type })
-        setAudioFile(file)
-        setAudioPreviewUrl(URL.createObjectURL(file))
-        streamRef.current?.getTracks().forEach((track) => track.stop())
-        streamRef.current = null
-      }
-
-      mediaRecorderRef.current = recorder
-      recorder.start()
-      setRecordingState('recording')
-    } catch {
-      setError("Impossible d'accéder au micro.")
-    }
-  }
-
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop()
-    setRecordingState('recorded')
-  }
-
-  const resetAudio = () => {
-    setAudioFile(null)
-    setAudioPreviewUrl(null)
-    setRecordingState('idle')
-  }
 
   const handleAssigner = async () => {
     setError(null)
@@ -137,7 +101,12 @@ function AssignerForm({
         photoTransferee,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue.')
+      setError(
+        friendlyUploadErrorMessage(err, {
+          tooLarge: 'Enregistrement audio trop lourd, recommencez un enregistrement plus court.',
+          generic: 'Une erreur est survenue.',
+        }),
+      )
     } finally {
       setSubmitting(false)
     }
@@ -202,7 +171,11 @@ function AssignerForm({
               >
                 ⏹ Arrêter l'enregistrement
               </button>
-            ) : (
+            ) : null}
+            {recordingState === 'recording' && (
+              <RecordingIndicator elapsedSeconds={elapsedSeconds} maxSeconds={MAX_RECORDING_SECONDS} />
+            )}
+            {recordingState === 'recorded' && (
               <div className="flex items-center gap-2">
                 {audioPreviewUrl && (
                   // eslint-disable-next-line jsx-a11y/media-has-caption
@@ -260,7 +233,7 @@ function AssignerForm({
           {submitting ? 'Assignation...' : 'Assigner'}
         </button>
       </div>
-      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
+      {(error || micError) && <p className="mt-1 text-sm text-danger">{error || micError}</p>}
     </>
   )
 }
