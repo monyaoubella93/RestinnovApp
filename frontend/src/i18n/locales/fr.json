@@ -138,7 +138,13 @@
       "empty": "Aucun ticket validé pour l'instant.",
       "error": "Impossible de charger l'historique.",
       "photoApres": "Photo après réparation",
-      "cout": "Coût : {{montant}} MAD"
+      "cout": "Coût : {{montant}} MAD",
+      "searchLabel": "Recherche",
+      "searchPlaceholder": "Référence, appartement...",
+      "appartementLabel": "Appartement",
+      "appartementAll": "Tous",
+      "dateDebutLabel": "Du",
+      "dateFinLabel": "Au"
     },
     "detail": {
       "back": "← Retour à mes tickets",
@@ -154,7 +160,25 @@
       "photoRequise": "Prenez une photo de la réparation.",
       "prixRequis": "Indiquez le prix de la réparation.",
       "resoudre": "Marquer résolu",
-      "photoTooLarge": "Photo trop lourde, réessayez avec une photo plus légère."
+      "photoTooLarge": "Photo trop lourde, réessayez avec une photo plus légère.",
+      "message": {
+        "button": "Envoyer un message au Manager",
+        "openCamera": "Ouvrir l'appareil photo",
+        "photoAlt": "Photo du message",
+        "previewAlt": "Aperçu de la photo",
+        "audioUnavailable": "Audio non disponible",
+        "recordAudio": "Enregistrer un message audio",
+        "stopRecording": "Arrêter l'enregistrement",
+        "recording": "Enregistrement...",
+        "restartRecording": "Recommencer l'enregistrement audio",
+        "noteLabel": "Note (optionnel)",
+        "micError": "Impossible d'accéder au micro.",
+        "atLeastOne": "Ajoutez une photo, un audio ou une note.",
+        "sentConfirmation": "Message envoyé au Manager",
+        "photoTooLarge": "Photo trop lourde, réessayez avec une photo plus légère.",
+        "audioTooLarge": "Enregistrement audio trop lourd, recommencez un enregistrement plus court.",
+        "historyTitle": "Messages envoyés"
+      }
     }
   },
   "install": {

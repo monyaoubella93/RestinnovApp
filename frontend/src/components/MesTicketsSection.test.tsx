@@ -16,6 +16,7 @@ function ticketFixture(overrides: Partial<MonTicketMaintenance> = {}): MonTicket
     photo_url: null,
     appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' },
     refus: [],
+    messages_agent: [],
     ...overrides,
   }
 }

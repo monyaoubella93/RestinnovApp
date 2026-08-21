@@ -136,7 +136,13 @@
       "empty": "لا توجد تذكرة مقبولة حالياً.",
       "error": "تعذر تحميل السجل.",
       "photoApres": "صورة بعد الإصلاح",
-      "cout": "التكلفة: {{montant}} درهم"
+      "cout": "التكلفة: {{montant}} درهم",
+      "searchLabel": "بحث",
+      "searchPlaceholder": "المرجع، الشقة...",
+      "appartementLabel": "الشقة",
+      "appartementAll": "الكل",
+      "dateDebutLabel": "من",
+      "dateFinLabel": "إلى"
     },
     "detail": {
       "back": "→ العودة إلى تذاكري",
@@ -152,7 +158,25 @@
       "photoRequise": "التقط صورة للإصلاح.",
       "prixRequis": "أدخل تكلفة الإصلاح.",
       "resoudre": "تأكيد الإصلاح",
-      "photoTooLarge": "الصورة كبيرة جداً، أعد المحاولة بصورة أصغر حجماً."
+      "photoTooLarge": "الصورة كبيرة جداً، أعد المحاولة بصورة أصغر حجماً.",
+      "message": {
+        "button": "إرسال رسالة إلى المدير",
+        "openCamera": "فتح الكاميرا",
+        "photoAlt": "صورة الرسالة",
+        "previewAlt": "معاينة الصورة",
+        "audioUnavailable": "الصوت غير متاح",
+        "recordAudio": "تسجيل رسالة صوتية",
+        "stopRecording": "إيقاف التسجيل",
+        "recording": "جارٍ التسجيل...",
+        "restartRecording": "إعادة التسجيل",
+        "noteLabel": "ملاحظة (اختياري)",
+        "micError": "تعذر الوصول إلى الميكروفون.",
+        "atLeastOne": "أضف صورة أو تسجيلاً صوتياً أو ملاحظة.",
+        "sentConfirmation": "تم إرسال الرسالة إلى المدير",
+        "photoTooLarge": "الصورة كبيرة جداً، أعد المحاولة بصورة أصغر حجماً.",
+        "audioTooLarge": "التسجيل الصوتي كبير جداً، أعد تسجيلاً أقصر.",
+        "historyTitle": "الرسائل المرسلة"
+      }
     }
   },
   "install": {

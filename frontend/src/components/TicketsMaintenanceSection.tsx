@@ -238,6 +238,35 @@ function AssignerForm({
   )
 }
 
+function MessagesAgentHistorique({ ticket }: { ticket: TicketMaintenance }) {
+  if (!ticket.messages_agent || ticket.messages_agent.length === 0) return null
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-ink-secondary">Messages de l'agent</p>
+      <ul className="mt-1 space-y-2">
+        {ticket.messages_agent.map((message) => (
+          <li key={message.id} className="space-y-1 rounded-field bg-table-header-bg p-2 text-sm text-ink-secondary">
+            <p className="font-mono text-xs text-ink-tertiary">{formatDate(message.created_at)}</p>
+            {message.note && <p>{message.note}</p>}
+            {message.audio_url && (
+              // eslint-disable-next-line jsx-a11y/media-has-caption
+              <audio controls src={resolveStorageUrl(message.audio_url)} className="w-full" />
+            )}
+            {message.photo_url && (
+              <img
+                src={resolveStorageUrl(message.photo_url)}
+                alt="Photo du message de l'agent"
+                className="h-24 w-24 rounded object-cover"
+              />
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function RefusHistorique({ ticket }: { ticket: TicketMaintenance }) {
   if (!ticket.refus || ticket.refus.length === 0) return null
 
@@ -406,6 +435,8 @@ function TicketMaintenanceCard({
             // eslint-disable-next-line jsx-a11y/media-has-caption
             <audio controls src={resolveStorageUrl(ticket.audio_url)} className="w-full" />
           )}
+
+          <MessagesAgentHistorique ticket={ticket} />
 
           {ticket.statut === 'ouvert' && <AssignerForm ticket={ticket} agents={agents} onAssigner={onAssigner} />}
 

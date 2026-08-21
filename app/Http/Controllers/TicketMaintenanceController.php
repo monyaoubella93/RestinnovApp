@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\AuthorizesTicketAccess;
 use App\Http\Controllers\Concerns\HasFriendlyUploadMessages;
+use App\Models\MessageAgentMaintenance;
 use App\Models\TicketMaintenance;
 use App\Models\TicketMaintenanceRefus;
 use App\Models\Utilisateur;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,7 +20,7 @@ class TicketMaintenanceController extends Controller
     use AuthorizesTicketAccess;
     use HasFriendlyUploadMessages;
 
-    private const DETAIL_RELATIONS = ['appartement', 'missionOrigine.sejour', 'agent', 'refus.manager'];
+    private const DETAIL_RELATIONS = ['appartement', 'missionOrigine.sejour', 'agent', 'refus.manager', 'messagesAgent'];
 
     // An appartement is flagged "récurrent" in the par-appartement historique
     // view once it reaches this many tickets (any statut) within the
@@ -242,7 +244,7 @@ class TicketMaintenanceController extends Controller
                 TicketMaintenance::STATUT_A_REFAIRE,
                 TicketMaintenance::STATUT_RESOLU_EN_ATTENTE_VALIDATION,
             ])
-            ->with(['appartement:id,nom,adresse', 'refus'])
+            ->with(['appartement:id,nom,adresse', 'refus', 'messagesAgent'])
             ->latest()
             ->get()
             ->map(fn (TicketMaintenance $ticket) => [
@@ -269,6 +271,13 @@ class TicketMaintenanceController extends Controller
                     'vu' => $refus->vu,
                     'date' => $refus->created_at,
                 ])->values(),
+                'messages_agent' => $ticket->messagesAgent->map(fn (MessageAgentMaintenance $message) => [
+                    'id' => $message->id,
+                    'photo_url' => $message->photo_url,
+                    'audio_url' => $message->audio_url,
+                    'note' => $message->note,
+                    'created_at' => $message->created_at,
+                ])->values(),
             ]);
 
         return response()->json($tickets);
@@ -279,6 +288,12 @@ class TicketMaintenanceController extends Controller
      * (resolu) tickets -- mirrors MissionMenageController::historique() on
      * the ménage side. Explicitly own-agent-only server-side, same as
      * mesTickets(): a "maintenance" caller can never pass another agent's id.
+     * Searchable/filterable the same way as the Manager's index()/
+     * parAppartement() (reference or appartement nom, appartement_id, and a
+     * date range on the séjour's date_arrivee) -- reuses applyFilters() so
+     * both sides of the app always agree on what a filter combination
+     * includes; only 'statut' from that shared filter set is irrelevant
+     * here since it's already hardcoded to "resolu".
      */
     public function mesTicketsHistorique(Request $request): JsonResponse
     {
@@ -293,25 +308,41 @@ class TicketMaintenanceController extends Controller
             $agentId = $validated['agent_id'];
         }
 
-        $tickets = TicketMaintenance::where('agent_id', $agentId)
+        $validated = $request->validate([
+            'appartement_id' => ['sometimes', 'integer', 'exists:appartements,id'],
+            'date_debut' => ['sometimes', 'date'],
+            'date_fin' => ['sometimes', 'date'],
+            'search' => ['sometimes', 'string', 'max:255'],
+        ]);
+
+        $query = TicketMaintenance::where('agent_id', $agentId)
             ->where('statut', TicketMaintenance::STATUT_RESOLU)
-            ->with('appartement:id,nom,adresse')
-            ->latest()
-            ->get()
-            ->map(fn (TicketMaintenance $ticket) => [
-                'id' => $ticket->id,
-                'reference' => $ticket->reference,
-                'urgence' => $ticket->urgence,
-                'description_manager' => $ticket->description_manager,
-                'photo_apres' => $ticket->photo_apres,
-                'cout_reparation' => $ticket->cout_reparation !== null ? round((float) $ticket->cout_reparation, 2) : null,
-                'note_resolution' => $ticket->note_resolution,
-                'appartement' => $ticket->appartement ? [
-                    'id' => $ticket->appartement->id,
-                    'nom' => $ticket->appartement->nom,
-                    'adresse' => $ticket->appartement->adresse,
-                ] : null,
-            ]);
+            ->with(['appartement:id,nom,adresse', 'messagesAgent'])
+            ->latest();
+
+        $this->applyFilters($query, $validated);
+
+        $tickets = $query->get()->map(fn (TicketMaintenance $ticket) => [
+            'id' => $ticket->id,
+            'reference' => $ticket->reference,
+            'urgence' => $ticket->urgence,
+            'description_manager' => $ticket->description_manager,
+            'photo_apres' => $ticket->photo_apres,
+            'cout_reparation' => $ticket->cout_reparation !== null ? round((float) $ticket->cout_reparation, 2) : null,
+            'note_resolution' => $ticket->note_resolution,
+            'appartement' => $ticket->appartement ? [
+                'id' => $ticket->appartement->id,
+                'nom' => $ticket->appartement->nom,
+                'adresse' => $ticket->appartement->adresse,
+            ] : null,
+            'messages_agent' => $ticket->messagesAgent->map(fn (MessageAgentMaintenance $message) => [
+                'id' => $message->id,
+                'photo_url' => $message->photo_url,
+                'audio_url' => $message->audio_url,
+                'note' => $message->note,
+                'created_at' => $message->created_at,
+            ])->values(),
+        ]);
 
         return response()->json($tickets);
     }
@@ -325,6 +356,58 @@ class TicketMaintenanceController extends Controller
         $this->authorizeTicketAccess($request, $ticketMaintenance);
 
         $ticketMaintenance->refus()->where('vu', false)->update(['vu' => true]);
+
+        return response()->json($ticketMaintenance->fresh(self::DETAIL_RELATIONS));
+    }
+
+    /**
+     * The assigned maintenance agent sends an intermediate photo/audio/note
+     * message to the Manager on a ticket they're currently working --
+     * distinct from resoudre()'s final proof-of-work: this is for
+     * clarifying something or asking a question before or during the
+     * repair, not for wrapping it up. At least one of photo/audio/note is
+     * required, same pattern as signalerProbleme()/refuserResolution().
+     *
+     * Unlike every other agent-facing action here, this is explicitly
+     * agent-only -- not just "own ticket", but never the Manager, even
+     * though the route sits in the same role:maintenance,manager group as
+     * its siblings. A Manager has no reason to send themselves a message.
+     */
+    public function envoyerMessage(Request $request, TicketMaintenance $ticketMaintenance): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->role !== Utilisateur::ROLE_MAINTENANCE || $ticketMaintenance->agent_id !== $user->id) {
+            throw new AuthorizationException('Accès refusé.');
+        }
+
+        if (! in_array($ticketMaintenance->statut, [TicketMaintenance::STATUT_ASSIGNE, TicketMaintenance::STATUT_A_REFAIRE], true)) {
+            return response()->json([
+                'message' => 'Ce ticket n\'est pas en cours.',
+            ], 422);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+            'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:5120'],
+            'note' => ['nullable', 'string', 'max:1000'],
+        ], $this->uploadValidationMessages());
+
+        $validator->after(function ($validator) use ($request) {
+            $hasNote = trim((string) $request->input('note', '')) !== '';
+
+            if (! $request->hasFile('photo') && ! $request->hasFile('audio') && ! $hasNote) {
+                $validator->errors()->add('note', 'Ajoutez une photo, un audio ou une note.');
+            }
+        });
+
+        $validated = $validator->validate();
+
+        $ticketMaintenance->messagesAgent()->create([
+            'photo_url' => $request->hasFile('photo') ? $request->file('photo')->store('tickets-maintenance', 'public') : null,
+            'audio_url' => $request->hasFile('audio') ? $request->file('audio')->store('tickets-maintenance', 'public') : null,
+            'note' => $validated['note'] ?? null,
+        ]);
 
         return response()->json($ticketMaintenance->fresh(self::DETAIL_RELATIONS));
     }
