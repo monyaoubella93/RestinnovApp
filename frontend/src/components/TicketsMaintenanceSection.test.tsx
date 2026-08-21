@@ -355,6 +355,29 @@ describe('TicketsMaintenanceSection', () => {
     expect(screen.queryByRole('button', { name: /^valider$/i })).not.toBeInTheDocument()
   })
 
+  it('affiche les messages intermédiaires de l\'agent, par ordre chronologique', async () => {
+    const user = userEvent.setup()
+    const ticket = ticketFixture({
+      statut: 'assigne',
+      agent_id: 5,
+      agent: agentFixture(),
+      messages_agent: [
+        { id: 1, photo_url: null, audio_url: null, note: 'Je dois commander une pièce.', created_at: '2026-08-11T09:00:00Z' },
+        { id: 2, photo_url: 'tickets-maintenance/message-photo.jpg', audio_url: null, note: null, created_at: '2026-08-11T10:00:00Z' },
+      ],
+    })
+    renderSection([ticket])
+
+    await expandTicket(user, 'Le robinet fuit.')
+
+    expect(screen.getByText("Messages de l'agent")).toBeInTheDocument()
+    expect(screen.getByText('Je dois commander une pièce.')).toBeInTheDocument()
+    expect(screen.getByAltText("Photo du message de l'agent")).toHaveAttribute(
+      'src',
+      expect.stringContaining('tickets-maintenance/message-photo.jpg'),
+    )
+  })
+
   it('affiche un ticket résolu en lecture seule avec la photo après réparation et le coût', async () => {
     const user = userEvent.setup()
     const ticket = ticketFixture({

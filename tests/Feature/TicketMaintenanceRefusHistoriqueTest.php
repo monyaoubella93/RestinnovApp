@@ -185,4 +185,97 @@ class TicketMaintenanceRefusHistoriqueTest extends TestCase
         $response->assertJsonPath('0.id', $newer->id);
         $response->assertJsonPath('1.id', $older->id);
     }
+
+    public function test_mes_tickets_historique_filters_by_appartement(): void
+    {
+        $agent = $this->agentMaintenance();
+        $bastille = $this->appartement();
+        $marais = Appartement::create(['nom' => 'Studio Marais', 'adresse' => '3 rue des Rosiers', 'statut' => 'disponible']);
+
+        $ticketBastille = $this->ticket(['statut' => 'resolu', 'agent_id' => $agent->id, 'appartement_id' => $bastille->id]);
+        $this->ticket(['statut' => 'resolu', 'agent_id' => $agent->id, 'appartement_id' => $marais->id]);
+
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->getJson('/api/tickets-maintenance/mes-tickets/historique?appartement_id='.$bastille->id);
+
+        $response->assertOk();
+        $response->assertJsonCount(1);
+        $response->assertJsonPath('0.id', $ticketBastille->id);
+    }
+
+    public function test_mes_tickets_historique_filters_by_sejour_date_arrivee_range(): void
+    {
+        $agent = $this->agentMaintenance();
+        $appartement = $this->appartement();
+
+        $sejourJanvier = Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-01-10',
+            'date_depart' => '2026-01-12',
+            'nom_voyageur' => 'Jean Dupont',
+        ]);
+        $missionJanvier = MissionMenage::create(['sejour_id' => $sejourJanvier->id, 'statut' => 'a_faire']);
+        $ticketJanvier = $this->ticket([
+            'mission_origine_id' => $missionJanvier->id,
+            'appartement_id' => $appartement->id,
+            'statut' => 'resolu',
+            'agent_id' => $agent->id,
+        ]);
+
+        $sejourMars = Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-03-10',
+            'date_depart' => '2026-03-12',
+            'nom_voyageur' => 'Marie Curie',
+        ]);
+        $missionMars = MissionMenage::create(['sejour_id' => $sejourMars->id, 'statut' => 'a_faire']);
+        $this->ticket([
+            'mission_origine_id' => $missionMars->id,
+            'appartement_id' => $appartement->id,
+            'statut' => 'resolu',
+            'agent_id' => $agent->id,
+        ]);
+
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->getJson('/api/tickets-maintenance/mes-tickets/historique?date_debut=2026-01-01&date_fin=2026-01-31');
+
+        $response->assertOk();
+        $response->assertJsonCount(1);
+        $response->assertJsonPath('0.id', $ticketJanvier->id);
+    }
+
+    public function test_mes_tickets_historique_searches_by_reference_or_appartement_nom(): void
+    {
+        $agent = $this->agentMaintenance();
+        $bastille = $this->appartement();
+        $marais = Appartement::create(['nom' => 'Studio Marais', 'adresse' => '3 rue des Rosiers', 'statut' => 'disponible']);
+
+        $this->ticket(['statut' => 'resolu', 'agent_id' => $agent->id, 'appartement_id' => $bastille->id]);
+        $ticketMarais = $this->ticket(['statut' => 'resolu', 'agent_id' => $agent->id, 'appartement_id' => $marais->id]);
+
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->getJson('/api/tickets-maintenance/mes-tickets/historique?search=Marais');
+
+        $response->assertOk();
+        $response->assertJsonCount(1);
+        $response->assertJsonPath('0.id', $ticketMarais->id);
+    }
+
+    public function test_mes_tickets_historique_never_returns_another_agents_ticket_even_when_it_matches_a_filter(): void
+    {
+        $agent = $this->agentMaintenance();
+        $autreAgent = $this->agentMaintenance(['nom' => 'Autre']);
+        $appartement = $this->appartement();
+        $this->ticket(['statut' => 'resolu', 'agent_id' => $autreAgent->id, 'appartement_id' => $appartement->id]);
+
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->getJson('/api/tickets-maintenance/mes-tickets/historique?appartement_id='.$appartement->id);
+
+        $response->assertOk();
+        $response->assertJsonCount(0);
+    }
 }

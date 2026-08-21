@@ -891,8 +891,23 @@ export async function fetchMesTicketsMaintenance(): Promise<MonTicketMaintenance
   return parseJsonOrThrow(response)
 }
 
-export async function fetchMesTicketsMaintenanceHistorique(): Promise<HistoriqueTicketAgent[]> {
-  const response = await fetch(`${API_BASE_URL}/api/tickets-maintenance/mes-tickets/historique`, {
+export interface FetchMesTicketsMaintenanceHistoriqueParams {
+  appartementId?: number
+  dateDebut?: string
+  dateFin?: string
+  search?: string
+}
+
+export async function fetchMesTicketsMaintenanceHistorique(
+  params: FetchMesTicketsMaintenanceHistoriqueParams = {},
+): Promise<HistoriqueTicketAgent[]> {
+  const url = new URL(`${API_BASE_URL}/api/tickets-maintenance/mes-tickets/historique`)
+  if (params.appartementId) url.searchParams.set('appartement_id', String(params.appartementId))
+  if (params.dateDebut) url.searchParams.set('date_debut', params.dateDebut)
+  if (params.dateFin) url.searchParams.set('date_fin', params.dateFin)
+  if (params.search) url.searchParams.set('search', params.search)
+
+  const response = await fetch(url, {
     headers: authHeaders(),
   })
 
@@ -906,6 +921,24 @@ export async function marquerTicketMaintenanceRefusVu(id: number): Promise<Ticke
   })
 
   return parseJsonOrThrow(response)
+}
+
+export interface EnvoyerMessageAgentMaintenanceInput {
+  photo?: File | null
+  audio?: File | null
+  note?: string | null
+}
+
+export async function envoyerMessageAgentMaintenance(
+  id: number,
+  input: EnvoyerMessageAgentMaintenanceInput,
+): Promise<TicketMaintenance> {
+  const formData = new FormData()
+  if (input.photo) formData.append('photo', input.photo)
+  if (input.audio) formData.append('audio', input.audio)
+  if (input.note) formData.append('note', input.note)
+
+  return postFormDataOrQueue(`${API_BASE_URL}/api/tickets-maintenance/${id}/message`, formData)
 }
 
 export async function resoudreTicketMaintenance(
