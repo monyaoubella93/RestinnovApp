@@ -155,6 +155,7 @@ function App() {
   const [pendingSejourId, setPendingSejourId] = useState<number | null>(null)
   const [pendingStatutFilter, setPendingStatutFilter] = useState<SejourStatut | ''>('')
   const [pendingTicketStatutFilter, setPendingTicketStatutFilter] = useState<TicketMaintenanceStatut | ''>('')
+  const [headerSearch, setHeaderSearch] = useState('')
   const { user, logout } = useAuth()
 
   usePwaIdentity('manager')
@@ -630,10 +631,17 @@ function App() {
           <h2 className="text-lg font-bold tracking-[-0.02em] text-ink">{SECTION_TITLES[activeTab]}</h2>
           <div className="border-l border-border-default pl-4 text-[13px] text-ink-tertiary">{todayCapitalized}</div>
           <div className="ml-auto flex items-center gap-2.5">
-            <div className="flex h-9 w-[260px] items-center gap-2 rounded-field border border-border-default bg-table-header-bg px-3 text-[13px] text-ink-disabled">
+            <label className="flex h-9 w-[260px] items-center gap-2 rounded-field border border-border-default bg-table-header-bg px-3 text-[13px] text-ink-disabled focus-within:text-ink">
               <span aria-hidden="true">⌕</span>
-              Rechercher un séjour, un appartement…
-            </div>
+              <input
+                type="text"
+                value={headerSearch}
+                onChange={(event) => setHeaderSearch(event.target.value)}
+                placeholder="Rechercher un séjour, un appartement…"
+                aria-label="Rechercher un séjour, un appartement"
+                className="w-full bg-transparent text-ink placeholder:text-ink-disabled focus:outline-none"
+              />
+            </label>
             <NotificationBell
               onNavigateToSejour={handleNavigateToSejourDetail}
               onNavigateToTicketsMaintenance={() => handleNavigateToTicketsMaintenance('ouvert')}

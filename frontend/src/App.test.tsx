@@ -695,6 +695,20 @@ describe('App', () => {
     expect(await screen.findByTestId('sejour-reference')).toHaveTextContent('SEJ-0042')
   })
 
+  it('le champ de recherche global de l\'en-tête est cliquable et accepte du texte saisi', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = mockFetch({ sejours: [] }) as typeof fetch
+
+    renderApp()
+    await screen.findByTestId('dashboard-revenus-totaux')
+
+    const search = screen.getByLabelText(/rechercher un séjour, un appartement/i)
+    await user.click(search)
+    await user.type(search, 'Loft Bastille')
+
+    expect(search).toHaveValue('Loft Bastille')
+  })
+
   it('le bouton Déconnexion appelle /api/logout et efface la session locale', async () => {
     const user = userEvent.setup()
     globalThis.fetch = mockFetch({ sejours: [] }) as typeof fetch
