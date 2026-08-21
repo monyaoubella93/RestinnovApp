@@ -396,6 +396,42 @@ class TicketMaintenanceManagementTest extends TestCase
         ]);
     }
 
+    public function test_assigner_accepts_an_audio_description_up_to_the_5mb_limit(): void
+    {
+        Storage::fake('public');
+
+        $ticket = $this->ticket();
+        $agent = $this->agentMaintenance();
+
+        $response = $this->post("/api/tickets-maintenance/{$ticket->id}/assigner", [
+            '_method' => 'PATCH',
+            'agent_id' => $agent->id,
+            'description_manager_audio' => UploadedFile::fake()->create('note.mp3', 5120, 'audio/mpeg'),
+        ]);
+
+        $response->assertOk();
+    }
+
+    public function test_assigner_rejects_an_audio_description_over_the_5mb_limit_with_a_clear_message(): void
+    {
+        Storage::fake('public');
+
+        $ticket = $this->ticket();
+        $agent = $this->agentMaintenance();
+
+        $response = $this->post("/api/tickets-maintenance/{$ticket->id}/assigner", [
+            '_method' => 'PATCH',
+            'agent_id' => $agent->id,
+            'description_manager_audio' => UploadedFile::fake()->create('note.mp3', 5121, 'audio/mpeg'),
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonFragment([
+            'description_manager_audio' => ['Enregistrement audio trop lourd, recommencez un enregistrement plus court (5 Mo maximum, soit environ 2 minutes).'],
+        ]);
+        $this->assertDatabaseHas('tickets_maintenance', ['id' => $ticket->id, 'statut' => 'ouvert']);
+    }
+
     public function test_assigner_persists_photo_transferee_when_true(): void
     {
         $ticket = $this->ticket(['photo_url' => 'signalements/photo.jpg']);
@@ -655,6 +691,42 @@ class TicketMaintenanceManagementTest extends TestCase
             'id' => $ticket->id,
             'statut' => 'resolu_en_attente_validation',
         ]);
+    }
+
+    public function test_resoudre_accepts_a_photo_apres_up_to_the_10mb_limit(): void
+    {
+        Storage::fake('public');
+
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
+            '_method' => 'PATCH',
+            'photo_apres' => UploadedFile::fake()->image('reparation.jpg')->size(10240),
+            'cout_reparation' => '45.50',
+        ]);
+
+        $response->assertOk();
+    }
+
+    public function test_resoudre_rejects_a_photo_apres_over_the_10mb_limit_with_a_clear_message(): void
+    {
+        Storage::fake('public');
+
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
+            '_method' => 'PATCH',
+            'photo_apres' => UploadedFile::fake()->image('reparation.jpg')->size(10241),
+            'cout_reparation' => '45.50',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonFragment(['photo_apres' => ['Photo trop lourde, réessayez avec une photo plus légère (10 Mo maximum).']]);
+        $this->assertDatabaseHas('tickets_maintenance', ['id' => $ticket->id, 'statut' => 'assigne']);
     }
 
     public function test_resoudre_requires_photo_apres_and_cout_reparation(): void

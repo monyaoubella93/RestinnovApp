@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveStorageUrl } from '../api'
 import type { MissionMenage, ProduitCatalogue } from '../types'
+import { friendlyUploadErrorMessage } from '../utils/uploadError'
 
 interface FraisMenageSectionProps {
   missionMenage: MissionMenage
@@ -86,7 +87,12 @@ export function FraisMenageSection({
       setShowSignalerForm(false)
       setSignalerSuccess(true)
     } catch (err) {
-      setSignalerError(err instanceof Error ? err.message : t('common.genericError'))
+      setSignalerError(
+        friendlyUploadErrorMessage(err, {
+          tooLarge: t('menage.frais.photoTooLarge'),
+          generic: t('common.genericError'),
+        }),
+      )
     } finally {
       setSignalerSubmitting(false)
     }

@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { SignalerProblemeInput } from '../api'
+import { useAudioRecorder, MAX_RECORDING_SECONDS } from '../hooks/useAudioRecorder'
+import { RecordingIndicator } from './RecordingIndicator'
+import { friendlyUploadErrorMessage } from '../utils/uploadError'
 
 interface SignalerProblemeSectionProps {
   missionMenageId: number
   onSignaler: (missionMenageId: number, input: SignalerProblemeInput) => Promise<void>
 }
-
-type RecordingState = 'idle' | 'recording' | 'recorded'
 
 export function SignalerProblemeSection({ missionMenageId, onSignaler }: SignalerProblemeSectionProps) {
   const { t } = useTranslation()
@@ -15,35 +16,32 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
   const [description, setDescription] = useState('')
-  const [recordingState, setRecordingState] = useState<RecordingState>('idle')
-  const [audioFile, setAudioFile] = useState<File | null>(null)
-  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
-  const streamRef = useRef<MediaStream | null>(null)
 
-  // Recording requires MediaRecorder + getUserMedia, which aren't always
-  // available (older browsers, non-HTTPS contexts, denied permissions,
-  // headless test environments) -- feature-detect and degrade gracefully
-  // instead of letting the mic button crash the page.
-  const micSupported =
-    typeof window !== 'undefined' &&
-    typeof window.MediaRecorder !== 'undefined' &&
-    typeof navigator !== 'undefined' &&
-    !!navigator.mediaDevices?.getUserMedia
+  const {
+    recordingState,
+    audioFile,
+    audioPreviewUrl,
+    elapsedSeconds,
+    error: micError,
+    micSupported,
+    startRecording,
+    stopRecording,
+    resetAudio,
+  } = useAudioRecorder({
+    filename: 'signalement-audio.webm',
+    micErrorMessage: t('menage.signalerProbleme.micError'),
+  })
 
   const resetForm = () => {
     setPhoto(null)
     setPhotoPreviewUrl(null)
     setDescription('')
-    setAudioFile(null)
-    setAudioPreviewUrl(null)
-    setRecordingState('idle')
+    resetAudio()
     setError(null)
   }
 
@@ -51,45 +49,6 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
     if (!file) return
     setPhoto(file)
     setPhotoPreviewUrl(URL.createObjectURL(file))
-  }
-
-  const startRecording = async () => {
-    setError(null)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream
-      const recorder = new MediaRecorder(stream)
-      audioChunksRef.current = []
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunksRef.current.push(event.data)
-      }
-      recorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
-        const file = new File([blob], 'signalement-audio.webm', { type: blob.type })
-        setAudioFile(file)
-        setAudioPreviewUrl(URL.createObjectURL(file))
-        streamRef.current?.getTracks().forEach((track) => track.stop())
-        streamRef.current = null
-      }
-
-      mediaRecorderRef.current = recorder
-      recorder.start()
-      setRecordingState('recording')
-    } catch {
-      setError(t('menage.signalerProbleme.micError'))
-    }
-  }
-
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop()
-    setRecordingState('recorded')
-  }
-
-  const resetAudio = () => {
-    setAudioFile(null)
-    setAudioPreviewUrl(null)
-    setRecordingState('idle')
   }
 
   const handleSubmit = async () => {
@@ -111,7 +70,14 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
       setExpanded(false)
       setSent(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common.genericError'))
+      setError(
+        friendlyUploadErrorMessage(err, {
+          tooLarge: photo
+            ? t('menage.signalerProbleme.photoTooLarge')
+            : t('menage.signalerProbleme.audioTooLarge'),
+          generic: t('common.genericError'),
+        }),
+      )
     } finally {
       setSubmitting(false)
     }
@@ -216,6 +182,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
                 </span>
               </button>
               <span className="text-xs font-medium text-danger">{t('menage.signalerProbleme.recording')}</span>
+              <RecordingIndicator elapsedSeconds={elapsedSeconds} maxSeconds={MAX_RECORDING_SECONDS} />
             </>
           ) : (
             <div className="flex flex-col items-center gap-2">
@@ -252,10 +219,10 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
         />
       </div>
 
-      {error && (
+      {(error || micError) && (
         <p className="flex items-center gap-2 rounded-field bg-danger-bg px-3 py-2 text-sm font-medium text-danger">
           <span aria-hidden="true">⚠️</span>
-          {error}
+          {error || micError}
         </p>
       )}
 

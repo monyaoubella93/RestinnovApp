@@ -215,11 +215,13 @@ export interface NewFraisMaintenanceInput {
 }
 
 export class ApiError extends Error {
+  readonly status: number
   readonly errors?: Record<string, string[]>
 
-  constructor(message: string, errors?: Record<string, string[]>) {
+  constructor(message: string, status: number, errors?: Record<string, string[]>) {
     super(message)
     this.name = 'ApiError'
+    this.status = status
     this.errors = errors
   }
 }
@@ -298,7 +300,13 @@ async function parseJsonOrThrow(response: Response) {
   handleUnauthorized(response)
 
   if (!response.ok) {
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    // A 413 can come from nginx (client_max_body_size) or PHP itself
+    // (post_max_size) before the request ever reaches Laravel -- in both
+    // cases the body isn't JSON, so `data` is null and there is no
+    // `data.message` to fall back on. Give a message that still names the
+    // actual problem instead of the generic fallback.
+    const fallback = response.status === 413 ? 'Le fichier envoyé est trop volumineux.' : 'Une erreur est survenue.'
+    throw new ApiError(data?.message ?? fallback, response.status, data?.errors)
   }
 
   return data
@@ -460,7 +468,7 @@ export async function deleteChecklistModeleItem(itemId: number): Promise<void> {
 
   if (!response.ok) {
     const data = await response.json().catch(() => null)
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
   }
 }
 
@@ -531,7 +539,7 @@ export async function deleteUtilisateur(id: number): Promise<void> {
 
   if (!response.ok) {
     const data = await response.json().catch(() => null)
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
   }
 }
 
@@ -961,7 +969,7 @@ export async function deleteFraisMaintenance(id: number): Promise<void> {
 
   if (!response.ok) {
     const data = await response.json().catch(() => null)
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
   }
 }
 
@@ -1032,7 +1040,7 @@ export async function downloadRelevePdf(appartementId: number, mois: string): Pr
 
   if (!response.ok) {
     const data = await response.json().catch(() => null)
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
   }
 
   const blob = await response.blob()

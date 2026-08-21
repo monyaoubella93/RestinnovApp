@@ -143,4 +143,30 @@ class MissionMenagePhotoPreuveTest extends TestCase
 
         $response->assertStatus(403);
     }
+
+    public function test_it_accepts_a_photo_de_preuve_up_to_the_10mb_limit(): void
+    {
+        Storage::fake('public');
+        $mission = $this->mission();
+
+        $response = $this->post("/api/mission-menages/{$mission->id}/photos-preuve", [
+            'photos' => [UploadedFile::fake()->image('preuve.jpg')->size(10240)],
+        ], ['Accept' => 'application/json']);
+
+        $response->assertCreated();
+    }
+
+    public function test_it_rejects_a_photo_de_preuve_over_the_10mb_limit_with_a_clear_message(): void
+    {
+        Storage::fake('public');
+        $mission = $this->mission();
+
+        $response = $this->post("/api/mission-menages/{$mission->id}/photos-preuve", [
+            'photos' => [UploadedFile::fake()->image('preuve.jpg')->size(10241)],
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(422);
+        $response->assertJsonFragment(['photos.0' => ['Photo trop lourde, réessayez avec une photo plus légère (10 Mo maximum).']]);
+        $this->assertDatabaseCount('mission_menage_photos_preuve', 0);
+    }
 }

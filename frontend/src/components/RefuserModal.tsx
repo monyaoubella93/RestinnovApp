@@ -1,4 +1,7 @@
 import { useRef, useState } from 'react'
+import { useAudioRecorder, MAX_RECORDING_SECONDS } from '../hooks/useAudioRecorder'
+import { RecordingIndicator } from './RecordingIndicator'
+import { friendlyUploadErrorMessage } from '../utils/uploadError'
 
 export interface RefuserModalConfirmInput {
   motif: string | null
@@ -12,8 +15,6 @@ interface RefuserModalProps {
   onConfirm: (input: RefuserModalConfirmInput) => Promise<void>
 }
 
-type RecordingState = 'idle' | 'recording' | 'recorded'
-
 /**
  * Shared Manager-facing "Refuser" modal, used for both mission de ménage
  * and ticket de maintenance refusals so the motif can be text, audio,
@@ -24,66 +25,30 @@ export function RefuserModal({ title, onCancel, onConfirm }: RefuserModalProps) 
   const [motif, setMotif] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
-  const [recordingState, setRecordingState] = useState<RecordingState>('idle')
-  const [audioFile, setAudioFile] = useState<File | null>(null)
-  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
-  const streamRef = useRef<MediaStream | null>(null)
 
-  const micSupported =
-    typeof window !== 'undefined' &&
-    typeof window.MediaRecorder !== 'undefined' &&
-    typeof navigator !== 'undefined' &&
-    !!navigator.mediaDevices?.getUserMedia
+  const {
+    recordingState,
+    audioFile,
+    audioPreviewUrl,
+    elapsedSeconds,
+    error: micError,
+    micSupported,
+    startRecording,
+    stopRecording,
+    resetAudio,
+  } = useAudioRecorder({
+    filename: 'refus-audio.webm',
+    micErrorMessage: "Impossible d'accéder au micro.",
+  })
 
   const handlePhotoChange = (file: File | undefined | null) => {
     if (!file) return
     setPhoto(file)
     setPhotoPreviewUrl(URL.createObjectURL(file))
-  }
-
-  const startRecording = async () => {
-    setError(null)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream
-      const recorder = new MediaRecorder(stream)
-      audioChunksRef.current = []
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunksRef.current.push(event.data)
-      }
-      recorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
-        const file = new File([blob], 'refus-audio.webm', { type: blob.type })
-        setAudioFile(file)
-        setAudioPreviewUrl(URL.createObjectURL(file))
-        streamRef.current?.getTracks().forEach((track) => track.stop())
-        streamRef.current = null
-      }
-
-      mediaRecorderRef.current = recorder
-      recorder.start()
-      setRecordingState('recording')
-    } catch {
-      setError("Impossible d'accéder au micro.")
-    }
-  }
-
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop()
-    setRecordingState('recorded')
-  }
-
-  const resetAudio = () => {
-    setAudioFile(null)
-    setAudioPreviewUrl(null)
-    setRecordingState('idle')
   }
 
   const handleConfirm = async () => {
@@ -102,7 +67,14 @@ export function RefuserModal({ title, onCancel, onConfirm }: RefuserModalProps) 
         motifPhoto: photo,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue.')
+      setError(
+        friendlyUploadErrorMessage(err, {
+          tooLarge: photo
+            ? 'Photo trop lourde, réessayez avec une photo plus légère.'
+            : 'Enregistrement audio trop lourd, recommencez un enregistrement plus court.',
+          generic: 'Une erreur est survenue.',
+        }),
+      )
       setSubmitting(false)
     }
   }
@@ -180,6 +152,7 @@ export function RefuserModal({ title, onCancel, onConfirm }: RefuserModalProps) 
                   </span>
                 </button>
                 <span className="text-xs font-medium text-danger">Enregistrement...</span>
+                <RecordingIndicator elapsedSeconds={elapsedSeconds} maxSeconds={MAX_RECORDING_SECONDS} />
               </>
             ) : (
               <div className="flex flex-col items-center gap-2">
@@ -200,7 +173,7 @@ export function RefuserModal({ title, onCancel, onConfirm }: RefuserModalProps) 
           </div>
         </div>
 
-        {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+        {(error || micError) && <p className="mt-3 text-sm text-danger">{error || micError}</p>}
 
         <div className="mt-4 flex justify-end gap-2">
           <button

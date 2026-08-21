@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AjouterPhotosPreuveInput } from '../api'
+import { friendlyUploadErrorMessage } from '../utils/uploadError'
 
 interface PhotoPreuveSectionProps {
   missionMenageId: number
@@ -59,7 +60,12 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
       setExpanded(false)
       setSent(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common.genericError'))
+      setError(
+        friendlyUploadErrorMessage(err, {
+          tooLarge: t('menage.photoPreuve.photoTooLarge'),
+          generic: t('common.genericError'),
+        }),
+      )
     } finally {
       setSubmitting(false)
     }
