@@ -74,6 +74,18 @@ class SejourListingTest extends TestCase
         $byAppartement->assertJsonPath('data.0.nom_voyageur', 'Marie Curie');
     }
 
+    public function test_it_filters_by_search_on_reference(): void
+    {
+        $this->sejour(['nom_voyageur' => 'Jean Dupont']);
+        $marie = $this->sejour(['nom_voyageur' => 'Marie Curie']);
+
+        $response = $this->getJson("/api/sejours?search={$marie->reference}");
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.nom_voyageur', 'Marie Curie');
+    }
+
     public function test_it_filters_by_statut(): void
     {
         $this->sejour(['statut' => 'a_venir']);

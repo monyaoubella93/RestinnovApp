@@ -6,6 +6,7 @@ import { AppartementHistoriqueSection } from './AppartementHistoriqueSection'
 interface AppartementsListeSectionProps {
   onNavigateToCreer: () => void
   onEditAppartement: (appartement: Appartement) => void
+  initialAppartement?: Appartement | null
 }
 
 const PER_PAGE = 10
@@ -58,18 +59,35 @@ function formatDate(value: string | null | undefined): string {
   return new Date(value).toLocaleDateString('fr-FR')
 }
 
-export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement }: AppartementsListeSectionProps) {
+export function AppartementsListeSection({
+  onNavigateToCreer,
+  onEditAppartement,
+  initialAppartement,
+}: AppartementsListeSectionProps) {
   const [search, setSearch] = useState('')
   const [statutFilter, setStatutFilter] = useState('')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [page, setPage] = useState(1)
 
   const [appartements, setAppartements] = useState<Appartement[]>([])
+  // Appartements opened directly from the global header search, which may
+  // not be part of the currently loaded page.
+  const [extraAppartements, setExtraAppartements] = useState<Appartement[]>(
+    initialAppartement ? [initialAppartement] : [],
+  )
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedAppartementId, setSelectedAppartementId] = useState<number | null>(null)
+  const [selectedAppartementId, setSelectedAppartementId] = useState<number | null>(initialAppartement?.id ?? null)
   const [detailTab, setDetailTab] = useState<'infos' | 'historique'>('infos')
+
+  useEffect(() => {
+    if (!initialAppartement) return
+    setExtraAppartements((current) =>
+      current.some((a) => a.id === initialAppartement.id) ? current : [...current, initialAppartement],
+    )
+    setSelectedAppartementId(initialAppartement.id)
+  }, [initialAppartement])
 
   useEffect(() => {
     let cancelled = false
@@ -105,7 +123,10 @@ export function AppartementsListeSection({ onNavigateToCreer, onEditAppartement 
     setPage(1)
   }
 
-  const selectedAppartement = appartements.find((a) => a.id === selectedAppartementId) ?? null
+  const selectedAppartement =
+    appartements.find((a) => a.id === selectedAppartementId) ??
+    extraAppartements.find((a) => a.id === selectedAppartementId) ??
+    null
 
   if (selectedAppartement) {
     return (
