@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { AjouterPhotosPreuveInput } from '../api'
+import { friendlyUploadErrorMessage } from '../utils/uploadError'
 
 interface PhotoPreuveSectionProps {
   missionMenageId: number
@@ -14,6 +16,7 @@ interface PhotoEntry {
 }
 
 export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = false }: PhotoPreuveSectionProps) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(misEnAvant)
   const [photos, setPhotos] = useState<PhotoEntry[]>([])
   const [note, setNote] = useState('')
@@ -43,7 +46,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
     setError(null)
 
     if (photos.length === 0) {
-      setError('Ajoutez au moins une photo.')
+      setError(t('menage.photoPreuve.atLeastOnePhoto'))
       return
     }
 
@@ -57,7 +60,12 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
       setExpanded(false)
       setSent(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue.')
+      setError(
+        friendlyUploadErrorMessage(err, {
+          tooLarge: t('menage.photoPreuve.photoTooLarge'),
+          generic: t('common.genericError'),
+        }),
+      )
     } finally {
       setSubmitting(false)
     }
@@ -75,7 +83,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
             <span aria-hidden="true" className="text-lg">
               💡
             </span>
-            Mission refusée : montrez au Manager le travail corrigé.
+            {t('menage.photoPreuve.refuseeHint')}
           </p>
         )}
         <button
@@ -89,7 +97,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
           <span aria-hidden="true" className="text-2xl">
             📸
           </span>
-          Ajouter une photo de mon travail
+          {t('menage.photoPreuve.addButton')}
         </button>
         {sent && (
           <p
@@ -99,7 +107,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
             <span aria-hidden="true" className="text-lg">
               ✅
             </span>
-            Photo(s) envoyée(s) au Manager
+            {t('menage.photoPreuve.sentConfirmation')}
           </p>
         )}
       </div>
@@ -108,18 +116,18 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
 
   return (
     <div className="space-y-4 rounded-card-agent-lg border-2 border-brand-border bg-surface p-4">
-      <h4 className="text-base font-bold text-ink">Ajouter une photo de mon travail</h4>
+      <h4 className="text-base font-bold text-ink">{t('menage.photoPreuve.addButton')}</h4>
 
       <div className="flex flex-col items-center gap-2">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          aria-label="Ouvrir l'appareil photo"
+          aria-label={t('menage.photoPreuve.openCamera')}
           className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-brand-border bg-brand-pale text-4xl hover:brightness-95"
         >
           📷
         </button>
-        <span className="text-xs font-medium text-ink-tertiary">Photo(s)</span>
+        <span className="text-xs font-medium text-ink-tertiary">{t('menage.photoPreuve.photosCaption')}</span>
         <input
           ref={fileInputRef}
           type="file"
@@ -127,7 +135,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
           capture="environment"
           multiple
           className="hidden"
-          aria-label="Photos de preuve de travail"
+          aria-label={t('menage.photoPreuve.inputLabel')}
           onChange={(e) => {
             handlePhotosChange(e.target.files)
             e.target.value = ''
@@ -140,14 +148,14 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
               <div key={photo.previewUrl} className="relative">
                 <img
                   src={photo.previewUrl}
-                  alt={`Aperçu photo de preuve ${index + 1}`}
+                  alt={t('menage.photoPreuve.previewAlt', { index: index + 1 })}
                   className="h-20 w-20 rounded-lg object-cover"
                 />
                 <button
                   type="button"
                   onClick={() => removePhoto(index)}
-                  aria-label={`Retirer la photo ${index + 1}`}
-                  className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs font-bold text-white hover:brightness-110"
+                  aria-label={t('menage.photoPreuve.removePhoto', { index: index + 1 })}
+                  className="absolute -end-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs font-bold text-white hover:brightness-110"
                 >
                   ✕
                 </button>
@@ -159,7 +167,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
 
       <div>
         <label htmlFor={`photo_preuve_note_${missionMenageId}`} className="block text-sm font-semibold text-ink-secondary">
-          Note (optionnel)
+          {t('common.optionalNote')}
         </label>
         <textarea
           id={`photo_preuve_note_${missionMenageId}`}
@@ -186,7 +194,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
           }}
           className="min-h-14 flex-1 rounded-xl border-2 border-border-default px-4 py-2 text-base font-medium text-ink-secondary hover:bg-table-header-bg"
         >
-          Annuler
+          {t('common.cancel')}
         </button>
         <button
           type="button"
@@ -197,7 +205,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
           <span aria-hidden="true" className="text-xl">
             ✓
           </span>
-          {submitting ? 'Envoi...' : 'Envoyer'}
+          {submitting ? t('common.sending') : t('common.send')}
         </button>
       </div>
     </div>

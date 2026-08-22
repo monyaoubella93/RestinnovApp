@@ -13,6 +13,8 @@ WORKDIR /var/www
 COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+
 # The application code is provided at runtime via the bind mount declared
 # in docker-compose.yml (see the "app" service). Nothing is COPY'd here:
 # that would only get shadowed by the mount, and would risk baking .env

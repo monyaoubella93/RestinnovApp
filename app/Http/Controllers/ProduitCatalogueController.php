@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HasFriendlyUploadMessages;
 use App\Models\ProduitMenageCatalogue;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ProduitCatalogueController extends Controller
 {
+    use HasFriendlyUploadMessages;
+
     /**
      * Display a listing of the cleaning products catalogue.
      */
@@ -26,9 +29,9 @@ class ProduitCatalogueController extends Controller
         $validated = $request->validate([
             'nom' => ['required', 'string', 'max:255'],
             'prix' => ['required', 'numeric', 'min:0'],
-            'photo' => ['sometimes', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
+            'photo' => ['sometimes', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'actif' => ['sometimes', 'boolean'],
-        ]);
+        ], $this->uploadValidationMessages());
 
         $produit = ProduitMenageCatalogue::create([
             'nom' => $validated['nom'],

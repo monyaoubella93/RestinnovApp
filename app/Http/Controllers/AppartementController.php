@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HasFriendlyUploadMessages;
 use App\Models\Appartement;
 use App\Models\MissionMenage;
 use App\Models\Sejour;
@@ -16,6 +17,8 @@ use Illuminate\Validation\Rule;
 
 class AppartementController extends Controller
 {
+    use HasFriendlyUploadMessages;
+
     /**
      * Display a listing of appartements, with optional search/filtering,
      * sorting and pagination for the "Liste des appartements" screen.
@@ -113,7 +116,7 @@ class AppartementController extends Controller
         $validated = $request->validate([
             'nom' => ['required', 'string', 'max:255'],
             'adresse' => ['required', 'string', 'max:255'],
-            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'checklist_modele_ids' => ['sometimes', 'array'],
             'checklist_modele_ids.*' => ['integer', 'exists:checklist_modeles,id'],
             'agent_habituel_id' => [
@@ -127,7 +130,7 @@ class AppartementController extends Controller
             'mode_gestion' => ['sometimes', Rule::in([Appartement::MODE_GESTION_MANDAT, Appartement::MODE_GESTION_SOUS_LOCATION])],
             'taux_commission' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'loyer_fixe_mensuel' => ['nullable', 'numeric', 'min:0'],
-        ]);
+        ], $this->uploadValidationMessages());
 
         if ($request->hasFile('photo')) {
             $validated['photo_principale'] = $request->file('photo')->store('appartements', 'public');
@@ -156,7 +159,7 @@ class AppartementController extends Controller
         $validated = $request->validate([
             'nom' => ['required', 'string', 'max:255'],
             'adresse' => ['required', 'string', 'max:255'],
-            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'checklist_modele_ids' => ['sometimes', 'array'],
             'checklist_modele_ids.*' => ['integer', 'exists:checklist_modeles,id'],
             // No actif=true requirement here (unlike store()): an appartement
@@ -174,7 +177,7 @@ class AppartementController extends Controller
             'mode_gestion' => ['sometimes', Rule::in([Appartement::MODE_GESTION_MANDAT, Appartement::MODE_GESTION_SOUS_LOCATION])],
             'taux_commission' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'loyer_fixe_mensuel' => ['nullable', 'numeric', 'min:0'],
-        ]);
+        ], $this->uploadValidationMessages());
 
         if ($request->hasFile('photo')) {
             $validated['photo_principale'] = $request->file('photo')->store('appartements', 'public');

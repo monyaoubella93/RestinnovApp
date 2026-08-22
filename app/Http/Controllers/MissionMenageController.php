@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\AuthorizesMissionAccess;
+use App\Http\Controllers\Concerns\HasFriendlyUploadMessages;
 use App\Models\MissionMenage;
 use App\Models\MissionMenagePhotoPreuve;
 use App\Models\ProduitMenageSignale;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Validator;
 class MissionMenageController extends Controller
 {
     use AuthorizesMissionAccess;
+    use HasFriendlyUploadMessages;
 
     private const DETAIL_RELATIONS = ['sejour.appartement', 'agent', 'produits', 'checklistItems', 'produitsSignales', 'refus', 'photosPreuve'];
 
@@ -299,9 +301,9 @@ class MissionMenageController extends Controller
 
         $validator = Validator::make($request->all(), [
             'motif' => ['nullable', 'string', 'max:1000'],
-            'motif_audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:10240'],
-            'motif_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
-        ]);
+            'motif_audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:5120'],
+            'motif_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+        ], $this->uploadValidationMessages());
 
         $validator->after(function ($validator) use ($request) {
             $hasMotif = trim((string) $request->input('motif', '')) !== '';
@@ -394,9 +396,9 @@ class MissionMenageController extends Controller
         $this->authorizeMissionAccess($request, $missionMenage);
 
         $validated = $request->validate([
-            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
+            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'note' => ['nullable', 'string', 'max:255'],
-        ]);
+        ], $this->uploadValidationMessages());
 
         $photoUrl = $request->file('photo')->store('produits-signales', 'public');
 
@@ -424,9 +426,9 @@ class MissionMenageController extends Controller
 
         $validated = $request->validate([
             'photos' => ['required', 'array', 'min:1'],
-            'photos.*' => ['image', 'mimes:jpg,jpeg,png', 'max:5120'],
+            'photos.*' => ['image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'note' => ['nullable', 'string', 'max:255'],
-        ]);
+        ], $this->uploadValidationMessages());
 
         $photosPreuve = collect($validated['photos'])->map(function ($photo) use ($missionMenage, $validated) {
             return MissionMenagePhotoPreuve::create([
@@ -451,10 +453,10 @@ class MissionMenageController extends Controller
         $this->authorizeMissionAccess($request, $missionMenage);
 
         $validator = Validator::make($request->all(), [
-            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
-            'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:10240'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+            'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:5120'],
             'description' => ['nullable', 'string', 'max:1000'],
-        ]);
+        ], $this->uploadValidationMessages());
 
         $validator->after(function ($validator) use ($request) {
             $hasDescription = trim((string) $request->input('description', '')) !== '';

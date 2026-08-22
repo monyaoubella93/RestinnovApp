@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from './auth/AuthContext'
+import i18n from './i18n'
 import { MaintenanceWorkspace } from './MaintenanceWorkspace'
 import type { MonTicketMaintenance } from './types'
 
@@ -21,6 +22,7 @@ function ticketFixture(overrides: Partial<MonTicketMaintenance> = {}): MonTicket
     photo_url: null,
     appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' },
     refus: [],
+    messages_agent: [],
     ...overrides,
   }
 }
@@ -58,6 +60,10 @@ describe('MaintenanceWorkspace', () => {
     localStorage.clear()
     seedLoggedInAgent()
     globalThis.fetch = mockFetch() as typeof fetch
+  })
+
+  afterEach(() => {
+    void i18n.changeLanguage('fr')
   })
 
   it("affiche le titre Maintenance et le nom de l'agent connecté", async () => {
@@ -129,5 +135,20 @@ describe('MaintenanceWorkspace', () => {
 
     await screen.findByRole('heading', { name: 'Mes tickets' })
     expect(await screen.findByTestId('refuses-dot')).toBeInTheDocument()
+  })
+
+  it('bascule en arabe au clic sur le sélecteur de langue : textes traduits et dir="rtl"', async () => {
+    const user = userEvent.setup()
+    const { container } = renderWithAuth()
+
+    await screen.findByRole('heading', { name: 'Mes tickets' })
+    expect(container.firstElementChild).toHaveAttribute('dir', 'ltr')
+
+    await user.click(screen.getByRole('button', { name: /changer la langue/i }))
+
+    expect(await screen.findByRole('heading', { name: 'الصيانة' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /تذاكري/ })).toBeInTheDocument()
+    expect(container.firstElementChild).toHaveAttribute('dir', 'rtl')
+    expect(localStorage.getItem('app_language')).toBe('ar')
   })
 })

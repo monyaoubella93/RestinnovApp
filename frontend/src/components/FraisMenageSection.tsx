@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { resolveStorageUrl } from '../api'
 import type { MissionMenage, ProduitCatalogue } from '../types'
+import { friendlyUploadErrorMessage } from '../utils/uploadError'
 
 interface FraisMenageSectionProps {
   missionMenage: MissionMenage
@@ -15,6 +17,7 @@ export function FraisMenageSection({
   onUpdateProduits,
   onSignalerProduit,
 }: FraisMenageSectionProps) {
+  const { t } = useTranslation()
   const [forfait, setForfait] = useState(String(missionMenage.frais_forfait))
   const [checkedIds, setCheckedIds] = useState<number[]>(
     (missionMenage.produits ?? []).map((p) => p.id),
@@ -60,7 +63,7 @@ export function FraisMenageSection({
         produit_ids: checkedIds,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue.')
+      setError(err instanceof Error ? err.message : t('common.genericError'))
     } finally {
       setSaving(false)
     }
@@ -69,7 +72,7 @@ export function FraisMenageSection({
   const handleSignaler = async () => {
     setSignalerError(null)
     if (!signalerPhoto) {
-      setSignalerError('Une photo est obligatoire.')
+      setSignalerError(t('menage.frais.photoRequise'))
       return
     }
 
@@ -84,7 +87,12 @@ export function FraisMenageSection({
       setShowSignalerForm(false)
       setSignalerSuccess(true)
     } catch (err) {
-      setSignalerError(err instanceof Error ? err.message : 'Une erreur est survenue.')
+      setSignalerError(
+        friendlyUploadErrorMessage(err, {
+          tooLarge: t('menage.frais.photoTooLarge'),
+          generic: t('common.genericError'),
+        }),
+      )
     } finally {
       setSignalerSubmitting(false)
     }
@@ -92,11 +100,11 @@ export function FraisMenageSection({
 
   return (
     <div className="mt-3 rounded-field border border-border-default p-3">
-      <p className="text-sm font-bold text-ink">Frais de ménage</p>
+      <p className="text-sm font-bold text-ink">{t('menage.frais.title')}</p>
 
       <div className="mt-2">
         <label htmlFor={`forfait_${missionMenage.id}`} className="block text-sm font-semibold text-ink-secondary">
-          Forfait femme de ménage
+          {t('menage.frais.forfait')}
         </label>
         <input
           id={`forfait_${missionMenage.id}`}
@@ -129,7 +137,7 @@ export function FraisMenageSection({
                 {produit.photo_url && (
                   <img
                     src={resolveStorageUrl(produit.photo_url)}
-                    alt={`Photo de "${produit.nom}"`}
+                    alt={t('menage.frais.photoOf', { nom: produit.nom })}
                     className="h-6 w-6 rounded object-cover"
                   />
                 )}
@@ -145,7 +153,7 @@ export function FraisMenageSection({
         className="mt-3 font-mono text-sm font-bold text-ink"
         data-testid={`total-frais-menage-${missionMenage.id}`}
       >
-        Total frais de ménage : {totalFraisMenage.toFixed(2)} MAD
+        {t('menage.frais.total', { montant: totalFraisMenage.toFixed(2) })}
       </p>
 
       {error && <p className="mt-1 text-sm text-danger">{error}</p>}
@@ -156,7 +164,7 @@ export function FraisMenageSection({
         disabled={saving}
         className="mt-2 rounded-field bg-brand px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
       >
-        {saving ? 'Enregistrement...' : 'Enregistrer les frais de ménage'}
+        {saving ? t('menage.frais.saving') : t('menage.frais.save')}
       </button>
 
       <div className="mt-3 border-t border-border-light pt-3">
@@ -169,7 +177,7 @@ export function FraisMenageSection({
             }}
             className="text-sm font-semibold text-brand-light hover:text-brand"
           >
-            + Signaler un nouveau produit
+            {t('menage.frais.signalerNouveau')}
           </button>
         ) : (
           <div className="space-y-2">
@@ -177,7 +185,7 @@ export function FraisMenageSection({
               htmlFor={`signaler_photo_${missionMenage.id}`}
               className="block text-sm font-semibold text-ink-secondary"
             >
-              Photo du produit
+              {t('menage.frais.photoProduit')}
             </label>
             <input
               id={`signaler_photo_${missionMenage.id}`}
@@ -187,7 +195,7 @@ export function FraisMenageSection({
               className="block w-full text-sm"
             />
             <label htmlFor={`signaler_note_${missionMenage.id}`} className="block text-sm font-semibold text-ink-secondary">
-              Note (optionnel)
+              {t('common.optionalNote')}
             </label>
             <input
               id={`signaler_note_${missionMenage.id}`}
@@ -203,7 +211,7 @@ export function FraisMenageSection({
                 onClick={() => setShowSignalerForm(false)}
                 className="rounded-field border border-border-default px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-table-header-bg"
               >
-                Annuler
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -211,14 +219,12 @@ export function FraisMenageSection({
                 disabled={signalerSubmitting}
                 className="rounded-field bg-success px-3 py-1.5 text-sm font-bold text-white hover:brightness-110 disabled:opacity-50"
               >
-                {signalerSubmitting ? 'Envoi...' : 'Envoyer'}
+                {signalerSubmitting ? t('common.sending') : t('common.send')}
               </button>
             </div>
           </div>
         )}
-        {signalerSuccess && (
-          <p className="mt-2 text-sm text-success-text">Produit signalé, en attente de validation par le Manager.</p>
-        )}
+        {signalerSuccess && <p className="mt-2 text-sm text-success-text">{t('menage.frais.signale')}</p>}
       </div>
     </div>
   )

@@ -95,4 +95,15 @@ class TicketMaintenance extends Model
     {
         return $this->hasMany(TicketMaintenanceRefus::class)->latest();
     }
+
+    /**
+     * The maintenance agent's own intermediate photo/audio/note messages to
+     * the Manager on this ticket -- distinct from the final resoudre()
+     * proof. Chronological (oldest first), unlike refus() which is latest
+     * first: a conversation reads top-to-bottom.
+     */
+    public function messagesAgent(): HasMany
+    {
+        return $this->hasMany(MessageAgentMaintenance::class)->orderBy('created_at');
+    }
 }

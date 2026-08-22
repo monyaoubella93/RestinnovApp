@@ -14,6 +14,7 @@ const TICKET: MonTicketMaintenance = {
   photo_url: null,
   appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' },
   refus: [],
+  messages_agent: [],
 }
 
 function mockFetch() {
@@ -23,6 +24,13 @@ function mockFetch() {
 
     if (url.pathname === '/api/tickets-maintenance/1/resoudre' && method === 'POST') {
       return new Response(JSON.stringify({ ...TICKET, statut: 'resolu_en_attente_validation' }), { status: 200 })
+    }
+
+    if (url.pathname === '/api/tickets-maintenance/1/message' && method === 'POST') {
+      return new Response(
+        JSON.stringify({ ...TICKET, messages_agent: [{ id: 1, photo_url: null, audio_url: null, note: 'Une précision.', created_at: '2026-08-20T10:00:00Z' }] }),
+        { status: 200 },
+      )
     }
 
     throw new Error(`Unhandled request: ${method} ${url.pathname}`)
@@ -183,5 +191,74 @@ describe('TicketDetailAgent', () => {
     expect(onResolu).toHaveBeenCalledTimes(1)
     // Stays visible -- no redirect back to the list.
     expect(screen.getByRole('button', { name: /retour à mes tickets/i })).toBeInTheDocument()
+  })
+
+  it('affiche un message clair quand la photo de réparation est trop lourde', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = vi.fn(async () => new Response(null, { status: 413 })) as typeof fetch
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    const photo = new File(['x'], 'reparation.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText(/photo de la réparation/i), photo)
+    await user.type(screen.getByLabelText(/prix de la réparation/i), '45')
+    await user.click(screen.getByRole('button', { name: /marquer résolu/i }))
+
+    expect(await screen.findByText(/photo trop lourde, réessayez avec une photo plus légère/i)).toBeInTheDocument()
+  })
+
+  it('propose d\'envoyer un message au Manager quand le ticket est en cours (assigne)', () => {
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: /envoyer un message au manager/i })).toBeInTheDocument()
+  })
+
+  it('ne propose pas d\'envoyer un message au Manager une fois le ticket résolu', () => {
+    render(<TicketDetailAgent ticket={{ ...TICKET, statut: 'resolu' }} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: /envoyer un message au manager/i })).not.toBeInTheDocument()
+  })
+
+  it('envoie un message texte au Manager, distinct de la résolution finale, et affiche une confirmation', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = mockFetch() as typeof fetch
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    // Both this form and the (always-visible) resolution form below have a
+    // "Note (optionnel)" field -- this one is the first in DOM order.
+    await user.type(screen.getAllByLabelText(/note \(optionnel\)/i)[0], 'Une précision.')
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
+
+    expect(await screen.findByTestId('message-agent-confirmation')).toBeInTheDocument()
+    // Resolution form/button is untouched -- this was a separate action.
+    expect(screen.getByRole('button', { name: /marquer résolu/i })).toBeInTheDocument()
+  })
+
+  it('refuse l\'envoi d\'un message sans photo, audio ni note', async () => {
+    const user = userEvent.setup()
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
+
+    expect(screen.getByText(/ajoutez une photo, un audio ou une note/i)).toBeInTheDocument()
+  })
+
+  it('affiche un message clair quand la photo du message est trop lourde', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = vi.fn(async () => new Response(null, { status: 413 })) as typeof fetch
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    await user.upload(
+      screen.getByLabelText(/photo du message/i),
+      new File(['x'], 'photo.jpg', { type: 'image/jpeg' }),
+    )
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
+
+    expect(await screen.findByText(/photo trop lourde, réessayez avec une photo plus légère/i)).toBeInTheDocument()
   })
 })

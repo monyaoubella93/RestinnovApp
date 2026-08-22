@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { resolveStorageUrl } from '../api'
 import type { MissionMenage } from '../types'
+import { PhotoLightbox } from './PhotoLightbox'
 import { ProduitSignaleCard } from './ProduitsSignalesSection'
 
 const PRODUIT_STATUT_LABELS: Record<string, string> = {
@@ -35,6 +36,7 @@ export function MissionValidationDetail({
   onRejeterProduitSignale,
 }: MissionValidationDetailProps) {
   const [expanded, setExpanded] = useState(false)
+  const [lightboxPhoto, setLightboxPhoto] = useState<{ src: string; alt: string } | null>(null)
   const checklistItems = mission.checklist_items ?? []
   const produitsSignales = mission.produits_signales ?? []
   const photosPreuve = mission.photos_preuve ?? []
@@ -69,11 +71,23 @@ export function MissionValidationDetail({
                     </span>
                     <span className={item.coche ? 'text-ink-secondary' : 'text-ink-tertiary'}>{item.libelle}</span>
                     {item.photo_url && (
-                      <img
-                        src={resolveStorageUrl(item.photo_url)}
-                        alt={`Photo de "${item.libelle}"`}
-                        className="h-8 w-8 rounded object-cover"
-                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setLightboxPhoto({
+                            src: resolveStorageUrl(item.photo_url!),
+                            alt: `Photo de "${item.libelle}"`,
+                          })
+                        }
+                        aria-label={`Agrandir la photo de "${item.libelle}"`}
+                        className="shrink-0 overflow-hidden rounded transition hover:opacity-80"
+                      >
+                        <img
+                          src={resolveStorageUrl(item.photo_url)}
+                          alt={`Photo de "${item.libelle}"`}
+                          className="h-8 w-8 object-cover"
+                        />
+                      </button>
                     )}
                   </li>
                 ))}
@@ -86,15 +100,27 @@ export function MissionValidationDetail({
               <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">
                 Photos de preuve du travail
               </p>
-              <ul className="mt-2 flex flex-wrap gap-2">
+              <ul className="mt-2 flex flex-wrap gap-3">
                 {photosPreuve.map((photo) => (
                   <li key={photo.id}>
-                    <img
-                      src={resolveStorageUrl(photo.photo_url)}
-                      alt="Photo de preuve du travail"
-                      className="h-16 w-16 rounded-[8px] object-cover"
-                    />
-                    {photo.note && <p className="mt-1 max-w-[4rem] truncate text-xs text-ink-tertiary">{photo.note}</p>}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLightboxPhoto({
+                          src: resolveStorageUrl(photo.photo_url),
+                          alt: 'Photo de preuve du travail',
+                        })
+                      }
+                      aria-label="Agrandir la photo de preuve du travail"
+                      className="overflow-hidden rounded-[8px] transition hover:opacity-80"
+                    >
+                      <img
+                        src={resolveStorageUrl(photo.photo_url)}
+                        alt="Photo de preuve du travail"
+                        className="h-24 w-24 object-cover"
+                      />
+                    </button>
+                    {photo.note && <p className="mt-1 max-w-[6rem] truncate text-xs text-ink-tertiary">{photo.note}</p>}
                   </li>
                 ))}
               </ul>
@@ -139,6 +165,10 @@ export function MissionValidationDetail({
             )}
           </div>
         </div>
+      )}
+
+      {lightboxPhoto && (
+        <PhotoLightbox src={lightboxPhoto.src} alt={lightboxPhoto.alt} onClose={() => setLightboxPhoto(null)} />
       )}
     </div>
   )

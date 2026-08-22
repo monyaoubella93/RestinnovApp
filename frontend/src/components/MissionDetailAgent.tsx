@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ajouterPhotosPreuveMission,
   isOfflineQueuedError,
@@ -66,6 +67,7 @@ function ChecklistItemRow({
   onToggle: (item: ChecklistItem) => void
   onPhoto: (item: ChecklistItem, file: File) => void
 }) {
+  const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   return (
@@ -96,14 +98,14 @@ function ChecklistItemRow({
       {item.photo_reference_url && (
         <img
           src={resolveStorageUrl(item.photo_reference_url)}
-          alt={`Photo de référence pour "${item.libelle}"`}
+          alt={t('menage.detail.photoReferenceFor', { libelle: item.libelle })}
           className="h-14 w-14 shrink-0 rounded-lg object-cover"
         />
       )}
 
       <button
         type="button"
-        aria-label={`Ajouter une photo pour "${item.libelle}"`}
+        aria-label={t('menage.detail.addPhotoFor', { libelle: item.libelle })}
         onClick={() => fileInputRef.current?.click()}
         className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border-2 text-2xl ${
           item.photo_url
@@ -118,7 +120,7 @@ function ChecklistItemRow({
         type="file"
         accept="image/jpeg,image/png"
         className="hidden"
-        aria-label={`Photo pour "${item.libelle}"`}
+        aria-label={t('menage.detail.photoFor', { libelle: item.libelle })}
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file) onPhoto(item, file)
@@ -129,6 +131,7 @@ function ChecklistItemRow({
 }
 
 export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerminee }: MissionDetailAgentProps) {
+  const { t } = useTranslation()
   const [mission, setMission] = useState<MissionMenage | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -147,7 +150,7 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Impossible de charger la mission.')
+        if (!cancelled) setError(err instanceof Error ? err.message : t('menage.detail.error'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -226,7 +229,7 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
       setMission(updated)
       onMissionTerminee()
     } catch (err) {
-      setTerminerError(err instanceof Error ? err.message : 'Une erreur est survenue.')
+      setTerminerError(err instanceof Error ? err.message : t('common.genericError'))
     } finally {
       setTerminating(false)
     }
@@ -235,16 +238,18 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
   return (
     <div>
       <button type="button" onClick={onBack} className="text-sm font-semibold text-brand-light hover:text-brand">
-        ← Retour à mes missions
+        {t('menage.detail.back')}
       </button>
 
-      {loading && <p className="mt-4 text-sm text-ink-tertiary">Chargement...</p>}
+      {loading && <p className="mt-4 text-sm text-ink-tertiary">{t('common.loading')}</p>}
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
 
       {mission && (
         <div className="mt-4 space-y-4">
           <div>
-            <h3 className="text-xl font-bold text-ink">{mission.sejour?.appartement?.nom ?? 'Appartement'}</h3>
+            <h3 className="text-xl font-bold text-ink">
+              {mission.sejour?.appartement?.nom ?? t('common.apartmentFallback')}
+            </h3>
             <p className="text-sm text-ink-tertiary">{mission.sejour?.appartement?.adresse}</p>
           </div>
 
@@ -252,7 +257,7 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
             <div data-testid="refus-banner" className="space-y-2 rounded-field bg-danger-bg px-3 py-2 text-sm font-semibold text-danger">
               <p className="flex items-center gap-2">
                 <span aria-hidden="true">⚠️</span>
-                Renvoyé par le Manager — à refaire avant de marquer terminé à nouveau.
+                {t('menage.detail.refusBanner')}
               </p>
               {mission.refus[0].motif && <p className="font-normal">{mission.refus[0].motif}</p>}
               {mission.refus[0].motif_audio_url && (
@@ -262,7 +267,7 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
               {mission.refus[0].motif_photo_url && (
                 <img
                   src={resolveStorageUrl(mission.refus[0].motif_photo_url)}
-                  alt="Photo du motif de refus"
+                  alt={t('menage.detail.photoMotifRefus')}
                   className="h-32 w-32 rounded-lg object-cover"
                 />
               )}
@@ -279,27 +284,27 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
             <div>
               <div
                 role="progressbar"
-                aria-label="Progression de la checklist"
+                aria-label={t('menage.detail.progressLabel')}
                 aria-valuenow={doneItems}
                 aria-valuemin={0}
                 aria-valuemax={totalItems}
-                className="h-4 w-full overflow-hidden rounded-full bg-table-header-bg"
+                className="flex h-4 w-full overflow-hidden rounded-full bg-table-header-bg"
               >
                 <div
                   className="h-full rounded-full bg-success"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-              <p className="mt-1 text-right font-mono text-xs text-ink-tertiary">
+              <p className="mt-1 text-end font-mono text-xs text-ink-tertiary">
                 {doneItems}/{totalItems}
               </p>
             </div>
           )}
 
           <div>
-            <h4 className="text-base font-bold text-ink">Checklist</h4>
+            <h4 className="text-base font-bold text-ink">{t('menage.detail.checklistTitle')}</h4>
             {checklistItems.length === 0 ? (
-              <p className="mt-2 text-sm text-ink-tertiary">Aucun item de checklist pour cet appartement.</p>
+              <p className="mt-2 text-sm text-ink-tertiary">{t('menage.detail.emptyChecklist')}</p>
             ) : (
               <div className="mt-2 space-y-4">
                 {groupChecklistItems(checklistItems).map((group, index) => (
@@ -334,20 +339,20 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
               <span aria-hidden="true" className="text-xl">
                 ✅
               </span>
-              Envoyé au Manager pour validation
+              {t('menage.detail.sentForValidation')}
             </p>
           ) : (
             <button
               type="button"
               disabled={!toutesCochees || terminating}
               onClick={handleTerminer}
-              title={!toutesCochees ? 'Cochez tous les items de la checklist pour terminer la mission.' : undefined}
+              title={!toutesCochees ? t('menage.detail.checkAllToFinish') : undefined}
               className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-success px-4 py-4 text-lg font-bold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:bg-border-default disabled:text-ink-disabled"
             >
               <span aria-hidden="true" className="text-xl">
                 ✓
               </span>
-              {terminating ? 'Enregistrement...' : 'Marquer terminé'}
+              {terminating ? t('menage.detail.finishing') : t('menage.detail.finish')}
             </button>
           )}
         </div>
