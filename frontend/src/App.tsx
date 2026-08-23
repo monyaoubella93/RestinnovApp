@@ -33,6 +33,7 @@ import { AgentsMenageListeSection } from './components/AgentsMenageListeSection'
 import { AppartementsListeSection } from './components/AppartementsListeSection'
 import { CatalogueProduitsSection } from './components/CatalogueProduitsSection'
 import { DashboardSection } from './components/DashboardSection'
+import { HeaderSearchBar } from './components/HeaderSearchBar'
 import { HistoriqueMenageSection } from './components/HistoriqueMenageSection'
 import { NotificationBell } from './components/NotificationBell'
 import { NouveauSejourForm } from './components/NouveauSejourForm'
@@ -153,9 +154,9 @@ function App() {
   const [editingAppartement, setEditingAppartement] = useState<Appartement | null>(null)
   const [editingUtilisateur, setEditingUtilisateur] = useState<Agent | null>(null)
   const [pendingSejourId, setPendingSejourId] = useState<number | null>(null)
+  const [pendingAppartementDetail, setPendingAppartementDetail] = useState<Appartement | null>(null)
   const [pendingStatutFilter, setPendingStatutFilter] = useState<SejourStatut | ''>('')
   const [pendingTicketStatutFilter, setPendingTicketStatutFilter] = useState<TicketMaintenanceStatut | ''>('')
-  const [headerSearch, setHeaderSearch] = useState('')
   const { user, logout } = useAuth()
 
   usePwaIdentity('manager')
@@ -164,6 +165,7 @@ function App() {
     setActiveTab(tab)
     setExpandedGroup(groupKeyForTab(tab))
     setPendingSejourId(null)
+    setPendingAppartementDetail(null)
     setPendingStatutFilter('')
     setPendingTicketStatutFilter('')
   }
@@ -171,6 +173,11 @@ function App() {
   const handleNavigateToSejourDetail = (sejourId: number) => {
     navigateTo('sejour-liste')
     setPendingSejourId(sejourId)
+  }
+
+  const handleNavigateToAppartementDetail = (appartement: Appartement) => {
+    navigateTo('appartement-liste')
+    setPendingAppartementDetail(appartement)
   }
 
   const handleNavigateToSejoursListe = (statut?: SejourStatut) => {
@@ -631,17 +638,10 @@ function App() {
           <h2 className="text-lg font-bold tracking-[-0.02em] text-ink">{SECTION_TITLES[activeTab]}</h2>
           <div className="border-l border-border-default pl-4 text-[13px] text-ink-tertiary">{todayCapitalized}</div>
           <div className="ml-auto flex items-center gap-2.5">
-            <label className="flex h-9 w-[260px] items-center gap-2 rounded-field border border-border-default bg-table-header-bg px-3 text-[13px] text-ink-disabled focus-within:text-ink">
-              <span aria-hidden="true">⌕</span>
-              <input
-                type="text"
-                value={headerSearch}
-                onChange={(event) => setHeaderSearch(event.target.value)}
-                placeholder="Rechercher un séjour, un appartement…"
-                aria-label="Rechercher un séjour, un appartement"
-                className="w-full bg-transparent text-ink placeholder:text-ink-disabled focus:outline-none"
-              />
-            </label>
+            <HeaderSearchBar
+              onNavigateToSejour={handleNavigateToSejourDetail}
+              onNavigateToAppartement={handleNavigateToAppartementDetail}
+            />
             <NotificationBell
               onNavigateToSejour={handleNavigateToSejourDetail}
               onNavigateToTicketsMaintenance={() => handleNavigateToTicketsMaintenance('ouvert')}
@@ -709,6 +709,7 @@ function App() {
                 navigateTo('appartement-creer')
               }}
               onEditAppartement={handleEditAppartement}
+              initialAppartement={pendingAppartementDetail}
             />
           )}
           {activeTab === 'menage-agent' && (
