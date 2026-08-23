@@ -1,0 +1,126 @@
+# Production deployment stack -- distinct from docker-compose.yml, which is
+# dev-oriented (Vite dev server with hot reload, nginx exposed directly on
+# localhost:8000, MySQL exposed on localhost:3306). Differences here:
+#
+#   - No separate "frontend" service: the React app is built into static
+#     files at image-build time and served by nginx (see
+#     docker/nginx/Dockerfile.prod), not run as a live Vite dev server.
+#   - "caddy" is the only service exposed to the internet (ports 80/443),
+#     terminating HTTPS automatically via Let's Encrypt and reverse-proxying
+#     everything to "nginx" over the internal Docker network. "nginx" and
+#     "db" have no published host ports at all.
+#   - "app"/"scheduler" read every setting from the project's real ".env"
+#     file (bind-mounted in, same as dev) -- see .env.production.example
+#     for what that file needs to contain before running this stack.
+#   - "db"'s bootstrap credentials (MYSQL_*) are read from the same ".env"
+#     via Compose's own variable substitution, so there is exactly one
+#     place to set each password.
+#
+# Usage: see README-DEPLOY.md.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: restinnov-app
+    container_name: restinnov-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+      - /var/www/vendor
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - restinnov-network
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1',9000) ? 0 : 1);"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 90s
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: restinnov-app
+    container_name: restinnov-scheduler
+    restart: unless-stopped
+    working_dir: /var/www
+    command: ["php", "artisan", "schedule:work"]
+    volumes:
+      - .:/var/www
+      - /var/www/vendor
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - restinnov-network
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile.prod
+    container_name: restinnov-nginx
+    restart: unless-stopped
+    volumes:
+      - .:/var/www:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - restinnov-network
+    # No "ports:" -- only reachable from other containers on this network
+    # (caddy proxies to it internally). "expose" is purely documentation.
+    expose:
+      - "80"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: restinnov-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - nginx
+    networks:
+      - restinnov-network
+
+  db:
+    image: mysql:8.0
+    container_name: restinnov-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - restinnov-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    # No "ports:" -- MySQL is reachable only from app/scheduler on this
+    # network, never published to the host.
+
+networks:
+  restinnov-network:
+    driver: bridge
+
+volumes:
+  dbdata:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,15 @@
+# Minimal reverse proxy: Caddy handles HTTPS automatically (obtains and
+# renews a Let's Encrypt certificate for the domain below) and forwards
+# every request to the "nginx" service over the internal Docker network --
+# nginx itself is never exposed to the internet directly (see
+# docker-compose.prod.yml).
+#
+# Replace ton-domaine.com with your real domain before deploying. It must
+# already have a DNS A (and/or AAAA) record pointing at this server's public
+# IP, and ports 80/443 must be reachable from the internet -- Caddy uses
+# port 80 for the ACME HTTP-01 challenge (and to redirect plain HTTP to
+# HTTPS) and port 443 to serve the certificate it obtains.
+
+ton-domaine.com {
+	reverse_proxy nginx:80
+}
