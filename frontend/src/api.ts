@@ -1,6 +1,7 @@
 import type {
   Agent,
   Appartement,
+  CalendrierData,
   ChecklistItem,
   ChecklistModele,
   ChecklistModeleItem,
@@ -1008,6 +1009,18 @@ export async function deleteFraisMaintenance(id: number): Promise<void> {
 
 export async function fetchDashboard(): Promise<DashboardData> {
   const response = await fetch(`${API_BASE_URL}/api/dashboard`, {
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
+export async function fetchCalendrier(params: { mois: string; appartementId?: number }): Promise<CalendrierData> {
+  const url = new URL(`${API_BASE_URL}/api/calendrier`)
+  url.searchParams.set('mois', params.mois)
+  if (params.appartementId) url.searchParams.set('appartement_id', String(params.appartementId))
+
+  const response = await fetch(url, {
     headers: authHeaders(),
   })
 
