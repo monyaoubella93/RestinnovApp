@@ -110,14 +110,41 @@ describe('MissionValidationDetail', () => {
     expect(image).toHaveAttribute('src', expect.stringContaining('produits-signales/photo.jpg'))
   })
 
-  it('affiche des messages "aucun" quand la checklist et les produits signalés sont vides', async () => {
+  it('affiche un message "aucun" pour la checklist vide, et n\'affiche aucune section produits signalés quand il n\'y en a pas', async () => {
     const user = userEvent.setup()
     render(<MissionValidationDetail mission={missionFixture()} />)
 
     await user.click(screen.getByRole('button', { name: /voir le détail/i }))
 
     expect(screen.getByText('Aucun item de checklist.')).toBeInTheDocument()
-    expect(screen.getByText('Aucun produit signalé.')).toBeInTheDocument()
+    expect(screen.queryByText(/produits signalés/i)).not.toBeInTheDocument()
+  })
+
+  it('n\'affiche pas la section produits signalés quand tous les produits signalés sont déjà traités', async () => {
+    const user = userEvent.setup()
+    render(
+      <MissionValidationDetail
+        mission={missionFixture({
+          produits_signales: [
+            {
+              id: 4,
+              mission_menage_id: 10,
+              photo_url: 'produits-signales/photo.jpg',
+              note: 'Déjà traité',
+              statut: 'valide',
+              produit_catalogue_id: 1,
+            },
+          ],
+        })}
+        onValiderProduitSignale={vi.fn()}
+        onRejeterProduitSignale={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /voir le détail/i }))
+
+    expect(screen.queryByText(/produits signalés/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Déjà traité')).not.toBeInTheDocument()
   })
 
   it('permet de valider/rejeter un produit "en_attente" directement, sans quitter l\'écran, quand les callbacks sont fournis', async () => {
@@ -155,32 +182,60 @@ describe('MissionValidationDetail', () => {
     expect(onRejeterProduitSignale).toHaveBeenCalledWith(3)
   })
 
-  it('garde un rendu lecture-seule pour un produit déjà validé/rejeté, même avec les callbacks fournis', async () => {
+  it('un produit disparaît de la section dès qu\'il est validé (sans quitter l\'écran)', async () => {
     const user = userEvent.setup()
-    render(
+    const onValiderProduitSignale = vi.fn().mockResolvedValue(undefined)
+
+    const { rerender } = render(
       <MissionValidationDetail
         mission={missionFixture({
           produits_signales: [
             {
-              id: 4,
+              id: 3,
               mission_menage_id: 10,
               photo_url: 'produits-signales/photo.jpg',
-              note: 'Déjà traité',
-              statut: 'valide',
-              produit_catalogue_id: 1,
+              note: 'Trouvé sur place',
+              statut: 'en_attente',
+              produit_catalogue_id: null,
             },
           ],
         })}
-        onValiderProduitSignale={vi.fn()}
+        onValiderProduitSignale={onValiderProduitSignale}
         onRejeterProduitSignale={vi.fn()}
       />,
     )
 
     await user.click(screen.getByRole('button', { name: /voir le détail/i }))
+    expect(screen.getByText(/trouvé sur place/i)).toBeInTheDocument()
 
-    expect(screen.getByText('Déjà traité')).toBeInTheDocument()
-    expect(screen.getByText('Validé')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Nom')).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText('Nom'), 'Gel douche')
+    await user.type(screen.getByLabelText('Prix (MAD)'), '30')
+    await user.click(screen.getByRole('button', { name: /^valider$/i }))
+    expect(onValiderProduitSignale).toHaveBeenCalledWith(3, { nom: 'Gel douche', prix: 30 })
+
+    // The parent re-renders with the product now "valide" -- it must
+    // disappear from this section rather than linger read-only.
+    rerender(
+      <MissionValidationDetail
+        mission={missionFixture({
+          produits_signales: [
+            {
+              id: 3,
+              mission_menage_id: 10,
+              photo_url: 'produits-signales/photo.jpg',
+              note: 'Trouvé sur place',
+              statut: 'valide',
+              produit_catalogue_id: 1,
+            },
+          ],
+        })}
+        onValiderProduitSignale={onValiderProduitSignale}
+        onRejeterProduitSignale={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText(/trouvé sur place/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/produits signalés/i)).not.toBeInTheDocument()
   })
 
   it('affiche les photos de preuve du travail de l\'agent', async () => {

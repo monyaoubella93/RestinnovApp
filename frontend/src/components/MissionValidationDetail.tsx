@@ -38,7 +38,12 @@ export function MissionValidationDetail({
   const [expanded, setExpanded] = useState(false)
   const [lightboxPhoto, setLightboxPhoto] = useState<{ src: string; alt: string } | null>(null)
   const checklistItems = mission.checklist_items ?? []
-  const produitsSignales = mission.produits_signales ?? []
+  // Only pending signalements belong here -- once a product is validated or
+  // rejected it's treated, and this section (nom/prix fields + "Valider ce
+  // produit") stops being relevant to it.
+  const produitsSignalesEnAttente = (mission.produits_signales ?? []).filter(
+    (produit) => produit.statut === 'en_attente',
+  )
   const photosPreuve = mission.photos_preuve ?? []
 
   return (
@@ -127,14 +132,14 @@ export function MissionValidationDetail({
             </div>
           )}
 
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">Produits signalés</p>
-            {produitsSignales.length === 0 ? (
-              <p className="mt-1 text-sm text-ink-tertiary">Aucun produit signalé.</p>
-            ) : (
+          {produitsSignalesEnAttente.length > 0 && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">
+                Produits signalés pour cette mission
+              </p>
               <ul className="mt-2 space-y-2">
-                {produitsSignales.map((produit) =>
-                  produit.statut === 'en_attente' && onValiderProduitSignale && onRejeterProduitSignale ? (
+                {produitsSignalesEnAttente.map((produit) =>
+                  onValiderProduitSignale && onRejeterProduitSignale ? (
                     <ProduitSignaleCard
                       key={produit.id}
                       produitSignale={produit}
@@ -162,8 +167,8 @@ export function MissionValidationDetail({
                   ),
                 )}
               </ul>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
