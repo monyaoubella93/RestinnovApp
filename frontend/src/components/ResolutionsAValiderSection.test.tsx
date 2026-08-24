@@ -20,6 +20,7 @@ function ticketFixture(overrides: Partial<TicketMaintenance> = {}): TicketMainte
     photo_apres: 'tickets-maintenance/apres.jpg',
     cout_reparation: '45.50',
     note_resolution: null,
+    audio_resolution_url: null,
     urgence: 'normale',
     statut: 'resolu_en_attente_validation',
     created_at: '2026-08-10T09:00:00Z',
@@ -75,6 +76,28 @@ describe('ResolutionsAValiderSection', () => {
     expect(screen.getByText('Changer le joint du robinet.')).toBeInTheDocument()
     expect(screen.getByAltText(/photo après réparation/i)).toBeInTheDocument()
     expect(screen.getByText(/45.50 MAD/)).toBeInTheDocument()
+  })
+
+  it('affiche le lecteur audio de la résolution quand un enregistrement a été fourni', async () => {
+    globalThis.fetch = mockFetch([
+      ticketFixture({ audio_resolution_url: 'tickets-maintenance/resolution-audio.webm' }),
+    ]) as typeof fetch
+
+    render(<ResolutionsAValiderSection />)
+
+    await screen.findByText('Loft Bastille')
+    const audio = document.querySelector('audio')
+    expect(audio).toBeInTheDocument()
+    expect(audio).toHaveAttribute('src', expect.stringContaining('tickets-maintenance/resolution-audio.webm'))
+  })
+
+  it('n\'affiche aucun lecteur audio quand la résolution n\'en a pas', async () => {
+    globalThis.fetch = mockFetch([ticketFixture()]) as typeof fetch
+
+    render(<ResolutionsAValiderSection />)
+
+    await screen.findByText('Loft Bastille')
+    expect(document.querySelector('audio')).not.toBeInTheDocument()
   })
 
   it('affiche un message quand aucune résolution n\'est en attente', async () => {

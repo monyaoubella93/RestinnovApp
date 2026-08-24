@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { resoudreTicketMaintenance, resolveStorageUrl } from '../api'
+import { useAudioRecorder } from '../hooks/useAudioRecorder'
 import type { MonTicketMaintenance } from '../types'
 import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 
@@ -19,6 +20,16 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
   const [resolu, setResolu] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const {
+    recordingState,
+    audioFile,
+    audioPreviewUrl,
+    micSupported,
+    startRecording,
+    stopRecording,
+    resetAudio,
+  } = useAudioRecorder({ filename: 'resolution-audio.webm' })
 
   const handlePhotoChange = (file: File | undefined | null) => {
     if (!file) return
@@ -44,6 +55,7 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
         photoApres: photo,
         coutReparation: Number(coutReparation),
         note: note.trim() ? note : null,
+        audioResolution: audioFile,
       })
       setResolu(true)
       onResolu()
@@ -145,6 +157,58 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
             />
             {photoPreviewUrl && (
               <img src={photoPreviewUrl} alt="Aperçu de la photo" className="mt-1 h-20 w-20 rounded-lg object-cover" />
+            )}
+          </div>
+
+          <div className="flex flex-col items-center gap-1">
+            {!micSupported ? (
+              <p className="max-w-[8rem] text-center text-xs text-gray-400">Audio non disponible</p>
+            ) : recordingState === 'idle' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={startRecording}
+                  aria-label="Enregistrer un message audio (optionnel)"
+                  className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-indigo-200 bg-indigo-50 text-4xl hover:bg-indigo-100"
+                >
+                  🎤
+                </button>
+                <span className="text-xs font-medium text-gray-500">Audio (optionnel)</span>
+              </>
+            ) : recordingState === 'recording' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={stopRecording}
+                  aria-label="Arrêter l'enregistrement"
+                  data-testid="recording-indicator"
+                  className="relative flex h-20 w-20 items-center justify-center rounded-full bg-red-600 text-3xl text-white"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 animate-ping rounded-full bg-red-500 opacity-75"
+                  />
+                  <span aria-hidden="true" className="relative">
+                    ⏹
+                  </span>
+                </button>
+                <span className="text-xs font-medium text-red-600">Enregistrement...</span>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                {audioPreviewUrl && (
+                  // eslint-disable-next-line jsx-a11y/media-has-caption
+                  <audio controls src={audioPreviewUrl} className="w-40" />
+                )}
+                <button
+                  type="button"
+                  onClick={resetAudio}
+                  aria-label="Recommencer l'enregistrement audio"
+                  className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-gray-300 text-xl hover:bg-gray-50"
+                >
+                  🔄
+                </button>
+              </div>
             )}
           </div>
 

@@ -176,14 +176,22 @@ class TicketMaintenanceController extends Controller
             'photo_apres' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
             'cout_reparation' => ['required', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:1000'],
+            // Optional voice note explaining the fix, alongside the
+            // mandatory photo_apres -- same mime allowlist as the other
+            // audio uploads on this controller (description_manager_audio).
+            'audio_resolution' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:10240'],
         ]);
 
         $photoApresUrl = $request->file('photo_apres')->store('tickets-maintenance', 'public');
+        $audioResolutionUrl = $request->hasFile('audio_resolution')
+            ? $request->file('audio_resolution')->store('tickets-maintenance', 'public')
+            : null;
 
         $ticketMaintenance->update([
             'photo_apres' => $photoApresUrl,
             'cout_reparation' => $validated['cout_reparation'],
             'note_resolution' => $validated['note'] ?? null,
+            'audio_resolution_url' => $audioResolutionUrl,
             'statut' => TicketMaintenance::STATUT_RESOLU_EN_ATTENTE_VALIDATION,
         ]);
 
@@ -241,6 +249,7 @@ class TicketMaintenanceController extends Controller
             'photo_apres' => null,
             'cout_reparation' => null,
             'note_resolution' => null,
+            'audio_resolution_url' => null,
         ]);
 
         return response()->json($ticketMaintenance->fresh(self::DETAIL_RELATIONS));

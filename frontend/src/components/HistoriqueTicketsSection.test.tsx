@@ -20,6 +20,7 @@ function ticketFixture(overrides: Partial<TicketMaintenance> = {}): TicketMainte
     photo_apres: 'tickets-maintenance/apres.jpg',
     cout_reparation: '45.50',
     note_resolution: null,
+    audio_resolution_url: null,
     urgence: 'normale',
     statut: 'resolu',
     created_at: '2026-08-10T09:00:00Z',

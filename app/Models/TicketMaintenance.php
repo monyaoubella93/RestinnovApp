@@ -42,6 +42,7 @@ class TicketMaintenance extends Model
         'photo_apres',
         'cout_reparation',
         'note_resolution',
+        'audio_resolution_url',
         'urgence',
         'statut',
     ];

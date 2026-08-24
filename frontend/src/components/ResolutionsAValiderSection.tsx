@@ -119,6 +119,11 @@ function ResolutionCard({
         />
       )}
 
+      {ticket.audio_resolution_url && (
+        // eslint-disable-next-line jsx-a11y/media-has-caption
+        <audio controls src={resolveStorageUrl(ticket.audio_resolution_url)} className="mt-2 w-full" />
+      )}
+
       {ticket.cout_reparation != null && (
         <p className="mt-2 text-sm font-medium text-gray-900">Coût : {ticket.cout_reparation} MAD</p>
       )}

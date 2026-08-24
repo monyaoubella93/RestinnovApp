@@ -185,6 +185,7 @@ export interface ResoudreTicketMaintenanceInput {
   photoApres: File
   coutReparation: number
   note?: string | null
+  audioResolution?: File | null
 }
 
 export interface ValiderProduitSignaleInput {
@@ -741,6 +742,7 @@ export async function resoudreTicketMaintenance(
   formData.append('photo_apres', input.photoApres)
   formData.append('cout_reparation', String(input.coutReparation))
   if (input.note) formData.append('note', input.note)
+  if (input.audioResolution) formData.append('audio_resolution', input.audioResolution)
   formData.append('_method', 'PATCH')
 
   const response = await fetch(`${API_BASE_URL}/api/tickets-maintenance/${id}/resoudre`, {

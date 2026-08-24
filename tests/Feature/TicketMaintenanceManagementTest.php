@@ -540,6 +540,49 @@ class TicketMaintenanceManagementTest extends TestCase
         ]);
     }
 
+    public function test_resoudre_accepts_an_optional_audio_resolution(): void
+    {
+        Storage::fake('public');
+
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
+            '_method' => 'PATCH',
+            'photo_apres' => UploadedFile::fake()->image('reparation.jpg'),
+            'cout_reparation' => '45.50',
+            'audio_resolution' => UploadedFile::fake()->create('resolution.mp3', 100, 'audio/mpeg'),
+        ]);
+
+        $response->assertOk();
+        $this->assertNotNull($response->json('audio_resolution_url'));
+        $this->assertDatabaseHas('tickets_maintenance', [
+            'id' => $ticket->id,
+            'statut' => 'resolu_en_attente_validation',
+        ]);
+        Storage::disk('public')->assertExists($response->json('audio_resolution_url'));
+    }
+
+    public function test_resoudre_works_without_an_audio_resolution(): void
+    {
+        Storage::fake('public');
+
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
+            '_method' => 'PATCH',
+            'photo_apres' => UploadedFile::fake()->image('reparation.jpg'),
+            'cout_reparation' => '45.50',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('statut', 'resolu_en_attente_validation');
+        $this->assertNull($response->json('audio_resolution_url'));
+    }
+
     public function test_resoudre_marks_a_ticket_a_refaire_resolu_en_attente_validation_again(): void
     {
         Storage::fake('public');

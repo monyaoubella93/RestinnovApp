@@ -124,5 +124,74 @@ describe('TicketDetailAgent', () => {
     expect(onResolu).toHaveBeenCalledTimes(1)
     // Stays visible -- no redirect back to the list.
     expect(screen.getByRole('button', { name: /retour à mes tickets/i })).toBeInTheDocument()
+
+    // No audio was recorded -- the request must not carry an audio_resolution part.
+    const body = fetchMock.mock.calls[0][1]?.body as FormData
+    expect(body.has('audio_resolution')).toBe(false)
+  })
+
+  function mockMicSupport() {
+    const fakeTrack = { stop: vi.fn() }
+    const fakeStream = { getTracks: () => [fakeTrack] } as unknown as MediaStream
+    const getUserMedia = vi.fn().mockResolvedValue(fakeStream)
+    Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia }, configurable: true })
+
+    class FakeMediaRecorder {
+      static isTypeSupported = () => true
+      ondataavailable: ((event: { data: Blob }) => void) | null = null
+      onstop: (() => void) | null = null
+      mimeType = 'audio/webm'
+      stream: MediaStream
+      constructor(stream: MediaStream) {
+        this.stream = stream
+      }
+      start() {
+        this.ondataavailable?.({ data: new Blob(['audio-bytes'], { type: 'audio/webm' }) })
+      }
+      stop() {
+        this.onstop?.()
+      }
+    }
+    // @ts-expect-error -- assigning a minimal fake for the test
+    window.MediaRecorder = FakeMediaRecorder
+
+    return { getUserMedia }
+  }
+
+  it('propose un enregistrement audio marqué optionnel sur l\'écran de résolution', () => {
+    mockMicSupport()
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    expect(screen.getByText(/audio \(optionnel\)/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /enregistrer un message audio \(optionnel\)/i })).toBeInTheDocument()
+
+    delete (window as { MediaRecorder?: unknown }).MediaRecorder
+  })
+
+  it('enregistre un audio optionnel et l\'envoie avec la résolution', async () => {
+    const user = userEvent.setup()
+    const fetchMock = mockFetch()
+    globalThis.fetch = fetchMock as typeof fetch
+
+    const { getUserMedia } = mockMicSupport()
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /enregistrer un message audio \(optionnel\)/i }))
+    await waitFor(() => expect(getUserMedia).toHaveBeenCalledWith({ audio: true }))
+    await user.click(await screen.findByRole('button', { name: /arrêter l'enregistrement/i }))
+    expect(await screen.findByRole('button', { name: /recommencer l'enregistrement/i })).toBeInTheDocument()
+
+    const photo = new File(['x'], 'reparation.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText(/photo de la réparation/i), photo)
+    await user.type(screen.getByLabelText(/prix de la réparation/i), '45')
+    await user.click(screen.getByRole('button', { name: /marquer résolu/i }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    const body = fetchMock.mock.calls[0][1]?.body as FormData
+    expect(body.get('audio_resolution')).toBeInstanceOf(File)
+
+    delete (window as { MediaRecorder?: unknown }).MediaRecorder
   })
 })

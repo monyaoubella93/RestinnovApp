@@ -130,6 +130,7 @@ export interface TicketMaintenance {
   photo_apres: string | null
   cout_reparation: string | number | null
   note_resolution: string | null
+  audio_resolution_url: string | null
   urgence: TicketMaintenanceUrgence
   statut: TicketMaintenanceStatut
   created_at: string
