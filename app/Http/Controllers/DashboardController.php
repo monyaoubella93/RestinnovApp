@@ -22,8 +22,8 @@ class DashboardController extends Controller
 
         $fraisForfaitTotal = (float) MissionMenage::sum('frais_forfait');
         $fraisProduitsTotal = (float) DB::table('mission_menage_produits')
-            ->join('produits_menage_catalogue', 'produits_menage_catalogue.id', '=', 'mission_menage_produits.produit_catalogue_id')
-            ->sum('produits_menage_catalogue.prix');
+            ->where('type_utilisation', MissionMenage::TYPE_UTILISATION_RACHETE)
+            ->sum('prix_paye');
         $fraisMenageTotaux = $fraisForfaitTotal + $fraisProduitsTotal;
 
         $fraisMaintenanceTotaux = (float) FraisMaintenance::sum('prix');

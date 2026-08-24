@@ -89,6 +89,8 @@ class ProduitSignaleTest extends TestCase
         $this->assertDatabaseHas('mission_menage_produits', [
             'mission_menage_id' => $mission->id,
             'produit_catalogue_id' => $produitCatalogueId,
+            'type_utilisation' => 'rachete',
+            'prix_paye' => 15,
         ]);
         $this->assertDatabaseHas('produits_menage_signales', [
             'id' => $signale->id,
