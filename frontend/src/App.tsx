@@ -31,6 +31,7 @@ import {
 } from './api'
 import { AgentsMenageListeSection } from './components/AgentsMenageListeSection'
 import { AppartementsListeSection } from './components/AppartementsListeSection'
+import { CalendrierSection } from './components/CalendrierSection'
 import { CatalogueProduitsSection } from './components/CatalogueProduitsSection'
 import { DashboardSection } from './components/DashboardSection'
 import { HeaderSearchBar } from './components/HeaderSearchBar'
@@ -60,6 +61,7 @@ import type {
 
 type Tab =
   | 'dashboard'
+  | 'calendrier'
   | 'sejour-creer'
   | 'sejour-liste'
   | 'appartement-creer'
@@ -121,6 +123,7 @@ const NAV_GROUPS: NavGroup[] = [
 
 const SECTION_TITLES: Record<Tab, string> = {
   dashboard: 'Dashboard',
+  calendrier: 'Calendrier',
   'sejour-creer': 'Séjours',
   'sejour-liste': 'Séjours',
   'appartement-creer': 'Appartements',
@@ -515,6 +518,15 @@ function App() {
           >
             Dashboard
           </button>
+          <button
+            type="button"
+            onClick={() => navigateTo('calendrier')}
+            className={`flex items-center gap-2.5 rounded-field px-2.5 py-2.5 text-left text-sm font-semibold ${
+              activeTab === 'calendrier' ? 'bg-brand text-white' : 'text-rail-text hover:bg-white/5'
+            }`}
+          >
+            Calendrier
+          </button>
 
           {NAV_GROUPS.slice(0, 2).map((group) => {
             const isExpanded = expandedGroup === group.key
@@ -665,6 +677,9 @@ function App() {
               onNavigateToTicketsMaintenance={() => handleNavigateToTicketsMaintenance('ouvert')}
               onNavigateToResolutionsAValider={() => handleNavigateToTicketsMaintenance('resolu_en_attente_validation')}
             />
+          )}
+          {activeTab === 'calendrier' && (
+            <CalendrierSection appartements={appartements} onNavigateToSejour={handleNavigateToSejourDetail} />
           )}
           {activeTab === 'sejour-creer' && (
             <NouveauSejourForm

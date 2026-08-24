@@ -333,6 +333,24 @@ export interface DashboardData {
   resolutions_a_valider: DashboardResolutionAValider[]
 }
 
+export interface CalendrierSejour {
+  id: number
+  reference: string
+  nom_voyageur: string
+  statut: SejourStatut
+  appartement: { id: number; nom: string } | null
+}
+
+export interface CalendrierJour {
+  date: string
+  sejours: CalendrierSejour[]
+}
+
+export interface CalendrierData {
+  mois: string
+  jours: CalendrierJour[]
+}
+
 export interface ReleveSejour {
   id: number
   nom_voyageur: string

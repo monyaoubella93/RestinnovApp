@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppartementController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CalendrierController;
 use App\Http\Controllers\ChecklistItemController;
 use App\Http\Controllers\ChecklistModeleController;
 use App\Http\Controllers\ChecklistModeleItemController;
@@ -27,6 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // produits catalogue.
     Route::middleware('role:manager')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index']);
+        Route::get('/calendrier', [CalendrierController::class, 'index']);
         Route::get('/notifications', [NotificationController::class, 'index']);
 
         Route::get('/appartements', [AppartementController::class, 'index']);
