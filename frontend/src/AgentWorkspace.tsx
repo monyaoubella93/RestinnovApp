@@ -105,16 +105,10 @@ export function AgentWorkspace() {
         role="tablist"
         aria-label={t('menage.workspaceNavLabel')}
       >
-        <div className="flex items-center gap-2.5 px-1 pb-5">
+        <div className="flex items-center px-1 pb-5">
           <span className="flex h-[38px] w-fit shrink-0 items-center justify-center rounded-field bg-white px-2">
-            <img src="/logo.png" alt="" className="h-[26px] w-auto object-contain" />
+            <img src="/logo.png" alt={t('common.brand')} className="h-[26px] w-auto object-contain" />
           </span>
-          <div className="min-w-0">
-            <p className="truncate text-[15px] font-bold text-white">{t('common.brand')}</p>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-rail-meta">
-              {t('menage.agentTitle')}
-            </p>
-          </div>
         </div>
 
         <div className="flex flex-col gap-1">
