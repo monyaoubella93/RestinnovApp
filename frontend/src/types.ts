@@ -141,6 +141,19 @@ export interface TicketMaintenanceRefus {
   manager: { id: number; nom: string } | null
 }
 
+/**
+ * The maintenance agent's own intermediate photo/audio/note message to the
+ * Manager on an in-progress ticket -- distinct from the final resolution
+ * (photo_apres/cout_reparation/note_resolution). Chronological, oldest first.
+ */
+export interface MessageAgentMaintenance {
+  id: number
+  photo_url: string | null
+  audio_url: string | null
+  note: string | null
+  created_at: string
+}
+
 export interface TicketMaintenanceParAppartement {
   appartement: { id: number; nom: string; adresse: string } | null
   tickets_count: number
@@ -171,6 +184,7 @@ export interface TicketMaintenance {
   agent?: Agent | null
   mission_origine?: (Omit<MissionMenage, 'sejour'> & { sejour?: Sejour | null }) | null
   refus?: TicketMaintenanceRefus[]
+  messages_agent?: MessageAgentMaintenance[]
 }
 
 /**
@@ -192,6 +206,7 @@ export interface MonTicketMaintenance {
   photo_url: string | null
   appartement: { id: number; nom: string; adresse: string } | null
   refus: { motif: string | null; motif_audio_url: string | null; motif_photo_url: string | null; vu: boolean; date: string }[]
+  messages_agent: MessageAgentMaintenance[]
 }
 
 export type VoyageurType = 'adulte' | 'enfant'
@@ -318,6 +333,24 @@ export interface DashboardData {
   resolutions_a_valider: DashboardResolutionAValider[]
 }
 
+export interface CalendrierSejour {
+  id: number
+  reference: string
+  nom_voyageur: string
+  statut: SejourStatut
+  appartement: { id: number; nom: string } | null
+}
+
+export interface CalendrierJour {
+  date: string
+  sejours: CalendrierSejour[]
+}
+
+export interface CalendrierData {
+  mois: string
+  jours: CalendrierJour[]
+}
+
 export interface ReleveSejour {
   id: number
   nom_voyageur: string
@@ -433,6 +466,7 @@ export interface HistoriqueTicketAgent {
   cout_reparation: string | number | null
   note_resolution: string | null
   appartement: { id: number; nom: string; adresse: string } | null
+  messages_agent: MessageAgentMaintenance[]
 }
 
 /**

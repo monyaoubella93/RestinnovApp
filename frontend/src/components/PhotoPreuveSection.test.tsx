@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { PhotoPreuveSection } from './PhotoPreuveSection'
+import { ApiError } from '../api'
 
 function makeFile(name = 'travail.jpg', type = 'image/jpeg') {
   return new File(['contenu'], name, { type })
@@ -102,5 +103,17 @@ describe('PhotoPreuveSection', () => {
 
     expect(await screen.findByTestId('photo-preuve-confirmation')).toBeInTheDocument()
     expect(screen.getByText(/mission refusée/i)).toBeInTheDocument()
+  })
+
+  it('affiche un message clair quand une photo de preuve est trop lourde', async () => {
+    const user = userEvent.setup()
+    const onAjouter = vi.fn().mockRejectedValue(new ApiError('Le fichier envoyé est trop volumineux.', 413))
+    render(<PhotoPreuveSection missionMenageId={10} onAjouter={onAjouter} />)
+
+    await user.click(screen.getByRole('button', { name: /ajouter une photo de mon travail/i }))
+    await user.upload(screen.getByLabelText(/photos de preuve de travail/i), makeFile())
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
+
+    expect(await screen.findByText(/photo trop lourde, réessayez avec une photo plus légère/i)).toBeInTheDocument()
   })
 })

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from './auth/AuthContext'
 import { fetchMissionsAgent, fetchProduitsCatalogue } from './api'
 import { HistoriqueAgentSection } from './components/HistoriqueAgentSection'
 import { MesMissionsSection } from './components/MesMissionsSection'
+import { LanguageSwitcher } from './i18n/LanguageSwitcher'
 import { SyncStatusPill } from './pwa/SyncStatusPill'
 import { useOfflineSync } from './pwa/useOfflineSync'
 import { usePwaIdentity } from './pwa/usePwaIdentity'
@@ -10,12 +12,12 @@ import type { MissionMenage, ProduitCatalogue } from './types'
 
 type Onglet = 'mes-missions' | 'en-attente' | 'refusees' | 'validees'
 
-const ONGLETS: { id: Onglet; label: string; icon: string }[] = [
-  { id: 'mes-missions', label: 'Mes missions', icon: '🧹' },
-  { id: 'en-attente', label: 'En attente', icon: '⏳' },
-  { id: 'refusees', label: 'Refusées', icon: '⚠️' },
-  { id: 'validees', label: 'Validées', icon: '🗂️' },
-]
+const ONGLET_ICONS: Record<Onglet, string> = {
+  'mes-missions': '🧹',
+  'en-attente': '⏳',
+  refusees: '⚠️',
+  validees: '🗂️',
+}
 
 function initiales(nom: string): string {
   const parts = nom.trim().split(/\s+/).filter(Boolean)
@@ -34,6 +36,8 @@ function initiales(nom: string): string {
 export function AgentWorkspace() {
   usePwaIdentity('menage')
   const offlineSync = useOfflineSync()
+  const { t, i18n } = useTranslation()
+  const isRtl = i18n.language === 'ar'
 
   const { user, logout } = useAuth()
   const [catalogue, setCatalogue] = useState<ProduitCatalogue[]>([])
@@ -43,20 +47,28 @@ export function AgentWorkspace() {
   const [loadingMissions, setLoadingMissions] = useState(false)
   const [missionsError, setMissionsError] = useState<string | null>(null)
 
+  const ONGLETS: { id: Onglet; label: string; icon: string }[] = [
+    { id: 'mes-missions', label: t('menage.nav.mesMissions'), icon: ONGLET_ICONS['mes-missions'] },
+    { id: 'en-attente', label: t('menage.nav.enAttente'), icon: ONGLET_ICONS['en-attente'] },
+    { id: 'refusees', label: t('menage.nav.refusees'), icon: ONGLET_ICONS.refusees },
+    { id: 'validees', label: t('menage.nav.validees'), icon: ONGLET_ICONS.validees },
+  ]
+
   const chargerMissions = () => {
     if (!user) return
     setLoadingMissions(true)
     setMissionsError(null)
     fetchMissionsAgent(user.id)
       .then(setMissions)
-      .catch((err) => setMissionsError(err instanceof Error ? err.message : 'Impossible de charger les missions.'))
+      .catch((err) => setMissionsError(err instanceof Error ? err.message : t('menage.errorMissions')))
       .finally(() => setLoadingMissions(false))
   }
 
   useEffect(() => {
     fetchProduitsCatalogue()
       .then(setCatalogue)
-      .catch((err) => setLoadError(err instanceof Error ? err.message : 'Impossible de charger les données.'))
+      .catch((err) => setLoadError(err instanceof Error ? err.message : t('menage.errorCatalogue')))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -75,7 +87,7 @@ export function AgentWorkspace() {
     refusees: refusees.length,
   }
 
-  const today = new Date().toLocaleDateString('fr-FR', {
+  const today = new Date().toLocaleDateString(isRtl ? 'ar-MA' : 'fr-FR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -84,20 +96,19 @@ export function AgentWorkspace() {
   const todayCapitalized = today.charAt(0).toUpperCase() + today.slice(1)
 
   return (
-    <div className="flex min-h-screen bg-app-bg font-sans text-ink">
+    <div
+      dir={isRtl ? 'rtl' : 'ltr'}
+      className={`flex min-h-screen bg-app-bg text-ink ${isRtl ? 'font-arabic' : 'font-sans'}`}
+    >
       <nav
         className="flex w-[246px] shrink-0 flex-col bg-marine px-3.5 py-5"
         role="tablist"
-        aria-label="Navigation agent ménage"
+        aria-label={t('menage.workspaceNavLabel')}
       >
-        <div className="flex items-center gap-2.5 px-1 pb-5">
-          <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-field bg-white">
-            <img src="/logo.png" alt="" className="h-[34px] w-[34px] object-contain" />
+        <div className="flex items-center px-1 pb-5">
+          <span className="flex h-[38px] w-fit shrink-0 items-center justify-center rounded-field bg-white px-2">
+            <img src="/logo.png" alt={t('common.brand')} className="h-[26px] w-auto object-contain" />
           </span>
-          <div className="min-w-0">
-            <p className="truncate text-[15px] font-bold text-white">Restinnov</p>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-rail-meta">Agent ménage</p>
-          </div>
         </div>
 
         <div className="flex flex-col gap-1">
@@ -108,7 +119,7 @@ export function AgentWorkspace() {
               role="tab"
               aria-selected={onglet === o.id}
               onClick={() => setOnglet(o.id)}
-              className={`relative flex items-center gap-2.5 rounded-[10px] px-3 py-3 text-left text-[15px] font-semibold ${
+              className={`relative flex items-center gap-2.5 rounded-[10px] px-3 py-3 text-start text-[15px] font-semibold ${
                 onglet === o.id ? 'bg-brand text-white' : 'text-rail-text hover:bg-white/5'
               }`}
             >
@@ -125,8 +136,8 @@ export function AgentWorkspace() {
                 <span
                   data-testid="refusees-dot"
                   role="status"
-                  aria-label="Nouveau refus"
-                  className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-danger"
+                  aria-label={t('menage.nouveauRefus')}
+                  className="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-danger"
                 />
               )}
             </button>
@@ -141,22 +152,23 @@ export function AgentWorkspace() {
               </div>
               <div className="min-w-0">
                 <div className="truncate text-[13px] font-semibold text-[#E6EBF4]">{user.nom}</div>
-                <div className="text-[11px] text-rail-meta">Agent ménage</div>
+                <div className="text-[11px] text-rail-meta">{t('menage.agentTitle')}</div>
               </div>
             </div>
           )}
+          <LanguageSwitcher />
           <button
             type="button"
             onClick={() => {
               void logout()
             }}
-            aria-label="Déconnexion"
-            className="flex min-h-12 items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-left text-sm font-semibold text-rail-text hover:bg-white/5"
+            aria-label={t('common.logout')}
+            className="flex min-h-12 items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-start text-sm font-semibold text-rail-text hover:bg-white/5"
           >
             <span aria-hidden="true" className="text-lg">
               🚪
             </span>
-            Déconnexion
+            {t('common.logout')}
           </button>
         </div>
       </nav>
@@ -164,12 +176,9 @@ export function AgentWorkspace() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-[68px] shrink-0 items-center gap-4 border-b border-border-default bg-surface px-6">
           <div>
-            <h1 className="text-xl font-bold tracking-[-0.02em] text-ink">Ménage</h1>
-            <p dir="rtl" className="font-arabic text-sm text-ink-tertiary">
-              النظافة
-            </p>
+            <h1 className="text-xl font-bold tracking-[-0.02em] text-ink">{t('menage.title')}</h1>
           </div>
-          <div className="border-l border-border-default pl-4 text-[13px] text-ink-tertiary">{todayCapitalized}</div>
+          <div className="border-s border-border-default ps-4 text-[13px] text-ink-tertiary">{todayCapitalized}</div>
           <SyncStatusPill {...offlineSync} />
         </header>
 
@@ -182,10 +191,10 @@ export function AgentWorkspace() {
               catalogue={catalogue}
               loading={loadingMissions}
               error={missionsError}
-              heading="Mes missions du jour"
+              heading={t('menage.heading')}
               subheading={user?.nom}
               emptyIcon="✅"
-              emptyMessage="Aucune mission pour l'instant."
+              emptyMessage={t('menage.emptyMesMissions')}
               onRefresh={chargerMissions}
             />
           )}
@@ -196,7 +205,7 @@ export function AgentWorkspace() {
               loading={loadingMissions}
               error={missionsError}
               emptyIcon="⏳"
-              emptyMessage="Aucune mission en attente de validation."
+              emptyMessage={t('menage.emptyEnAttente')}
               onRefresh={chargerMissions}
             />
           )}
@@ -207,7 +216,7 @@ export function AgentWorkspace() {
               loading={loadingMissions}
               error={missionsError}
               emptyIcon="🎉"
-              emptyMessage="Aucune mission refusée."
+              emptyMessage={t('menage.emptyRefusees')}
               onRefresh={chargerMissions}
             />
           )}

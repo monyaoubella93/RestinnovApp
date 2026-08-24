@@ -1,6 +1,7 @@
 import type {
   Agent,
   Appartement,
+  CalendrierData,
   ChecklistItem,
   ChecklistModele,
   ChecklistModeleItem,
@@ -215,11 +216,13 @@ export interface NewFraisMaintenanceInput {
 }
 
 export class ApiError extends Error {
+  readonly status: number
   readonly errors?: Record<string, string[]>
 
-  constructor(message: string, errors?: Record<string, string[]>) {
+  constructor(message: string, status: number, errors?: Record<string, string[]>) {
     super(message)
     this.name = 'ApiError'
+    this.status = status
     this.errors = errors
   }
 }
@@ -298,7 +301,13 @@ async function parseJsonOrThrow(response: Response) {
   handleUnauthorized(response)
 
   if (!response.ok) {
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    // A 413 can come from nginx (client_max_body_size) or PHP itself
+    // (post_max_size) before the request ever reaches Laravel -- in both
+    // cases the body isn't JSON, so `data` is null and there is no
+    // `data.message` to fall back on. Give a message that still names the
+    // actual problem instead of the generic fallback.
+    const fallback = response.status === 413 ? 'Le fichier envoyé est trop volumineux.' : 'Une erreur est survenue.'
+    throw new ApiError(data?.message ?? fallback, response.status, data?.errors)
   }
 
   return data
@@ -460,7 +469,7 @@ export async function deleteChecklistModeleItem(itemId: number): Promise<void> {
 
   if (!response.ok) {
     const data = await response.json().catch(() => null)
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
   }
 }
 
@@ -531,7 +540,7 @@ export async function deleteUtilisateur(id: number): Promise<void> {
 
   if (!response.ok) {
     const data = await response.json().catch(() => null)
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
   }
 }
 
@@ -883,8 +892,23 @@ export async function fetchMesTicketsMaintenance(): Promise<MonTicketMaintenance
   return parseJsonOrThrow(response)
 }
 
-export async function fetchMesTicketsMaintenanceHistorique(): Promise<HistoriqueTicketAgent[]> {
-  const response = await fetch(`${API_BASE_URL}/api/tickets-maintenance/mes-tickets/historique`, {
+export interface FetchMesTicketsMaintenanceHistoriqueParams {
+  appartementId?: number
+  dateDebut?: string
+  dateFin?: string
+  search?: string
+}
+
+export async function fetchMesTicketsMaintenanceHistorique(
+  params: FetchMesTicketsMaintenanceHistoriqueParams = {},
+): Promise<HistoriqueTicketAgent[]> {
+  const url = new URL(`${API_BASE_URL}/api/tickets-maintenance/mes-tickets/historique`)
+  if (params.appartementId) url.searchParams.set('appartement_id', String(params.appartementId))
+  if (params.dateDebut) url.searchParams.set('date_debut', params.dateDebut)
+  if (params.dateFin) url.searchParams.set('date_fin', params.dateFin)
+  if (params.search) url.searchParams.set('search', params.search)
+
+  const response = await fetch(url, {
     headers: authHeaders(),
   })
 
@@ -898,6 +922,24 @@ export async function marquerTicketMaintenanceRefusVu(id: number): Promise<Ticke
   })
 
   return parseJsonOrThrow(response)
+}
+
+export interface EnvoyerMessageAgentMaintenanceInput {
+  photo?: File | null
+  audio?: File | null
+  note?: string | null
+}
+
+export async function envoyerMessageAgentMaintenance(
+  id: number,
+  input: EnvoyerMessageAgentMaintenanceInput,
+): Promise<TicketMaintenance> {
+  const formData = new FormData()
+  if (input.photo) formData.append('photo', input.photo)
+  if (input.audio) formData.append('audio', input.audio)
+  if (input.note) formData.append('note', input.note)
+
+  return postFormDataOrQueue(`${API_BASE_URL}/api/tickets-maintenance/${id}/message`, formData)
 }
 
 export async function resoudreTicketMaintenance(
@@ -961,12 +1003,24 @@ export async function deleteFraisMaintenance(id: number): Promise<void> {
 
   if (!response.ok) {
     const data = await response.json().catch(() => null)
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
   }
 }
 
 export async function fetchDashboard(): Promise<DashboardData> {
   const response = await fetch(`${API_BASE_URL}/api/dashboard`, {
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
+export async function fetchCalendrier(params: { mois: string; appartementId?: number }): Promise<CalendrierData> {
+  const url = new URL(`${API_BASE_URL}/api/calendrier`)
+  url.searchParams.set('mois', params.mois)
+  if (params.appartementId) url.searchParams.set('appartement_id', String(params.appartementId))
+
+  const response = await fetch(url, {
     headers: authHeaders(),
   })
 
@@ -1032,7 +1086,7 @@ export async function downloadRelevePdf(appartementId: number, mois: string): Pr
 
   if (!response.ok) {
     const data = await response.json().catch(() => null)
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
   }
 
   const blob = await response.blob()

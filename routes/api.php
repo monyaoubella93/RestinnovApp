@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppartementController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CalendrierController;
 use App\Http\Controllers\ChecklistItemController;
 use App\Http\Controllers\ChecklistModeleController;
 use App\Http\Controllers\ChecklistModeleItemController;
@@ -27,6 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // produits catalogue.
     Route::middleware('role:manager')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index']);
+        Route::get('/calendrier', [CalendrierController::class, 'index']);
         Route::get('/notifications', [NotificationController::class, 'index']);
 
         Route::get('/appartements', [AppartementController::class, 'index']);
@@ -105,6 +107,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:maintenance,manager')->group(function () {
         Route::get('/tickets-maintenance/mes-tickets', [TicketMaintenanceController::class, 'mesTickets']);
         Route::get('/tickets-maintenance/mes-tickets/historique', [TicketMaintenanceController::class, 'mesTicketsHistorique']);
+        Route::post('/tickets-maintenance/{ticketMaintenance}/message', [TicketMaintenanceController::class, 'envoyerMessage']);
         Route::patch('/tickets-maintenance/{ticketMaintenance}/resoudre', [TicketMaintenanceController::class, 'resoudre']);
         Route::patch('/tickets-maintenance/{ticketMaintenance}/refus-vu', [TicketMaintenanceController::class, 'marquerRefusVu']);
     });

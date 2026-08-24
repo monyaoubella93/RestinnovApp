@@ -45,6 +45,7 @@ class SejourController extends Controller
             $search = $validated['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('nom_voyageur', 'like', "%{$search}%")
+                    ->orWhere('reference', 'like', "%{$search}%")
                     ->orWhereHas('appartement', function ($q2) use ($search) {
                         $q2->where('nom', 'like', "%{$search}%");
                     });

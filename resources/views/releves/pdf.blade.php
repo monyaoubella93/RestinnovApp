@@ -5,6 +5,8 @@
     <title>Relevé {{ $mois }} - {{ $appartement['nom'] }}</title>
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #1f2937; }
+        .header { margin-bottom: 16px; }
+        .header img { height: 48px; }
         h1 { font-size: 18px; margin-bottom: 0; }
         h2 { font-size: 13px; margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid #d1d5db; padding-bottom: 4px; }
         .subtitle { color: #6b7280; margin-top: 4px; }
@@ -20,6 +22,9 @@
     </style>
 </head>
 <body>
+    <div class="header">
+        <img src="data:image/png;base64,{{ base64_encode(file_get_contents(resource_path('images/logo.png'))) }}" alt="RestInnov">
+    </div>
     <h1>Relevé propriétaire</h1>
     <p class="subtitle">
         {{ $appartement['proprietaire']['nom'] ?? 'Propriétaire non renseigné' }}

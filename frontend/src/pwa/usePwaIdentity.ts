@@ -10,7 +10,7 @@ interface PwaIdentity {
 
 const IDENTITIES: Record<'manager' | 'menage' | 'maintenance', PwaIdentity> = {
   manager: {
-    title: 'Séjours & ménage',
+    title: 'RestInnov',
     manifestHref: '/manifest.json',
     themeColor: '#4f46e5',
     appleTitle: 'Séjours',
