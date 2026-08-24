@@ -79,7 +79,7 @@ describe('AppRoot routing', () => {
   it("affiche l'écran de connexion sur '/' quand personne n'est connecté", async () => {
     renderAt('/')
 
-    expect(await screen.findByText('RestInnov')).toBeInTheDocument()
+    expect(await screen.findByAltText('RestInnov')).toBeInTheDocument()
     expect(screen.getByLabelText(/téléphone/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Se connecter' })).toBeInTheDocument()
   })
