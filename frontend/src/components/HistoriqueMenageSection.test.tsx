@@ -24,7 +24,9 @@ function missionFixture(overrides: Partial<HistoriqueMissionManager> = {}): Hist
     checklist_items: [
       { libelle: "Passer l'aspirateur", checklist_modele_nom: 'Standard', coche: true, photo_url: null, photo_reference_url: null },
     ],
-    produits: [{ nom: 'Javel', prix: 12.5, photo_url: 'produits-catalogue/javel.jpg' }],
+    produits: [
+      { nom: 'Javel', prix: 12.5, photo_url: 'produits-catalogue/javel.jpg', type_utilisation: 'rachete', photo_preuve_url: null, prix_paye: 12.5 },
+    ],
     frais_forfait: 50,
     frais_produits_total: 12.5,
     frais_total: 62.5,

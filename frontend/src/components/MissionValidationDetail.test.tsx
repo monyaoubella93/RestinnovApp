@@ -307,4 +307,53 @@ describe('MissionValidationDetail', () => {
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getAllByAltText('Photo de "Changer les draps"').length).toBeGreaterThan(0)
   })
+
+  it('distingue un produit "stock existant" (badge gris, pas de prix) d\'un produit "racheté" (photo + prix réel)', async () => {
+    const user = userEvent.setup()
+    render(
+      <MissionValidationDetail
+        mission={missionFixture({
+          produits: [
+            {
+              id: 1,
+              nom: 'Javel',
+              prix: '3.00',
+              photo_url: null,
+              actif: true,
+              pivot: { type_utilisation: 'stock_existant', photo_url: null, prix_paye: null },
+            },
+            {
+              id: 2,
+              nom: 'Sac poubelle',
+              prix: '2.00',
+              photo_url: null,
+              actif: true,
+              pivot: { type_utilisation: 'rachete', photo_url: 'mission-menage-produits/preuve.jpg', prix_paye: 15 },
+            },
+          ],
+        })}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /voir le détail/i }))
+
+    expect(screen.getByText('Produits utilisés')).toBeInTheDocument()
+    expect(screen.getByText('Javel')).toBeInTheDocument()
+    expect(screen.getByText('Déjà présent')).toBeInTheDocument()
+
+    expect(screen.getByText('Sac poubelle')).toBeInTheDocument()
+    expect(screen.getByText(/racheté · 15\.00 mad/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /agrandir la photo preuve d'achat de "sac poubelle"/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('n\'affiche pas la section "Produits utilisés" quand aucun produit n\'a été coché', async () => {
+    const user = userEvent.setup()
+    render(<MissionValidationDetail mission={missionFixture({ produits: [] })} />)
+
+    await user.click(screen.getByRole('button', { name: /voir le détail/i }))
+
+    expect(screen.queryByText('Produits utilisés')).not.toBeInTheDocument()
+  })
 })

@@ -81,12 +81,16 @@
                                 —
                             @else
                                 @foreach ($ligne['produits'] as $produit)
-                                    {{ $produit['nom'] }} ({{ number_format($produit['prix'], 2) }} MAD){{ !$loop->last ? ', ' : '' }}
+                                    @if ($produit['type_utilisation'] === 'stock_existant')
+                                        {{ $produit['nom'] }} (déjà présent){{ !$loop->last ? ', ' : '' }}
+                                    @else
+                                        {{ $produit['nom'] }} ({{ number_format($produit['prix_paye'], 2) }} MAD){{ !$loop->last ? ', ' : '' }}
+                                    @endif
                                 @endforeach
                             @endif
                         </td>
                         <td class="montant">
-                            {{ number_format($ligne['forfait'] + collect($ligne['produits'])->sum('prix'), 2) }} MAD
+                            {{ number_format($ligne['forfait'] + collect($ligne['produits'])->where('type_utilisation', 'rachete')->sum('prix_paye'), 2) }} MAD
                         </td>
                     </tr>
                 @endforeach

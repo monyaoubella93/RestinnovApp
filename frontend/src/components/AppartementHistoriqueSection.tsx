@@ -99,7 +99,7 @@ function MissionRow({ mission }: { mission: HistoriqueMission }) {
               <ul className="mt-1 font-mono text-sm text-ink-secondary">
                 {mission.produits.map((produit, index) => (
                   <li key={index}>
-                    {produit.nom} — {formatMad(produit.prix)}
+                    {produit.nom} — {produit.type_utilisation === 'stock_existant' ? 'Déjà présent' : formatMad(produit.prix_paye ?? 0)}
                   </li>
                 ))}
               </ul>

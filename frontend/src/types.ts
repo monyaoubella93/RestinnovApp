@@ -86,6 +86,24 @@ export interface ProduitCatalogue {
   actif: boolean
 }
 
+export type TypeUtilisationProduit = 'stock_existant' | 'rachete'
+
+/**
+ * Per-mission usage of a catalogue product, carried on the mission_menage_
+ * produits pivot: "stock_existant" is free and needs no proof, "rachete"
+ * requires a proof-of-purchase photo and the real prix_paye (never the
+ * catalogue's generic prix).
+ */
+export interface ProduitUtilisationPivot {
+  type_utilisation: TypeUtilisationProduit
+  photo_url: string | null
+  prix_paye: string | number | null
+}
+
+export interface ProduitCatalogueUtilise extends ProduitCatalogue {
+  pivot: ProduitUtilisationPivot
+}
+
 export interface ProduitMenageSignale {
   id: number
   mission_menage_id: number
@@ -123,7 +141,7 @@ export interface MissionMenage {
   frais_forfait: string | number
   vue: boolean
   created_at?: string
-  produits?: ProduitCatalogue[]
+  produits?: ProduitCatalogueUtilise[]
   checklist_items?: ChecklistItem[]
   produits_signales?: ProduitMenageSignale[]
   photos_preuve?: MissionMenagePhotoPreuve[]
@@ -362,6 +380,10 @@ export interface ReleveSejour {
 export interface ReleveProduitDetail {
   nom: string
   prix: number
+  photo_url: string | null
+  type_utilisation: TypeUtilisationProduit
+  photo_preuve_url: string | null
+  prix_paye: number | null
 }
 
 export interface ReleveFraisMenageDetail {
@@ -411,6 +433,9 @@ export interface HistoriqueProduit {
   nom: string
   prix: number
   photo_url: string | null
+  type_utilisation: TypeUtilisationProduit
+  photo_preuve_url: string | null
+  prix_paye: number | null
 }
 
 export interface HistoriqueMission {

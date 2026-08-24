@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { resolveStorageUrl, type RefuserInput } from '../api'
+import { resolveStorageUrl, type RefuserInput, type UpdateProduitUtiliseInput } from '../api'
 import type { MissionMenage, ProduitCatalogue, Sejour } from '../types'
 import { FraisMaintenanceSection } from './FraisMaintenanceSection'
 import { FraisMenageSection } from './FraisMenageSection'
@@ -57,7 +57,9 @@ interface SejourCardProps {
   onCheckout: (id: number) => Promise<void>
   onValiderMission: (missionMenageId: number) => Promise<void>
   onRefuserMission: (missionMenageId: number, input: RefuserInput) => Promise<void>
-  onUpdateMissionProduits: (missionMenageId: number, input: { frais_forfait: number; produit_ids: number[] }) => Promise<void>
+  onUpdateMissionProduits: (missionMenageId: number, input: { frais_forfait: number }) => Promise<void>
+  onUpdateProduitUtilise: (missionMenageId: number, produitId: number, input: UpdateProduitUtiliseInput) => Promise<void>
+  onDetacherProduit: (missionMenageId: number, produitId: number) => Promise<void>
   onSignalerProduit: (missionMenageId: number, input: { photo: File; note?: string | null }) => Promise<void>
   onValiderProduitSignale: (id: number, input: { nom: string; prix: number }) => Promise<void>
   onRejeterProduitSignale: (id: number) => Promise<void>
@@ -72,6 +74,8 @@ export function SejourCard({
   onValiderMission,
   onRefuserMission,
   onUpdateMissionProduits,
+  onUpdateProduitUtilise,
+  onDetacherProduit,
   onSignalerProduit,
   onValiderProduitSignale,
   onRejeterProduitSignale,
@@ -218,6 +222,8 @@ export function SejourCard({
             missionMenage={sejour.mission_menage}
             catalogue={catalogue}
             onUpdateProduits={onUpdateMissionProduits}
+            onUpdateProduitUtilise={onUpdateProduitUtilise}
+            onDetacherProduit={onDetacherProduit}
             onSignalerProduit={onSignalerProduit}
           />
           <FraisMaintenanceSection
