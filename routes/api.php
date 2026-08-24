@@ -89,6 +89,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/mes-missions/historique', [MissionMenageController::class, 'historique']);
         Route::get('/mission-menages/{missionMenage}', [MissionMenageController::class, 'show']);
         Route::patch('/mission-menages/{missionMenage}/produits', [MissionMenageController::class, 'updateProduits']);
+        Route::put('/mission-menages/{missionMenage}/produits/{produitCatalogue}', [MissionMenageController::class, 'updateProduitUtilise']);
+        Route::delete('/mission-menages/{missionMenage}/produits/{produitCatalogue}', [MissionMenageController::class, 'detacherProduit']);
         Route::patch('/mission-menages/{missionMenage}/vue', [MissionMenageController::class, 'marquerVue']);
         Route::patch('/mission-menages/{missionMenage}/refus-vu', [MissionMenageController::class, 'marquerRefusVu']);
         Route::patch('/mission-menages/{missionMenage}/ouvrir', [MissionMenageController::class, 'ouvrir']);

@@ -3,18 +3,21 @@ import {
   checkoutSejour,
   createFraisMaintenance,
   deleteFraisMaintenance,
+  detacherProduitUtilise,
   fetchSejour,
   fetchSejours,
   refuserMissionMenage,
   rejeterProduitSignale,
   signalerProduit,
   updateMissionMenageProduits,
+  updateProduitUtilise,
   validerMissionMenage,
   validerProduitSignale,
   type NewFraisMaintenanceInput,
   type RefuserInput,
   type SignalerProduitInput,
   type UpdateMissionMenageProduitsInput,
+  type UpdateProduitUtiliseInput,
   type ValiderProduitSignaleInput,
 } from '../api'
 import type { Appartement, PlateformeOrigine, ProduitCatalogue, Sejour, SejourStatut } from '../types'
@@ -234,6 +237,22 @@ export function SejoursListeSection({
     )
   }
 
+  const handleUpdateProduitUtilise = async (missionMenageId: number, produitId: number, input: UpdateProduitUtiliseInput) => {
+    const updated = await updateProduitUtilise(missionMenageId, produitId, input)
+    applySejourUpdate(
+      (s) => s.mission_menage?.id === missionMenageId,
+      (s) => ({ ...s, mission_menage: updated }),
+    )
+  }
+
+  const handleDetacherProduit = async (missionMenageId: number, produitId: number) => {
+    const updated = await detacherProduitUtilise(missionMenageId, produitId)
+    applySejourUpdate(
+      (s) => s.mission_menage?.id === missionMenageId,
+      (s) => ({ ...s, mission_menage: updated }),
+    )
+  }
+
   const handleSignalerProduit = async (missionMenageId: number, input: SignalerProduitInput) => {
     await signalerProduit(missionMenageId, input)
   }
@@ -311,6 +330,8 @@ export function SejoursListeSection({
             onValiderMission={handleValiderMission}
             onRefuserMission={handleRefuserMission}
             onUpdateMissionProduits={handleUpdateMissionProduits}
+            onUpdateProduitUtilise={handleUpdateProduitUtilise}
+            onDetacherProduit={handleDetacherProduit}
             onSignalerProduit={handleSignalerProduit}
             onValiderProduitSignale={handleValiderProduitSignale}
             onRejeterProduitSignale={handleRejeterProduitSignale}

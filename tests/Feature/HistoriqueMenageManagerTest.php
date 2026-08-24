@@ -124,7 +124,7 @@ class HistoriqueMenageManagerTest extends TestCase
         ]);
 
         $mission = $this->conformeMission($appartement, '2026-01-05');
-        $mission->produits()->attach($produit->id);
+        $mission->produits()->attach($produit->id, ['type_utilisation' => 'rachete', 'prix_paye' => 12.5]);
 
         $response = $this->getJson('/api/mission-menages/historique');
 

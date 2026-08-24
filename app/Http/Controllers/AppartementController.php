@@ -225,7 +225,7 @@ class AppartementController extends Controller
 
         return response()->json($missions->map(function (MissionMenage $mission) {
             $fraisForfait = (float) $mission->frais_forfait;
-            $fraisProduitsTotal = (float) $mission->produits->sum('prix');
+            $fraisProduitsTotal = $mission->fraisProduitsTotal();
 
             return [
                 'id' => $mission->id,
@@ -249,11 +249,7 @@ class AppartementController extends Controller
                     'photo_url' => $item->photo_url,
                     'photo_reference_url' => $item->photo_reference_url,
                 ])->values(),
-                'produits' => $mission->produits->map(fn ($produit) => [
-                    'nom' => $produit->nom,
-                    'prix' => round((float) $produit->prix, 2),
-                    'photo_url' => $produit->photo_url,
-                ])->values(),
+                'produits' => $mission->produitsDetail(),
                 'frais_forfait' => round($fraisForfait, 2),
                 'frais_produits_total' => round($fraisProduitsTotal, 2),
                 'frais_total' => round($fraisForfait + $fraisProduitsTotal, 2),
@@ -306,17 +302,14 @@ class AppartementController extends Controller
             }
 
             $forfait = (float) $mission->frais_forfait;
-            $produitsTotal = (float) $mission->produits->sum('prix');
+            $produitsTotal = $mission->fraisProduitsTotal();
             $fraisMenageTotal += $forfait + $produitsTotal;
 
             $fraisMenageDetail[] = [
                 'sejour_id' => $sejour->id,
                 'nom_voyageur' => $sejour->nom_voyageur,
                 'forfait' => round($forfait, 2),
-                'produits' => $mission->produits->map(fn ($produit) => [
-                    'nom' => $produit->nom,
-                    'prix' => round((float) $produit->prix, 2),
-                ])->values(),
+                'produits' => $mission->produitsDetail(),
             ];
         }
 

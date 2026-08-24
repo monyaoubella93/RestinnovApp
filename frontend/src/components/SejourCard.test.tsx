@@ -42,6 +42,8 @@ function renderCard(sejour: Sejour, overrides: Partial<ComponentProps<typeof Sej
       onValiderMission={noop}
       onRefuserMission={noop}
       onUpdateMissionProduits={noop}
+      onUpdateProduitUtilise={noop}
+      onDetacherProduit={noop}
       onSignalerProduit={noop}
       onValiderProduitSignale={noop}
       onRejeterProduitSignale={noop}
@@ -119,6 +121,8 @@ describe('SejourCard', () => {
         onValiderMission={onValiderMission}
         onRefuserMission={noop}
         onUpdateMissionProduits={noop}
+        onUpdateProduitUtilise={noop}
+        onDetacherProduit={noop}
         onSignalerProduit={noop}
         onValiderProduitSignale={noop}
         onRejeterProduitSignale={noop}

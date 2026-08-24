@@ -173,8 +173,11 @@ export interface NewProduitCatalogueInput {
 
 export interface UpdateMissionMenageProduitsInput {
   frais_forfait: number
-  produit_ids: number[]
 }
+
+export type UpdateProduitUtiliseInput =
+  | { type_utilisation: 'stock_existant' }
+  | { type_utilisation: 'rachete'; photo: File; prix_paye: number }
 
 export interface SignalerProduitInput {
   photo: File
@@ -639,6 +642,38 @@ export async function updateMissionMenageProduits(
   input: UpdateMissionMenageProduitsInput,
 ): Promise<MissionMenage> {
   return patchJsonOrQueue(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/produits`, input)
+}
+
+/**
+ * Marks one catalogue product as used on a mission, one of two ways:
+ * "stock_existant" (free, already in the appartement) or "rachete" (a new
+ * purchase -- carries its own proof-of-purchase photo and real prix_paye,
+ * never the catalogue's generic prix). Calling it again for the same
+ * product replaces its previous usage.
+ */
+export async function updateProduitUtilise(
+  missionMenageId: number,
+  produitId: number,
+  input: UpdateProduitUtiliseInput,
+): Promise<MissionMenage> {
+  const formData = new FormData()
+  formData.append('_method', 'PUT')
+  formData.append('type_utilisation', input.type_utilisation)
+  if (input.type_utilisation === 'rachete') {
+    formData.append('photo', input.photo)
+    formData.append('prix_paye', String(input.prix_paye))
+  }
+
+  return postFormDataOrQueue(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/produits/${produitId}`, formData)
+}
+
+export async function detacherProduitUtilise(missionMenageId: number, produitId: number): Promise<MissionMenage> {
+  const response = await fetch(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/produits/${produitId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
 }
 
 export async function marquerMissionMenageVue(missionMenageId: number): Promise<MissionMenage> {

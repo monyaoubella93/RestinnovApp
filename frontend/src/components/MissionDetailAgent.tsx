@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ajouterPhotosPreuveMission,
+  detacherProduitUtilise,
   isOfflineQueuedError,
   marquerMissionMenageRefusVu,
   ouvrirMissionMenage,
@@ -11,10 +12,12 @@ import {
   terminerMissionMenage,
   toggleChecklistItem,
   updateMissionMenageProduits,
+  updateProduitUtilise,
   type AjouterPhotosPreuveInput,
   type SignalerProblemeInput,
   type SignalerProduitInput,
   type UpdateMissionMenageProduitsInput,
+  type UpdateProduitUtiliseInput,
 } from '../api'
 import type { ChecklistItem, MissionMenage, ProduitCatalogue } from '../types'
 import { checklistIcon } from '../utils/checklistIcons'
@@ -206,6 +209,16 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
     setMission((current) => (current ? { ...current, ...updated } : current))
   }
 
+  const handleUpdateProduitUtilise = async (missionMenageId: number, produitId: number, input: UpdateProduitUtiliseInput) => {
+    const updated = await updateProduitUtilise(missionMenageId, produitId, input)
+    setMission((current) => (current ? { ...current, ...updated } : current))
+  }
+
+  const handleDetacherProduit = async (missionMenageId: number, produitId: number) => {
+    const updated = await detacherProduitUtilise(missionMenageId, produitId)
+    setMission((current) => (current ? { ...current, ...updated } : current))
+  }
+
   const handleSignalerProduit = async (missionMenageId: number, input: SignalerProduitInput) => {
     await signalerProduit(missionMenageId, input)
   }
@@ -327,6 +340,8 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
             missionMenage={mission}
             catalogue={catalogue}
             onUpdateProduits={handleUpdateMissionProduits}
+            onUpdateProduitUtilise={handleUpdateProduitUtilise}
+            onDetacherProduit={handleDetacherProduit}
             onSignalerProduit={handleSignalerProduit}
           />
 

@@ -45,6 +45,7 @@ export function MissionValidationDetail({
     (produit) => produit.statut === 'en_attente',
   )
   const photosPreuve = mission.photos_preuve ?? []
+  const produitsUtilises = mission.produits ?? []
 
   return (
     <div className="mt-2">
@@ -126,6 +127,47 @@ export function MissionValidationDetail({
                       />
                     </button>
                     {photo.note && <p className="mt-1 max-w-[6rem] truncate text-xs text-ink-tertiary">{photo.note}</p>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {produitsUtilises.length > 0 && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">Produits utilisés</p>
+              <ul className="mt-2 space-y-2">
+                {produitsUtilises.map((produit) => (
+                  <li key={produit.id} className="flex items-center gap-2 text-sm">
+                    <span className="flex-1 text-ink-secondary">{produit.nom}</span>
+                    {produit.pivot.type_utilisation === 'stock_existant' ? (
+                      <span className="rounded-badge bg-table-header-bg px-2 py-0.5 text-xs font-medium text-ink-tertiary">
+                        Déjà présent
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 rounded-badge bg-success-bg px-2 py-0.5 text-xs font-medium text-success-text">
+                        {produit.pivot.photo_url && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setLightboxPhoto({
+                                src: resolveStorageUrl(produit.pivot.photo_url!),
+                                alt: `Photo preuve d'achat de "${produit.nom}"`,
+                              })
+                            }
+                            aria-label={`Agrandir la photo preuve d'achat de "${produit.nom}"`}
+                            className="overflow-hidden rounded transition hover:opacity-80"
+                          >
+                            <img
+                              src={resolveStorageUrl(produit.pivot.photo_url)}
+                              alt={`Photo preuve d'achat de "${produit.nom}"`}
+                              className="h-5 w-5 object-cover"
+                            />
+                          </button>
+                        )}
+                        Racheté · {Number(produit.pivot.prix_paye ?? 0).toFixed(2)} MAD
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

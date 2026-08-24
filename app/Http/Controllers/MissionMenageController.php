@@ -6,13 +6,14 @@ use App\Http\Controllers\Concerns\AuthorizesMissionAccess;
 use App\Http\Controllers\Concerns\HasFriendlyUploadMessages;
 use App\Models\MissionMenage;
 use App\Models\MissionMenagePhotoPreuve;
+use App\Models\ProduitMenageCatalogue;
 use App\Models\ProduitMenageSignale;
 use App\Models\TicketMaintenance;
 use App\Models\Utilisateur;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class MissionMenageController extends Controller
 {
@@ -113,11 +114,7 @@ class MissionMenageController extends Controller
                 'photo_url' => $item->photo_url,
                 'photo_reference_url' => $item->photo_reference_url,
             ])->values(),
-            'produits' => $mission->produits->map(fn ($produit) => [
-                'nom' => $produit->nom,
-                'prix' => round((float) $produit->prix, 2),
-                'photo_url' => $produit->photo_url,
-            ])->values(),
+            'produits' => $mission->produitsDetail(),
         ]));
     }
 
@@ -155,7 +152,7 @@ class MissionMenageController extends Controller
 
         return response()->json($missions->map(function (MissionMenage $mission) {
             $fraisForfait = (float) $mission->frais_forfait;
-            $fraisProduitsTotal = (float) $mission->produits->sum('prix');
+            $fraisProduitsTotal = $mission->fraisProduitsTotal();
 
             return [
                 'id' => $mission->id,
@@ -183,11 +180,7 @@ class MissionMenageController extends Controller
                     'photo_url' => $item->photo_url,
                     'photo_reference_url' => $item->photo_reference_url,
                 ])->values(),
-                'produits' => $mission->produits->map(fn ($produit) => [
-                    'nom' => $produit->nom,
-                    'prix' => round((float) $produit->prix, 2),
-                    'photo_url' => $produit->photo_url,
-                ])->values(),
+                'produits' => $mission->produitsDetail(),
                 'frais_forfait' => round($fraisForfait, 2),
                 'frais_produits_total' => round($fraisProduitsTotal, 2),
                 'frais_total' => round($fraisForfait + $fraisProduitsTotal, 2),
@@ -348,7 +341,10 @@ class MissionMenageController extends Controller
     }
 
     /**
-     * Update the forfait and the catalogue products checked for a mission.
+     * Update the forfait for a mission. Which catalogue products were used,
+     * and how (stock_existant vs rachete), is handled per-product by
+     * updateProduitUtilise()/detacherProduit() below -- each carries its own
+     * proof (photo + real price) when rachete, so it can't be bulk-synced.
      */
     public function updateProduits(Request $request, MissionMenage $missionMenage): JsonResponse
     {
@@ -356,19 +352,58 @@ class MissionMenageController extends Controller
 
         $validated = $request->validate([
             'frais_forfait' => ['sometimes', 'numeric', 'min:0'],
-            'produit_ids' => ['sometimes', 'array'],
-            'produit_ids.*' => ['integer', 'exists:produits_menage_catalogue,id'],
         ]);
 
-        DB::transaction(function () use ($missionMenage, $validated) {
-            if (array_key_exists('frais_forfait', $validated)) {
-                $missionMenage->update(['frais_forfait' => $validated['frais_forfait']]);
-            }
+        if (array_key_exists('frais_forfait', $validated)) {
+            $missionMenage->update(['frais_forfait' => $validated['frais_forfait']]);
+        }
 
-            if (array_key_exists('produit_ids', $validated)) {
-                $missionMenage->produits()->sync($validated['produit_ids']);
-            }
-        });
+        return response()->json($missionMenage->fresh(self::DETAIL_RELATIONS));
+    }
+
+    /**
+     * Mark one catalogue product as used on this mission, one of two ways:
+     * "stock_existant" (already present in the appartement, free -- no proof
+     * needed) or "rachete" (the agent bought a new one -- a proof-of-purchase
+     * photo and the real prix_paye are required, since that's what counts
+     * towards the frais total, not the catalogue's generic prix). Called
+     * again for the same product, it replaces its previous usage.
+     */
+    public function updateProduitUtilise(Request $request, MissionMenage $missionMenage, ProduitMenageCatalogue $produitCatalogue): JsonResponse
+    {
+        $this->authorizeMissionAccess($request, $missionMenage);
+
+        $validated = $request->validate([
+            'type_utilisation' => ['required', Rule::in([
+                MissionMenage::TYPE_UTILISATION_STOCK_EXISTANT,
+                MissionMenage::TYPE_UTILISATION_RACHETE,
+            ])],
+            'photo' => ['required_if:type_utilisation,'.MissionMenage::TYPE_UTILISATION_RACHETE, 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
+            'prix_paye' => ['required_if:type_utilisation,'.MissionMenage::TYPE_UTILISATION_RACHETE, 'numeric', 'min:0'],
+        ]);
+
+        $estRachete = $validated['type_utilisation'] === MissionMenage::TYPE_UTILISATION_RACHETE;
+
+        $pivotData = [
+            'type_utilisation' => $validated['type_utilisation'],
+            'photo_url' => $estRachete ? $request->file('photo')->store('mission-menage-produits', 'public') : null,
+            'prix_paye' => $estRachete ? $validated['prix_paye'] : null,
+        ];
+
+        $missionMenage->produits()->syncWithoutDetaching([$produitCatalogue->id => $pivotData]);
+
+        return response()->json($missionMenage->fresh(self::DETAIL_RELATIONS));
+    }
+
+    /**
+     * Un-check a catalogue product from this mission entirely (neither
+     * stock_existant nor rachete anymore).
+     */
+    public function detacherProduit(Request $request, MissionMenage $missionMenage, ProduitMenageCatalogue $produitCatalogue): JsonResponse
+    {
+        $this->authorizeMissionAccess($request, $missionMenage);
+
+        $missionMenage->produits()->detach($produitCatalogue->id);
 
         return response()->json($missionMenage->fresh(self::DETAIL_RELATIONS));
     }

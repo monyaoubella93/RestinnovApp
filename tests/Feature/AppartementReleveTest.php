@@ -42,7 +42,7 @@ class AppartementReleveTest extends TestCase
 
         $mission = MissionMenage::create(['sejour_id' => $sejour->id, 'statut' => 'conforme', 'frais_forfait' => 80]);
         $produit = ProduitMenageCatalogue::create(['nom' => 'Javel', 'prix' => 20, 'actif' => true]);
-        $mission->produits()->attach($produit->id);
+        $mission->produits()->attach($produit->id, ['type_utilisation' => 'rachete', 'prix_paye' => 20]);
 
         FraisMaintenance::create(['sejour_id' => $sejour->id, 'description' => 'Réparation robinet', 'prix' => 100]);
 
