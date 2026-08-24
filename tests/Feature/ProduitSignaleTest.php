@@ -153,6 +153,20 @@ class ProduitSignaleTest extends TestCase
         $response->assertStatus(422);
     }
 
+    public function test_mission_detail_only_includes_produits_signales_for_that_mission(): void
+    {
+        $mission = $this->missionMenage();
+        $autreMission = $this->missionMenage();
+        $ceProduit = $this->produitSignale($mission);
+        $this->produitSignale($autreMission);
+
+        $response = $this->getJson("/api/mission-menages/{$mission->id}");
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'produits_signales');
+        $response->assertJsonPath('produits_signales.0.id', $ceProduit->id);
+    }
+
     public function test_nom_and_prix_are_required_to_valider(): void
     {
         $mission = $this->missionMenage();
