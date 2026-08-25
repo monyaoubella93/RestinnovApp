@@ -189,7 +189,7 @@ describe('FraisMenageSection', () => {
     expect(onDetacherProduit).toHaveBeenCalledWith(1, 1)
   })
 
-  it('affiche le formulaire "Signaler un nouveau produit" et envoie photo + note', async () => {
+  it('affiche le formulaire "Signaler un nouveau produit" et envoie photo + prix + note', async () => {
     const user = userEvent.setup()
     const onSignalerProduit = vi.fn().mockResolvedValue(undefined)
     renderSection({ onSignalerProduit })
@@ -198,11 +198,38 @@ describe('FraisMenageSection', () => {
 
     const photo = makeFile()
     await user.upload(screen.getByLabelText(/photo du produit$/i), photo)
+    await user.type(screen.getByLabelText(/prix payé/i), '18')
     await user.type(screen.getByLabelText(/note/i), 'Trouvé sous l\'évier')
     await user.click(screen.getByRole('button', { name: /envoyer/i }))
 
-    expect(onSignalerProduit).toHaveBeenCalledWith(1, { photo, note: "Trouvé sous l'évier" })
+    expect(onSignalerProduit).toHaveBeenCalledWith(1, {
+      photo,
+      note: "Trouvé sous l'évier",
+      prix: 18,
+      photoTicket: null,
+    })
     expect(await screen.findByText(/en attente de validation/i)).toBeInTheDocument()
+  })
+
+  it('permet de signaler un produit avec une photo du ticket de caisse au lieu du prix', async () => {
+    const user = userEvent.setup()
+    const onSignalerProduit = vi.fn().mockResolvedValue(undefined)
+    renderSection({ onSignalerProduit })
+
+    await user.click(screen.getByRole('button', { name: /signaler un nouveau produit/i }))
+
+    const photo = makeFile('produit.jpg')
+    const photoTicket = makeFile('ticket.jpg')
+    await user.upload(screen.getByLabelText(/photo du produit$/i), photo)
+    await user.upload(screen.getByLabelText(/photo du ticket de caisse/i), photoTicket)
+    await user.click(screen.getByRole('button', { name: /envoyer/i }))
+
+    expect(onSignalerProduit).toHaveBeenCalledWith(1, {
+      photo,
+      note: null,
+      prix: null,
+      photoTicket,
+    })
   })
 
   it('refuse de signaler un produit sans photo', async () => {
@@ -211,9 +238,23 @@ describe('FraisMenageSection', () => {
     renderSection({ onSignalerProduit })
 
     await user.click(screen.getByRole('button', { name: /signaler un nouveau produit/i }))
+    await user.type(screen.getByLabelText(/prix payé/i), '10')
     await user.click(screen.getByRole('button', { name: /envoyer/i }))
 
     expect(await screen.findByText(/photo est obligatoire/i)).toBeInTheDocument()
+    expect(onSignalerProduit).not.toHaveBeenCalled()
+  })
+
+  it('refuse de signaler un produit sans prix ni photo de ticket', async () => {
+    const user = userEvent.setup()
+    const onSignalerProduit = vi.fn()
+    renderSection({ onSignalerProduit })
+
+    await user.click(screen.getByRole('button', { name: /signaler un nouveau produit/i }))
+    await user.upload(screen.getByLabelText(/photo du produit$/i), makeFile())
+    await user.click(screen.getByRole('button', { name: /envoyer/i }))
+
+    expect(await screen.findByText(/prix payé ou une photo du ticket/i)).toBeInTheDocument()
     expect(onSignalerProduit).not.toHaveBeenCalled()
   })
 })

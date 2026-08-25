@@ -92,7 +92,10 @@
       "validerProduit": "تأكيد",
       "annulerRachete": "إلغاء",
       "retirerProduit": "إزالة",
-      "racheteRequiert": "الصورة والثمن إلزاميان للمنتج المُشترى."
+      "racheteRequiert": "الصورة والثمن إلزاميان للمنتج المُشترى.",
+      "photoTicket": "صورة وصل الشراء",
+      "prixOuTicketHint": "أدخل الثمن المدفوع، أو التقط صورة لوصل الشراء.",
+      "prixOuTicketRequis": "أدخل الثمن المدفوع أو صورة وصل الشراء."
     },
     "photoPreuve": {
       "refuseeHint": "مهمة مرفوضة: أظهر للمدير العمل المصحح.",

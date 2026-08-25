@@ -94,7 +94,10 @@
       "validerProduit": "Valider",
       "annulerRachete": "Annuler",
       "retirerProduit": "Retirer",
-      "racheteRequiert": "Photo et prix obligatoires pour un produit racheté."
+      "racheteRequiert": "Photo et prix obligatoires pour un produit racheté.",
+      "photoTicket": "Photo du ticket de caisse",
+      "prixOuTicketHint": "Indiquez le prix payé, ou prenez en photo le ticket de caisse.",
+      "prixOuTicketRequis": "Indiquez le prix payé ou une photo du ticket de caisse."
     },
     "photoPreuve": {
       "refuseeHint": "Mission refusée : montrez au Manager le travail corrigé.",

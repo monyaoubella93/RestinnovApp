@@ -109,6 +109,8 @@ export interface ProduitMenageSignale {
   mission_menage_id: number
   photo_url: string
   note: string | null
+  prix: string | number | null
+  photo_ticket_url: string | null
   statut: ProduitSignaleStatut
   produit_catalogue_id: number | null
   produit_catalogue?: ProduitCatalogue | null

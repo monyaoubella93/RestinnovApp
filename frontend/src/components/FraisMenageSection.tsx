@@ -10,7 +10,10 @@ interface FraisMenageSectionProps {
   onUpdateProduits: (missionMenageId: number, input: { frais_forfait: number }) => Promise<void>
   onUpdateProduitUtilise: (missionMenageId: number, produitId: number, input: UpdateProduitUtiliseInput) => Promise<void>
   onDetacherProduit: (missionMenageId: number, produitId: number) => Promise<void>
-  onSignalerProduit: (missionMenageId: number, input: { photo: File; note?: string | null }) => Promise<void>
+  onSignalerProduit: (
+    missionMenageId: number,
+    input: { photo: File; note?: string | null; prix?: number | null; photoTicket?: File | null },
+  ) => Promise<void>
 }
 
 export function FraisMenageSection({
@@ -35,6 +38,8 @@ export function FraisMenageSection({
   const [showSignalerForm, setShowSignalerForm] = useState(false)
   const [signalerPhoto, setSignalerPhoto] = useState<File | null>(null)
   const [signalerNote, setSignalerNote] = useState('')
+  const [signalerPrix, setSignalerPrix] = useState('')
+  const [signalerPhotoTicket, setSignalerPhotoTicket] = useState<File | null>(null)
   const [signalerSubmitting, setSignalerSubmitting] = useState(false)
   const [signalerError, setSignalerError] = useState<string | null>(null)
   const [signalerSuccess, setSignalerSuccess] = useState(false)
@@ -129,15 +134,23 @@ export function FraisMenageSection({
       setSignalerError(t('menage.frais.photoRequise'))
       return
     }
+    if (!signalerPrix && !signalerPhotoTicket) {
+      setSignalerError(t('menage.frais.prixOuTicketRequis'))
+      return
+    }
 
     setSignalerSubmitting(true)
     try {
       await onSignalerProduit(missionMenage.id, {
         photo: signalerPhoto,
         note: signalerNote.trim() ? signalerNote : null,
+        prix: signalerPrix ? Number(signalerPrix) : null,
+        photoTicket: signalerPhotoTicket,
       })
       setSignalerPhoto(null)
       setSignalerNote('')
+      setSignalerPrix('')
+      setSignalerPhotoTicket(null)
       setShowSignalerForm(false)
       setSignalerSuccess(true)
     } catch (err) {
@@ -353,6 +366,32 @@ export function FraisMenageSection({
               type="file"
               accept="image/jpeg,image/png"
               onChange={(e) => setSignalerPhoto(e.target.files?.[0] ?? null)}
+              className="block w-full text-sm"
+            />
+            <p className="text-xs text-ink-tertiary">{t('menage.frais.prixOuTicketHint')}</p>
+            <label htmlFor={`signaler_prix_${missionMenage.id}`} className="block text-sm font-semibold text-ink-secondary">
+              {t('menage.frais.prixPaye')}
+            </label>
+            <input
+              id={`signaler_prix_${missionMenage.id}`}
+              type="number"
+              min="0"
+              step="0.01"
+              value={signalerPrix}
+              onChange={(e) => setSignalerPrix(e.target.value)}
+              className="block w-32 rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
+            />
+            <label
+              htmlFor={`signaler_photo_ticket_${missionMenage.id}`}
+              className="block text-sm font-semibold text-ink-secondary"
+            >
+              {t('menage.frais.photoTicket')}
+            </label>
+            <input
+              id={`signaler_photo_ticket_${missionMenage.id}`}
+              type="file"
+              accept="image/jpeg,image/png"
+              onChange={(e) => setSignalerPhotoTicket(e.target.files?.[0] ?? null)}
               className="block w-full text-sm"
             />
             <label htmlFor={`signaler_note_${missionMenage.id}`} className="block text-sm font-semibold text-ink-secondary">

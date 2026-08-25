@@ -425,22 +425,42 @@ class MissionMenageController extends Controller
 
     /**
      * Report a cleaning product used in the field that is not in the catalogue yet.
+     * Beyond the product's own photo, the agent must also account for what it
+     * cost -- either typing the prix directly, or attaching a photo of the
+     * purchase receipt (photo_ticket) for the Manager to read the price off
+     * of at validation time. At least one of the two is required; both are
+     * welcome.
      */
     public function signalerProduit(Request $request, MissionMenage $missionMenage): JsonResponse
     {
         $this->authorizeMissionAccess($request, $missionMenage);
 
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'photo' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'note' => ['nullable', 'string', 'max:255'],
+            'prix' => ['nullable', 'numeric', 'min:0'],
+            'photo_ticket' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
         ], $this->uploadValidationMessages());
 
+        $validator->after(function ($validator) use ($request) {
+            if (! $request->filled('prix') && ! $request->hasFile('photo_ticket')) {
+                $validator->errors()->add('prix', 'Indiquez le prix payé ou une photo du ticket de caisse.');
+            }
+        });
+
+        $validated = $validator->validate();
+
         $photoUrl = $request->file('photo')->store('produits-signales', 'public');
+        $photoTicketUrl = $request->hasFile('photo_ticket')
+            ? $request->file('photo_ticket')->store('produits-signales', 'public')
+            : null;
 
         $produitSignale = ProduitMenageSignale::create([
             'mission_menage_id' => $missionMenage->id,
             'photo_url' => $photoUrl,
             'note' => $validated['note'] ?? null,
+            'prix' => $validated['prix'] ?? null,
+            'photo_ticket_url' => $photoTicketUrl,
             'statut' => ProduitMenageSignale::STATUT_EN_ATTENTE,
         ]);
 
