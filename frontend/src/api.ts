@@ -182,6 +182,8 @@ export type UpdateProduitUtiliseInput =
 export interface SignalerProduitInput {
   photo: File
   note?: string | null
+  prix?: number | null
+  photoTicket?: File | null
 }
 
 export interface AjouterPhotosPreuveInput {
@@ -791,6 +793,8 @@ export async function signalerProduit(
   const formData = new FormData()
   formData.append('photo', input.photo)
   if (input.note) formData.append('note', input.note)
+  if (input.prix != null) formData.append('prix', String(input.prix))
+  if (input.photoTicket) formData.append('photo_ticket', input.photoTicket)
 
   return postFormDataOrQueue(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/produits-signales`, formData)
 }

@@ -18,7 +18,7 @@ export function ProduitSignaleCard({
   onRejeter: (id: number) => Promise<void>
 }) {
   const [nom, setNom] = useState('')
-  const [prix, setPrix] = useState('')
+  const [prix, setPrix] = useState(produitSignale.prix != null ? String(produitSignale.prix) : '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,12 +52,26 @@ export function ProduitSignaleCard({
 
   return (
     <li className="rounded-field border border-border-default p-3">
-      <img
-        src={resolveStorageUrl(produitSignale.photo_url)}
-        alt="Produit signalé"
-        className="h-32 w-32 rounded-md object-cover"
-      />
+      <div className="flex gap-2">
+        <img
+          src={resolveStorageUrl(produitSignale.photo_url)}
+          alt="Produit signalé"
+          className="h-32 w-32 rounded-md object-cover"
+        />
+        {produitSignale.photo_ticket_url && (
+          <img
+            src={resolveStorageUrl(produitSignale.photo_ticket_url)}
+            alt="Ticket de caisse"
+            className="h-32 w-32 rounded-md object-cover"
+          />
+        )}
+      </div>
       {produitSignale.note && <p className="mt-1 text-sm text-ink-secondary">Note : {produitSignale.note}</p>}
+      {produitSignale.prix != null && (
+        <p className="mt-1 text-sm text-ink-secondary">
+          Prix indiqué par l'agent : {Number(produitSignale.prix).toFixed(2)} MAD
+        </p>
+      )}
 
       <div className="mt-2 flex flex-wrap items-end gap-2">
         <div className="min-w-0 flex-1">

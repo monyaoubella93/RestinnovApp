@@ -220,7 +220,7 @@ class MissionMenageProduitsTest extends TestCase
         ]);
     }
 
-    public function test_it_signals_a_product_with_photo_and_note(): void
+    public function test_it_signals_a_product_with_photo_note_and_prix(): void
     {
         Storage::fake('public');
         $mission = $this->missionMenage();
@@ -229,11 +229,14 @@ class MissionMenageProduitsTest extends TestCase
         $response = $this->post("/api/mission-menages/{$mission->id}/produits-signales", [
             'photo' => $photo,
             'note' => 'Trouvé sur le terrain',
+            'prix' => 25.5,
         ], ['Accept' => 'application/json']);
 
         $response->assertCreated();
         $response->assertJsonPath('statut', 'en_attente');
         $response->assertJsonPath('note', 'Trouvé sur le terrain');
+        $response->assertJsonPath('prix', '25.50');
+        $response->assertJsonPath('photo_ticket_url', null);
 
         $photoUrl = $response->json('photo_url');
         $this->assertNotNull($photoUrl);
@@ -243,7 +246,28 @@ class MissionMenageProduitsTest extends TestCase
             'mission_menage_id' => $mission->id,
             'statut' => 'en_attente',
             'note' => 'Trouvé sur le terrain',
+            'prix' => 25.5,
         ]);
+    }
+
+    public function test_it_signals_a_product_with_a_photo_ticket_instead_of_a_typed_prix(): void
+    {
+        Storage::fake('public');
+        $mission = $this->missionMenage();
+        $photo = UploadedFile::fake()->image('produit.jpg');
+        $photoTicket = UploadedFile::fake()->image('ticket-caisse.jpg');
+
+        $response = $this->post("/api/mission-menages/{$mission->id}/produits-signales", [
+            'photo' => $photo,
+            'photo_ticket' => $photoTicket,
+        ], ['Accept' => 'application/json']);
+
+        $response->assertCreated();
+        $response->assertJsonPath('prix', null);
+
+        $photoTicketUrl = $response->json('photo_ticket_url');
+        $this->assertNotNull($photoTicketUrl);
+        Storage::disk('public')->assertExists($photoTicketUrl);
     }
 
     public function test_it_signals_a_product_without_note(): void
@@ -254,6 +278,7 @@ class MissionMenageProduitsTest extends TestCase
 
         $response = $this->post("/api/mission-menages/{$mission->id}/produits-signales", [
             'photo' => $photo,
+            'prix' => 10,
         ], ['Accept' => 'application/json']);
 
         $response->assertCreated();
@@ -266,9 +291,23 @@ class MissionMenageProduitsTest extends TestCase
 
         $response = $this->postJson("/api/mission-menages/{$mission->id}/produits-signales", [
             'note' => 'Sans photo',
+            'prix' => 10,
         ]);
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors('photo');
+    }
+
+    public function test_prix_or_photo_ticket_is_required_to_signal_a_product(): void
+    {
+        Storage::fake('public');
+        $mission = $this->missionMenage();
+
+        $response = $this->post("/api/mission-menages/{$mission->id}/produits-signales", [
+            'photo' => UploadedFile::fake()->image('produit.jpg'),
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('prix');
     }
 }

@@ -60,7 +60,10 @@ interface SejourCardProps {
   onUpdateMissionProduits: (missionMenageId: number, input: { frais_forfait: number }) => Promise<void>
   onUpdateProduitUtilise: (missionMenageId: number, produitId: number, input: UpdateProduitUtiliseInput) => Promise<void>
   onDetacherProduit: (missionMenageId: number, produitId: number) => Promise<void>
-  onSignalerProduit: (missionMenageId: number, input: { photo: File; note?: string | null }) => Promise<void>
+  onSignalerProduit: (
+    missionMenageId: number,
+    input: { photo: File; note?: string | null; prix?: number | null; photoTicket?: File | null },
+  ) => Promise<void>
   onValiderProduitSignale: (id: number, input: { nom: string; prix: number }) => Promise<void>
   onRejeterProduitSignale: (id: number) => Promise<void>
   onAddFraisMaintenance: (sejourId: number, input: { description: string; prix: number }) => Promise<void>
