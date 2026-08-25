@@ -159,6 +159,7 @@ export function SejourCard({
               <p className="mb-2 font-semibold text-violet">En attente de validation</p>
               <MissionValidationDetail
                 mission={sejour.mission_menage}
+                catalogue={catalogue}
                 onValiderProduitSignale={onValiderProduitSignale}
                 onRejeterProduitSignale={onRejeterProduitSignale}
               />
@@ -198,7 +199,7 @@ export function SejourCard({
           {sejour.mission_menage.statut === 'non_conforme' && (
             <div className="mt-2 space-y-2" data-testid="mission-non-conforme">
               <p className="font-semibold text-danger">Refusée — en attente de correction par l'agent</p>
-              <MissionValidationDetail mission={sejour.mission_menage} />
+              <MissionValidationDetail mission={sejour.mission_menage} catalogue={catalogue} />
               <RefusHistoriqueMenage mission={sejour.mission_menage} />
             </div>
           )}
@@ -228,6 +229,7 @@ export function SejourCard({
             onUpdateProduitUtilise={onUpdateProduitUtilise}
             onDetacherProduit={onDetacherProduit}
             onSignalerProduit={onSignalerProduit}
+            readOnly
           />
           <FraisMaintenanceSection
             sejourId={sejour.id}

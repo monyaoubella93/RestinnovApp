@@ -117,6 +117,31 @@ class ProduitSignaleTest extends TestCase
         ]);
     }
 
+    public function test_a_produit_signale_only_reaches_the_general_catalogue_once_validated(): void
+    {
+        $mission = $this->missionMenage();
+        $signale = $this->produitSignale($mission);
+
+        // Not yet validated: absent from the general "Catalogue ménage" listing.
+        $before = $this->getJson('/api/produits-catalogue');
+        $before->assertOk();
+        $before->assertJsonMissing(['nom' => 'Éponge magique']);
+
+        $this->patchJson("/api/produits-signales/{$signale->id}/valider", [
+            'nom' => 'Éponge magique',
+            'prix' => 15,
+        ])->assertOk();
+
+        // Validated: now appears in the general catalogue, photo carried over.
+        $after = $this->getJson('/api/produits-catalogue');
+        $after->assertOk();
+        $after->assertJsonFragment([
+            'nom' => 'Éponge magique',
+            'photo_url' => 'produits-signales/fake.jpg',
+            'actif' => true,
+        ]);
+    }
+
     public function test_it_rejects_a_produit_signale(): void
     {
         $mission = $this->missionMenage();
