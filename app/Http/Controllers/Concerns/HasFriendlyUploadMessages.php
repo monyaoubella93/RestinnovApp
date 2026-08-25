@@ -30,6 +30,8 @@ trait HasFriendlyUploadMessages
             'photos.*.uploaded' => $photoTooLarge,
             'photo_apres.max' => $photoTooLarge,
             'photo_apres.uploaded' => $photoTooLarge,
+            'photos_apres.*.max' => $photoTooLarge,
+            'photos_apres.*.uploaded' => $photoTooLarge,
             'motif_photo.max' => $photoTooLarge,
             'motif_photo.uploaded' => $photoTooLarge,
             'audio.max' => $audioTooLarge,

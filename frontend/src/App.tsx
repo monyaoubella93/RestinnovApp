@@ -36,6 +36,7 @@ import { CatalogueProduitsSection } from './components/CatalogueProduitsSection'
 import { DashboardSection } from './components/DashboardSection'
 import { HeaderSearchBar } from './components/HeaderSearchBar'
 import { HistoriqueMenageSection } from './components/HistoriqueMenageSection'
+import { MenageAValiderSection } from './components/MenageAValiderSection'
 import { NotificationBell } from './components/NotificationBell'
 import { NouveauSejourForm } from './components/NouveauSejourForm'
 import { NouvelAgentForm } from './components/NouvelAgentForm'
@@ -69,8 +70,10 @@ type Tab =
   | 'menage-agent'
   | 'menage-agents-liste'
   | 'menage-catalogue'
+  | 'menage-a-valider'
   | 'menage-historique'
   | 'maintenance-agent'
+  | 'maintenance-a-valider'
   | 'maintenance-tickets'
 
 interface NavGroup {
@@ -106,6 +109,7 @@ const NAV_GROUPS: NavGroup[] = [
       ['menage-agent', 'Ajouter un agent ménage'],
       ['menage-agents-liste', 'Liste des agents'],
       ['menage-catalogue', 'Catalogue ménage'],
+      ['menage-a-valider', 'Ménage à valider'],
       ['menage-historique', 'Historique'],
     ],
     defaultTab: 'menage-agent',
@@ -115,6 +119,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Maintenance',
     tabs: [
       ['maintenance-agent', 'Ajouter un agent maintenance'],
+      ['maintenance-a-valider', 'Maintenance à valider'],
       ['maintenance-tickets', 'Tickets de maintenance'],
     ],
     defaultTab: 'maintenance-agent',
@@ -131,8 +136,10 @@ const SECTION_TITLES: Record<Tab, string> = {
   'menage-agent': 'Ménage',
   'menage-agents-liste': 'Ménage',
   'menage-catalogue': 'Ménage',
+  'menage-a-valider': 'Ménage',
   'menage-historique': 'Ménage',
   'maintenance-agent': 'Maintenance',
+  'maintenance-a-valider': 'Maintenance',
   'maintenance-tickets': 'Maintenance',
 }
 
@@ -744,9 +751,13 @@ function App() {
               />
             </>
           )}
+          {activeTab === 'menage-a-valider' && <MenageAValiderSection />}
           {activeTab === 'menage-historique' && <HistoriqueMenageSection appartements={appartements} />}
           {activeTab === 'maintenance-agent' && (
             <NouvelAgentMaintenanceForm onSubmit={handleCreateUtilisateur} />
+          )}
+          {activeTab === 'maintenance-a-valider' && (
+            <TicketsMaintenanceSection appartements={appartements} initialStatutFilter="resolu_en_attente_validation" />
           )}
           {activeTab === 'maintenance-tickets' && (
             <TicketsMaintenanceSection appartements={appartements} initialStatutFilter={pendingTicketStatutFilter} />

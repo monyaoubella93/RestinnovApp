@@ -238,6 +238,23 @@ function AssignerForm({
   )
 }
 
+function ExtraPhotos({ photos, alt }: { photos?: { id: number; photo_url: string }[]; alt: string }) {
+  if (!photos || photos.length === 0) return null
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {photos.map((photo) => (
+        <img
+          key={photo.id}
+          src={resolveStorageUrl(photo.photo_url)}
+          alt={alt}
+          className="h-24 w-24 rounded object-cover"
+        />
+      ))}
+    </div>
+  )
+}
+
 function MessagesAgentHistorique({ ticket }: { ticket: TicketMaintenance }) {
   if (!ticket.messages_agent || ticket.messages_agent.length === 0) return null
 
@@ -253,13 +270,16 @@ function MessagesAgentHistorique({ ticket }: { ticket: TicketMaintenance }) {
               // eslint-disable-next-line jsx-a11y/media-has-caption
               <audio controls src={resolveStorageUrl(message.audio_url)} className="w-full" />
             )}
-            {message.photo_url && (
-              <img
-                src={resolveStorageUrl(message.photo_url)}
-                alt="Photo du message de l'agent"
-                className="h-24 w-24 rounded object-cover"
-              />
-            )}
+            <div className="flex flex-wrap gap-2">
+              {message.photo_url && (
+                <img
+                  src={resolveStorageUrl(message.photo_url)}
+                  alt="Photo du message de l'agent"
+                  className="h-24 w-24 rounded object-cover"
+                />
+              )}
+              <ExtraPhotos photos={message.photos_supplementaires} alt="Photo du message de l'agent" />
+            </div>
           </li>
         ))}
       </ul>
@@ -326,13 +346,16 @@ function ValiderRefuserActions({
 
   return (
     <div className="mt-3 space-y-3">
-      {ticket.photo_apres && (
-        <img
-          src={resolveStorageUrl(ticket.photo_apres)}
-          alt="Photo après réparation"
-          className="h-32 w-32 rounded-md object-cover"
-        />
-      )}
+      <div className="flex flex-wrap gap-2">
+        {ticket.photo_apres && (
+          <img
+            src={resolveStorageUrl(ticket.photo_apres)}
+            alt="Photo après réparation"
+            className="h-32 w-32 rounded-md object-cover"
+          />
+        )}
+        <ExtraPhotos photos={ticket.photos_resolution} alt="Photo après réparation" />
+      </div>
       {ticket.cout_reparation != null && (
         <p className="font-mono text-sm font-bold text-ink">Coût : {ticket.cout_reparation} MAD</p>
       )}
@@ -423,13 +446,16 @@ function TicketMaintenanceCard({
             </p>
           )}
 
-          {ticket.photo_url && (
-            <img
-              src={resolveStorageUrl(ticket.photo_url)}
-              alt="Photo du problème signalé"
-              className="h-32 w-32 rounded-md object-cover"
-            />
-          )}
+          <div className="flex flex-wrap gap-2">
+            {ticket.photo_url && (
+              <img
+                src={resolveStorageUrl(ticket.photo_url)}
+                alt="Photo du problème signalé"
+                className="h-32 w-32 rounded-md object-cover"
+              />
+            )}
+            <ExtraPhotos photos={ticket.photos_signalement} alt="Photo du problème signalé" />
+          </div>
 
           {ticket.audio_url && (
             // eslint-disable-next-line jsx-a11y/media-has-caption
@@ -461,11 +487,14 @@ function TicketMaintenanceCard({
               {ticket.statut === 'resolu' && ticket.photo_apres && (
                 <div>
                   <p className="text-xs font-semibold text-ink-secondary">Photo après réparation</p>
-                  <img
-                    src={resolveStorageUrl(ticket.photo_apres)}
-                    alt="Photo après réparation"
-                    className="mt-1 h-32 w-32 rounded-md object-cover"
-                  />
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    <img
+                      src={resolveStorageUrl(ticket.photo_apres)}
+                      alt="Photo après réparation"
+                      className="h-32 w-32 rounded-md object-cover"
+                    />
+                    <ExtraPhotos photos={ticket.photos_resolution} alt="Photo après réparation" />
+                  </div>
                 </div>
               )}
               {ticket.statut === 'resolu' && ticket.cout_reparation != null && (

@@ -9,6 +9,7 @@ use App\Models\MissionMenagePhotoPreuve;
 use App\Models\ProduitMenageCatalogue;
 use App\Models\ProduitMenageSignale;
 use App\Models\TicketMaintenance;
+use App\Models\TicketMaintenancePhoto;
 use App\Models\Utilisateur;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -186,6 +187,26 @@ class MissionMenageController extends Controller
                 'frais_total' => round($fraisForfait + $fraisProduitsTotal, 2),
             ];
         })->values());
+    }
+
+    /**
+     * Manager-wide "Ménage à valider" queue -- every mission currently
+     * waiting on the Manager's decision (en_attente_validation), across
+     * every agent and appartement, with the full checklist/produits/photos
+     * detail already eager-loaded so MissionValidationDetail can render
+     * without a second request. A mission leaves this list the moment it
+     * is validated (moves to historiqueManager()) or refused (moves back to
+     * the agent, statut non_conforme).
+     */
+    public function aValider(): JsonResponse
+    {
+        $missions = MissionMenage::with(self::DETAIL_RELATIONS)
+            ->where('statut', MissionMenage::STATUT_EN_ATTENTE_VALIDATION)
+            ->latest()
+            ->latest('id')
+            ->get();
+
+        return response()->json($missions);
     }
 
     /**
@@ -508,7 +529,8 @@ class MissionMenageController extends Controller
         $this->authorizeMissionAccess($request, $missionMenage);
 
         $validator = Validator::make($request->all(), [
-            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+            'photos' => ['nullable', 'array'],
+            'photos.*' => ['image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:5120'],
             'description' => ['nullable', 'string', 'max:1000'],
         ], $this->uploadValidationMessages());
@@ -516,25 +538,34 @@ class MissionMenageController extends Controller
         $validator->after(function ($validator) use ($request) {
             $hasDescription = trim((string) $request->input('description', '')) !== '';
 
-            if (! $request->hasFile('photo') && ! $request->hasFile('audio') && ! $hasDescription) {
+            if (! $request->hasFile('photos') && ! $request->hasFile('audio') && ! $hasDescription) {
                 $validator->errors()->add('description', 'Fournissez au moins une photo, un audio ou une description.');
             }
         });
 
         $validated = $validator->validate();
 
-        $photoUrl = $request->hasFile('photo') ? $request->file('photo')->store('tickets-maintenance', 'public') : null;
+        $photos = collect($validated['photos'] ?? [])
+            ->map(fn ($photo) => $photo->store('tickets-maintenance', 'public'))
+            ->values();
         $audioUrl = $request->hasFile('audio') ? $request->file('audio')->store('tickets-maintenance', 'public') : null;
 
         $ticket = TicketMaintenance::create([
             'appartement_id' => $missionMenage->sejour->appartement_id,
             'mission_origine_id' => $missionMenage->id,
             'description' => $validated['description'] ?? null,
-            'photo_url' => $photoUrl,
+            'photo_url' => $photos->first(),
             'audio_url' => $audioUrl,
             'statut' => TicketMaintenance::STATUT_OUVERT,
         ]);
 
-        return response()->json($ticket, 201);
+        foreach ($photos->slice(1) as $photoUrl) {
+            $ticket->photosSignalement()->create([
+                'contexte' => TicketMaintenancePhoto::CONTEXTE_SIGNALEMENT,
+                'photo_url' => $photoUrl,
+            ]);
+        }
+
+        return response()->json($ticket->load('photosSignalement'), 201);
     }
 }

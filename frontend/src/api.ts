@@ -192,7 +192,7 @@ export interface AjouterPhotosPreuveInput {
 }
 
 export interface SignalerProblemeInput {
-  photo?: File | null
+  photos?: File[]
   audio?: File | null
   description?: string | null
 }
@@ -205,7 +205,7 @@ export interface AssignerTicketMaintenanceInput {
 }
 
 export interface ResoudreTicketMaintenanceInput {
-  photoApres: File
+  photosApres: File[]
   coutReparation: number
   note?: string | null
 }
@@ -848,7 +848,7 @@ export async function signalerProbleme(
   input: SignalerProblemeInput,
 ): Promise<TicketMaintenance> {
   const formData = new FormData()
-  if (input.photo) formData.append('photo', input.photo)
+  input.photos?.forEach((photo) => formData.append('photos[]', photo))
   if (input.audio) formData.append('audio', input.audio)
   if (input.description) formData.append('description', input.description)
 
@@ -964,7 +964,7 @@ export async function marquerTicketMaintenanceRefusVu(id: number): Promise<Ticke
 }
 
 export interface EnvoyerMessageAgentMaintenanceInput {
-  photo?: File | null
+  photos?: File[]
   audio?: File | null
   note?: string | null
 }
@@ -974,7 +974,7 @@ export async function envoyerMessageAgentMaintenance(
   input: EnvoyerMessageAgentMaintenanceInput,
 ): Promise<TicketMaintenance> {
   const formData = new FormData()
-  if (input.photo) formData.append('photo', input.photo)
+  input.photos?.forEach((photo) => formData.append('photos[]', photo))
   if (input.audio) formData.append('audio', input.audio)
   if (input.note) formData.append('note', input.note)
 
@@ -986,7 +986,7 @@ export async function resoudreTicketMaintenance(
   input: ResoudreTicketMaintenanceInput,
 ): Promise<TicketMaintenance> {
   const formData = new FormData()
-  formData.append('photo_apres', input.photoApres)
+  input.photosApres.forEach((photo) => formData.append('photos_apres[]', photo))
   formData.append('cout_reparation', String(input.coutReparation))
   if (input.note) formData.append('note', input.note)
   formData.append('_method', 'PATCH')
@@ -1097,6 +1097,18 @@ export async function fetchHistoriqueMenage(
   if (params.dateFin) url.searchParams.set('date_fin', params.dateFin)
 
   const response = await fetch(url, {
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
+/**
+ * Manager-wide "Ménage à valider" queue -- every mission currently waiting
+ * on the Manager's decision, across every agent and appartement.
+ */
+export async function fetchMissionsAValider(): Promise<MissionMenage[]> {
+  const response = await fetch(`${API_BASE_URL}/api/mission-menages/a-valider`, {
     headers: authHeaders(),
   })
 

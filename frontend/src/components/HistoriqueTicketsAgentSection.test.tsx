@@ -129,6 +129,22 @@ describe('HistoriqueTicketsAgentSection', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: /loft bastille/i })).not.toBeInTheDocument())
   })
 
+  it('affiche la photo après réparation et ses photos supplémentaires, une fois déplié', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = mockFetch([
+      ticketFixture({
+        photo_apres: 'tickets-maintenance/apres.jpg',
+        photos_resolution: [{ id: 1, photo_url: 'tickets-maintenance/apres-2.jpg' }],
+      }),
+    ]) as typeof fetch
+
+    render(<HistoriqueTicketsAgentSection />)
+    const row = await screen.findByRole('button', { name: /loft bastille/i })
+    await user.click(row)
+
+    expect(screen.getAllByAltText(/photo après réparation/i)).toHaveLength(2)
+  })
+
   it('affiche les messages envoyés par l\'agent sur le ticket, une fois déplié', async () => {
     const user = userEvent.setup()
     globalThis.fetch = mockFetch([

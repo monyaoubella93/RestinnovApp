@@ -79,12 +79,34 @@ class TicketMaintenanceMessageAgentTest extends TestCase
         Sanctum::actingAs($agent, ['*']);
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/message", [
-            'photo' => UploadedFile::fake()->image('probleme-supplementaire.jpg'),
+            'photos' => [UploadedFile::fake()->image('probleme-supplementaire.jpg')],
         ], ['Accept' => 'application/json']);
 
         $response->assertOk();
         $this->assertDatabaseCount('messages_agent_maintenance', 1);
         $this->assertNotNull(\App\Models\MessageAgentMaintenance::first()->photo_url);
+    }
+
+    public function test_the_assigned_agent_can_attach_several_photos_first_becomes_photo_url_rest_go_to_photos_supplementaires(): void
+    {
+        Storage::fake('public');
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->post("/api/tickets-maintenance/{$ticket->id}/message", [
+            'photos' => [
+                UploadedFile::fake()->image('avant-1.jpg'),
+                UploadedFile::fake()->image('avant-2.jpg'),
+            ],
+        ], ['Accept' => 'application/json']);
+
+        $response->assertOk();
+        $message = \App\Models\MessageAgentMaintenance::first();
+        $this->assertNotNull($message->photo_url);
+        $this->assertSame(1, $message->photosSupplementaires()->count());
+        $response->assertJsonPath('messages_agent.0.photo_url', $message->photo_url);
+        $response->assertJsonCount(1, 'messages_agent.0.photos_supplementaires');
     }
 
     public function test_the_assigned_agent_can_send_an_audio_only_message(): void
@@ -203,10 +225,10 @@ class TicketMaintenanceMessageAgentTest extends TestCase
         Sanctum::actingAs($agent, ['*']);
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/message", [
-            'photo' => UploadedFile::fake()->image('trop-grande.jpg')->size(10241),
+            'photos' => [UploadedFile::fake()->image('trop-grande.jpg')->size(10241)],
         ], ['Accept' => 'application/json']);
 
         $response->assertStatus(422);
-        $response->assertJsonFragment(['photo' => ['Photo trop lourde, réessayez avec une photo plus légère (10 Mo maximum).']]);
+        $response->assertJsonFragment(['photos.0' => ['Photo trop lourde, réessayez avec une photo plus légère (10 Mo maximum).']]);
     }
 }

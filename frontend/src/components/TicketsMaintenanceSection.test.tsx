@@ -378,6 +378,41 @@ describe('TicketsMaintenanceSection', () => {
     )
   })
 
+  it('affiche les photos supplémentaires du signalement en plus de la photo principale', async () => {
+    const user = userEvent.setup()
+    const ticket = ticketFixture({
+      photo_url: 'tickets-maintenance/photo.jpg',
+      photos_signalement: [
+        { id: 1, photo_url: 'tickets-maintenance/photo-2.jpg' },
+        { id: 2, photo_url: 'tickets-maintenance/photo-3.jpg' },
+      ],
+    })
+    renderSection([ticket])
+
+    await expandTicket(user, 'Le robinet fuit.')
+
+    const images = screen.getAllByAltText(/photo du problème signalé/i)
+    expect(images).toHaveLength(3)
+  })
+
+  it('affiche les photos supplémentaires de la résolution en plus de la photo après réparation', async () => {
+    const user = userEvent.setup()
+    const ticket = ticketFixture({
+      statut: 'resolu',
+      agent_id: 5,
+      agent: agentFixture(),
+      photo_apres: 'tickets-maintenance/apres.jpg',
+      photos_resolution: [{ id: 1, photo_url: 'tickets-maintenance/apres-2.jpg' }],
+      cout_reparation: '45.50',
+    })
+    renderSection([ticket])
+
+    await expandTicket(user, 'Le robinet fuit.')
+
+    const images = screen.getAllByAltText(/photo après réparation/i)
+    expect(images).toHaveLength(2)
+  })
+
   it('affiche un ticket résolu en lecture seule avec la photo après réparation et le coût', async () => {
     const user = userEvent.setup()
     const ticket = ticketFixture({
