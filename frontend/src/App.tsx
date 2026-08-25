@@ -751,7 +751,7 @@ function App() {
               />
             </>
           )}
-          {activeTab === 'menage-a-valider' && <MenageAValiderSection />}
+          {activeTab === 'menage-a-valider' && <MenageAValiderSection catalogue={produitsCatalogue} />}
           {activeTab === 'menage-historique' && <HistoriqueMenageSection appartements={appartements} />}
           {activeTab === 'maintenance-agent' && (
             <NouvelAgentMaintenanceForm onSubmit={handleCreateUtilisateur} />

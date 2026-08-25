@@ -320,6 +320,10 @@ describe('MissionValidationDetail', () => {
 
   it('distingue un produit "stock existant" (badge gris, pas de prix) d\'un produit "racheté" (photo + prix réel)', async () => {
     const user = userEvent.setup()
+    const catalogue = [
+      { id: 1, nom: 'Javel', prix: '3.00', photo_url: null, actif: true },
+      { id: 2, nom: 'Sac poubelle', prix: '2.00', photo_url: null, actif: true },
+    ]
     render(
       <MissionValidationDetail
         mission={missionFixture({
@@ -342,6 +346,7 @@ describe('MissionValidationDetail', () => {
             },
           ],
         })}
+        catalogue={catalogue}
       />,
     )
 
@@ -358,12 +363,76 @@ describe('MissionValidationDetail', () => {
     ).toBeInTheDocument()
   })
 
-  it('n\'affiche pas la section "Produits utilisés" quand aucun produit n\'a été coché', async () => {
+  it('n\'affiche pas la section "Produits utilisés" quand aucun catalogue n\'est fourni', async () => {
     const user = userEvent.setup()
     render(<MissionValidationDetail mission={missionFixture({ produits: [] })} />)
 
     await user.click(screen.getByRole('button', { name: /voir le détail/i }))
 
     expect(screen.queryByText('Produits utilisés')).not.toBeInTheDocument()
+  })
+
+  it('affiche "En attente de la femme de ménage" pour un produit du catalogue que l\'agent n\'a pas encore traité', async () => {
+    const user = userEvent.setup()
+    const catalogue = [
+      { id: 1, nom: 'Javel', prix: '3.00', photo_url: null, actif: true },
+      { id: 2, nom: 'Sac poubelle', prix: '2.00', photo_url: null, actif: true },
+      { id: 3, nom: 'Produit inactif', prix: '5.00', photo_url: null, actif: false },
+    ]
+    render(
+      <MissionValidationDetail
+        mission={missionFixture({
+          produits: [
+            {
+              id: 1,
+              nom: 'Javel',
+              prix: '3.00',
+              photo_url: null,
+              actif: true,
+              pivot: { type_utilisation: 'stock_existant', photo_url: null, prix_paye: null },
+            },
+          ],
+        })}
+        catalogue={catalogue}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /voir le détail/i }))
+
+    expect(screen.getByText('Javel')).toBeInTheDocument()
+    expect(screen.getByText('Déjà présent')).toBeInTheDocument()
+    // Sac poubelle: in the active catalogue, not yet resolved by the agent.
+    expect(screen.getByText('Sac poubelle')).toBeInTheDocument()
+    expect(screen.getByText('En attente de la femme de ménage')).toBeInTheDocument()
+    // Inactive catalogue products never appear, resolved or not.
+    expect(screen.queryByText('Produit inactif')).not.toBeInTheDocument()
+  })
+
+  it('ne propose aucun contrôle de saisie sur les produits utilisés (lecture seule stricte côté Manager)', async () => {
+    const user = userEvent.setup()
+    const catalogue = [{ id: 1, nom: 'Javel', prix: '3.00', photo_url: null, actif: true }]
+    render(
+      <MissionValidationDetail
+        mission={missionFixture({
+          produits: [
+            {
+              id: 1,
+              nom: 'Javel',
+              prix: '3.00',
+              photo_url: null,
+              actif: true,
+              pivot: { type_utilisation: 'rachete', photo_url: 'mission-menage-produits/preuve.jpg', prix_paye: 15 },
+            },
+          ],
+        })}
+        catalogue={catalogue}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /voir le détail/i }))
+
+    expect(document.querySelector('input[type="file"]')).not.toBeInTheDocument()
+    expect(document.querySelector('input[type="number"]')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^envoyer$/i })).not.toBeInTheDocument()
   })
 })

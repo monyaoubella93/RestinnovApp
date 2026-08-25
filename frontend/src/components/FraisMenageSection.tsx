@@ -14,6 +14,17 @@ interface FraisMenageSectionProps {
     missionMenageId: number,
     input: { photo: File; note?: string | null; prix?: number | null; photoTicket?: File | null },
   ) => Promise<void>
+  /**
+   * The Manager's screens embed this same component to adjust frais_forfait
+   * post-checkout, but choosing stock_existant/racheté (with its
+   * photo/prix proof) and signaling a new product are exclusively the
+   * agent's own record of what happened during the mission -- the Manager
+   * only ever reviews it. readOnly strips every produits-related input down
+   * to the plain badges (or "en attente" for a product the agent hasn't
+   * resolved yet) and removes the "signaler un nouveau produit" form
+   * entirely, while the forfait field/total stay editable either way.
+   */
+  readOnly?: boolean
 }
 
 export function FraisMenageSection({
@@ -23,6 +34,7 @@ export function FraisMenageSection({
   onUpdateProduitUtilise,
   onDetacherProduit,
   onSignalerProduit,
+  readOnly = false,
 }: FraisMenageSectionProps) {
   const { t } = useTranslation()
   const [forfait, setForfait] = useState(String(missionMenage.frais_forfait))
@@ -241,6 +253,8 @@ export function FraisMenageSection({
                           {t('menage.frais.racheteBadge')} · {Number(utilise.pivot.prix_paye ?? 0).toFixed(2)} MAD
                         </span>
                       )
+                    ) : readOnly ? (
+                      <span className="text-xs font-medium text-ink-tertiary">{t('menage.frais.enAttenteAgent')}</span>
                     ) : (
                       <div className="flex shrink-0 gap-1">
                         <button
@@ -264,7 +278,7 @@ export function FraisMenageSection({
                       </div>
                     )}
 
-                    {utilise && (
+                    {utilise && !readOnly && (
                       <button
                         type="button"
                         onClick={() => handleRetirer(produit.id)}
@@ -276,7 +290,7 @@ export function FraisMenageSection({
                     )}
                   </div>
 
-                  {racheteFormProduitId === produit.id && (
+                  {!readOnly && racheteFormProduitId === produit.id && (
                     <div className="mt-2 space-y-2 border-t border-border-light pt-2">
                       <label
                         htmlFor={`rachete_photo_${produit.id}`}
@@ -341,6 +355,7 @@ export function FraisMenageSection({
         {t('menage.frais.total', { montant: totalFraisMenage.toFixed(2) })}
       </p>
 
+      {!readOnly && (
       <div className="mt-3 border-t border-border-light pt-3">
         {!showSignalerForm ? (
           <button
@@ -426,6 +441,7 @@ export function FraisMenageSection({
         )}
         {signalerSuccess && <p className="mt-2 text-sm text-success-text">{t('menage.frais.signale')}</p>}
       </div>
+      )}
     </div>
   )
 }

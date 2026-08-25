@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { resolveStorageUrl } from '../api'
-import type { MissionMenage } from '../types'
+import type { MissionMenage, ProduitCatalogue } from '../types'
 import { PhotoLightbox } from './PhotoLightbox'
 import { ProduitSignaleCard } from './ProduitsSignalesSection'
 
@@ -18,6 +18,17 @@ const PRODUIT_STATUT_STYLES: Record<string, string> = {
 
 interface MissionValidationDetailProps {
   mission: MissionMenage
+  /**
+   * Full active catalogue, so every product can be listed here -- not just
+   * the ones the agent already resolved -- with "En attente de la femme de
+   * ménage" for anything she hasn't gotten to yet. This screen is
+   * Manager-facing and strictly read-only for produits utilisés: choosing
+   * stock_existant/racheté (with its photo/prix proof) is exclusively the
+   * agent's own record of the mission, never something the Manager fills in
+   * on her behalf -- see FraisMenageSection's own readOnly mode for the
+   * agent-facing input this deliberately has none of.
+   */
+  catalogue?: ProduitCatalogue[]
   onValiderProduitSignale?: (id: number, input: { nom: string; prix: number }) => Promise<void>
   onRejeterProduitSignale?: (id: number) => Promise<void>
 }
@@ -32,6 +43,7 @@ interface MissionValidationDetailProps {
  */
 export function MissionValidationDetail({
   mission,
+  catalogue,
   onValiderProduitSignale,
   onRejeterProduitSignale,
 }: MissionValidationDetailProps) {
@@ -46,6 +58,7 @@ export function MissionValidationDetail({
   )
   const photosPreuve = mission.photos_preuve ?? []
   const produitsUtilises = mission.produits ?? []
+  const catalogueActif = (catalogue ?? []).filter((p) => p.actif)
 
   return (
     <div className="mt-2">
@@ -133,43 +146,49 @@ export function MissionValidationDetail({
             </div>
           )}
 
-          {produitsUtilises.length > 0 && (
+          {catalogueActif.length > 0 && (
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">Produits utilisés</p>
               <ul className="mt-2 space-y-2">
-                {produitsUtilises.map((produit) => (
-                  <li key={produit.id} className="flex items-center gap-2 text-sm">
-                    <span className="flex-1 text-ink-secondary">{produit.nom}</span>
-                    {produit.pivot.type_utilisation === 'stock_existant' ? (
-                      <span className="rounded-badge bg-table-header-bg px-2 py-0.5 text-xs font-medium text-ink-tertiary">
-                        Déjà présent
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 rounded-badge bg-success-bg px-2 py-0.5 text-xs font-medium text-success-text">
-                        {produit.pivot.photo_url && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setLightboxPhoto({
-                                src: resolveStorageUrl(produit.pivot.photo_url!),
-                                alt: `Photo preuve d'achat de "${produit.nom}"`,
-                              })
-                            }
-                            aria-label={`Agrandir la photo preuve d'achat de "${produit.nom}"`}
-                            className="overflow-hidden rounded transition hover:opacity-80"
-                          >
-                            <img
-                              src={resolveStorageUrl(produit.pivot.photo_url)}
-                              alt={`Photo preuve d'achat de "${produit.nom}"`}
-                              className="h-5 w-5 object-cover"
-                            />
-                          </button>
-                        )}
-                        Racheté · {Number(produit.pivot.prix_paye ?? 0).toFixed(2)} MAD
-                      </span>
-                    )}
-                  </li>
-                ))}
+                {catalogueActif.map((produitCatalogue) => {
+                  const produit = produitsUtilises.find((p) => p.id === produitCatalogue.id)
+
+                  return (
+                    <li key={produitCatalogue.id} className="flex items-center gap-2 text-sm">
+                      <span className="flex-1 text-ink-secondary">{produitCatalogue.nom}</span>
+                      {!produit ? (
+                        <span className="text-xs font-medium text-ink-tertiary">En attente de la femme de ménage</span>
+                      ) : produit.pivot.type_utilisation === 'stock_existant' ? (
+                        <span className="rounded-badge bg-table-header-bg px-2 py-0.5 text-xs font-medium text-ink-tertiary">
+                          Déjà présent
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 rounded-badge bg-success-bg px-2 py-0.5 text-xs font-medium text-success-text">
+                          {produit.pivot.photo_url && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setLightboxPhoto({
+                                  src: resolveStorageUrl(produit.pivot.photo_url!),
+                                  alt: `Photo preuve d'achat de "${produit.nom}"`,
+                                })
+                              }
+                              aria-label={`Agrandir la photo preuve d'achat de "${produit.nom}"`}
+                              className="overflow-hidden rounded transition hover:opacity-80"
+                            >
+                              <img
+                                src={resolveStorageUrl(produit.pivot.photo_url)}
+                                alt={`Photo preuve d'achat de "${produit.nom}"`}
+                                className="h-5 w-5 object-cover"
+                              />
+                            </button>
+                          )}
+                          Racheté · {Number(produit.pivot.prix_paye ?? 0).toFixed(2)} MAD
+                        </span>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           )}

@@ -8,7 +8,7 @@ import {
   type RefuserInput,
   type ValiderProduitSignaleInput,
 } from '../api'
-import type { MissionMenage } from '../types'
+import type { MissionMenage, ProduitCatalogue } from '../types'
 import { MissionValidationDetail } from './MissionValidationDetail'
 import { RefuserModal } from './RefuserModal'
 
@@ -18,6 +18,7 @@ function formatDate(iso: string): string {
 
 interface MissionAValiderCardProps {
   mission: MissionMenage
+  catalogue: ProduitCatalogue[]
   onValider: (missionMenageId: number) => Promise<void>
   onRefuser: (missionMenageId: number, input: RefuserInput) => Promise<void>
   onValiderProduitSignale: (id: number, input: ValiderProduitSignaleInput) => Promise<void>
@@ -26,6 +27,7 @@ interface MissionAValiderCardProps {
 
 function MissionAValiderCard({
   mission,
+  catalogue,
   onValider,
   onRefuser,
   onValiderProduitSignale,
@@ -72,6 +74,7 @@ function MissionAValiderCard({
 
       <MissionValidationDetail
         mission={mission}
+        catalogue={catalogue}
         onValiderProduitSignale={onValiderProduitSignale}
         onRejeterProduitSignale={onRejeterProduitSignale}
       />
@@ -117,7 +120,11 @@ function MissionAValiderCard({
  * mission leaves this list as soon as it's validated (then it appears in
  * "Historique") or refused (it goes back to the agent instead).
  */
-export function MenageAValiderSection() {
+interface MenageAValiderSectionProps {
+  catalogue: ProduitCatalogue[]
+}
+
+export function MenageAValiderSection({ catalogue }: MenageAValiderSectionProps) {
   const [missions, setMissions] = useState<MissionMenage[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -187,6 +194,7 @@ export function MenageAValiderSection() {
             <MissionAValiderCard
               key={mission.id}
               mission={mission}
+              catalogue={catalogue}
               onValider={handleValider}
               onRefuser={handleRefuser}
               onValiderProduitSignale={handleValiderProduitSignale}

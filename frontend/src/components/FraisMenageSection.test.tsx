@@ -275,4 +275,55 @@ describe('FraisMenageSection', () => {
     expect(await screen.findByText(/prix payé ou une photo du ticket/i)).toBeInTheDocument()
     expect(onSignalerProduit).not.toHaveBeenCalled()
   })
+
+  describe('readOnly (écran Manager)', () => {
+    it('affiche "En attente de la femme de ménage" au lieu des pictogrammes de sélection', () => {
+      renderSection({ readOnly: true })
+
+      expect(screen.getAllByText('En attente de la femme de ménage')).toHaveLength(2)
+      expect(screen.queryByRole('button', { name: /j'ai utilisé celui déjà présent/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /il était vide, j'en ai racheté un/i })).not.toBeInTheDocument()
+    })
+
+    it('affiche les badges déjà présent/racheté en lecture seule, sans bouton Retirer', () => {
+      renderSection({
+        readOnly: true,
+        missionMenage: {
+          ...missionMenage,
+          produits: [
+            produitUtilise(catalogue[0], { type_utilisation: 'stock_existant', photo_url: null, prix_paye: null }),
+            produitUtilise(catalogue[1], {
+              type_utilisation: 'rachete',
+              photo_url: 'mission-menage-produits/preuve.jpg',
+              prix_paye: 27.5,
+            }),
+          ],
+        },
+      })
+
+      expect(screen.getByTestId('produit-badge-1')).toHaveTextContent('Déjà présent')
+      expect(screen.getByTestId('produit-badge-2')).toHaveTextContent('27.50')
+      expect(screen.queryByRole('button', { name: /retirer/i })).not.toBeInTheDocument()
+    })
+
+    it('ne propose pas le formulaire "Signaler un nouveau produit"', () => {
+      renderSection({ readOnly: true })
+
+      expect(screen.queryByRole('button', { name: /signaler un nouveau produit/i })).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/^photo du produit$/i)).not.toBeInTheDocument()
+    })
+
+    it('garde le forfait éditable et enregistrable', async () => {
+      const user = userEvent.setup()
+      const onUpdateProduits = vi.fn().mockResolvedValue(undefined)
+      renderSection({ readOnly: true, onUpdateProduits })
+
+      const forfaitInput = screen.getByLabelText(/forfait femme de ménage/i)
+      await user.clear(forfaitInput)
+      await user.type(forfaitInput, '100')
+      await user.click(screen.getByRole('button', { name: /enregistrer le forfait/i }))
+
+      expect(onUpdateProduits).toHaveBeenCalledWith(1, { frais_forfait: 100 })
+    })
+  })
 })

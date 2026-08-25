@@ -270,4 +270,52 @@ describe('SejourCard', () => {
 
     expect(screen.queryByRole('button', { name: /^valider$/i })).not.toBeInTheDocument()
   })
+
+  it('n\'expose aucune saisie photo/prix produit au Manager : lecture seule uniquement', async () => {
+    const user = userEvent.setup()
+    const catalogue = [
+      { id: 1, nom: 'Javel', prix: 12, photo_url: null, actif: true },
+      { id: 2, nom: 'Éponges', prix: 8, photo_url: null, actif: true },
+    ]
+
+    renderCard(
+      sejourFixture({
+        mission_menage: {
+          id: 10,
+          sejour_id: 1,
+          agent_id: 5,
+          statut: 'en_attente_validation',
+          agent: { id: 5, nom: 'Fatima Z.', role: 'menage', telephone: null },
+          frais_forfait: 80,
+          vue: true,
+          produits: [
+            {
+              id: 1,
+              nom: 'Javel',
+              prix: 12,
+              photo_url: null,
+              actif: true,
+              pivot: { type_utilisation: 'rachete', prix_paye: 9.5, photo_url: 'produits/javel-preuve.jpg' },
+            },
+          ],
+        },
+      }),
+      { catalogue },
+    )
+
+    // Javel: resolved by the agent -- read-only badge, visible both in the
+    // always-on frais panel and in the "Voir le détail" validation panel.
+    expect(screen.getAllByText(/racheté · 9\.50 mad/i).length).toBeGreaterThan(0)
+    // Éponges: never touched by the agent -- placeholder, not a picker.
+    expect(screen.getAllByText('En attente de la femme de ménage').length).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole('button', { name: /voir le détail/i }))
+
+    // No agent-only input anywhere on this Manager screen.
+    expect(screen.queryByRole('button', { name: /j'ai utilisé celui déjà présent/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /il était vide, j'en ai racheté un/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /retirer/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /signaler un nouveau produit/i })).not.toBeInTheDocument()
+    expect(document.querySelector('input[type="file"]')).not.toBeInTheDocument()
+  })
 })
