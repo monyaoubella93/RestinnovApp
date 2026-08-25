@@ -10,17 +10,7 @@
     "logout": "Déconnexion",
     "brand": "Restinnov",
     "checked": "Coché",
-    "unchecked": "Non coché",
-    "statutValidation": {
-      "enAttente": "En attente de validation",
-      "refuse": "Refusé",
-      "valide": "Validé"
-    },
-    "urgence": {
-      "basse": "Basse",
-      "normale": "Normale",
-      "haute": "Haute"
-    }
+    "unchecked": "Non coché"
   },
   "language": {
     "toggleLabel": "Changer la langue",

@@ -10,17 +10,7 @@
     "logout": "تسجيل الخروج",
     "brand": "Restinnov",
     "checked": "محدد",
-    "unchecked": "غير محدد",
-    "statutValidation": {
-      "enAttente": "في انتظار المراجعة",
-      "refuse": "مرفوض",
-      "valide": "مقبول"
-    },
-    "urgence": {
-      "basse": "منخفضة",
-      "normale": "عادية",
-      "haute": "عالية"
-    }
+    "unchecked": "غير محدد"
   },
   "language": {
     "toggleLabel": "تغيير اللغة"

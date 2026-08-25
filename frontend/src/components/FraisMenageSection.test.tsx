@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FraisMenageSection } from './FraisMenageSection'
+import i18n from '../i18n'
 import type { MissionMenage, ProduitCatalogue, ProduitCatalogueUtilise } from '../types'
 
 const catalogue: ProduitCatalogue[] = [
@@ -44,6 +45,10 @@ function renderSection(overrides: Partial<Parameters<typeof FraisMenageSection>[
 }
 
 describe('FraisMenageSection', () => {
+  afterEach(() => {
+    void i18n.changeLanguage('fr')
+  })
+
   it('pré-remplit le forfait à 80 et affiche uniquement les produits actifs', () => {
     renderSection()
 
@@ -51,6 +56,19 @@ describe('FraisMenageSection', () => {
     expect(screen.getByText(/Javel/)).toBeInTheDocument()
     expect(screen.getByText(/Sac poubelle/)).toBeInTheDocument()
     expect(screen.queryByText(/Ancien produit/)).not.toBeInTheDocument()
+  })
+
+  it("le nom d'un produit du catalogue (donnée définie par le Manager en français) reste en français même quand l'agent a choisi l'arabe comme langue d'interface", async () => {
+    await i18n.changeLanguage('ar')
+
+    renderSection()
+
+    // The catalogue product names are reference data set by the Manager --
+    // they must never be auto-translated, unlike the surrounding interface
+    // chrome (which does switch to Arabic).
+    expect(screen.getByText('Javel')).toBeInTheDocument()
+    expect(screen.getByText('Sac poubelle')).toBeInTheDocument()
+    expect(screen.queryByText(/جافيل|صابون|كيس/)).not.toBeInTheDocument()
   })
 
   it('affiche la photo de référence du produit quand présente', () => {

@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InstallPromptCard } from '../pwa/InstallPromptCard'
 import type { MonTicketMaintenance } from '../types'
-import { STATUT_VALIDATION_STYLES } from '../utils/statutValidation'
-import { URGENCE_STYLES } from '../utils/urgence'
+import { STATUT_VALIDATION_LABELS, STATUT_VALIDATION_STYLES } from '../utils/statutValidation'
+import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 import { TicketDetailAgent } from './TicketDetailAgent'
 
 interface MesTicketsSectionProps {
@@ -23,11 +23,11 @@ export function MesTicketsSection({ tickets, loading, error, heading, emptyMessa
   // needs no badge, mirroring MesMissionsSection's STATUT_BADGES pattern.
   const STATUT_BADGES: Partial<Record<MonTicketMaintenance['statut'], { label: string; style: string }>> = {
     resolu_en_attente_validation: {
-      label: t('common.statutValidation.enAttente'),
+      label: STATUT_VALIDATION_LABELS.en_attente,
       style: STATUT_VALIDATION_STYLES.en_attente,
     },
     a_refaire: {
-      label: t('common.statutValidation.refuse'),
+      label: STATUT_VALIDATION_LABELS.refuse,
       style: STATUT_VALIDATION_STYLES.refuse,
     },
   }
@@ -99,7 +99,7 @@ export function MesTicketsSection({ tickets, loading, error, heading, emptyMessa
                 <span
                   className={`shrink-0 rounded-badge px-2 py-0.5 text-xs font-bold ${URGENCE_STYLES[ticket.urgence]}`}
                 >
-                  {t('maintenance.urgenceLabel', { label: t(`common.urgence.${ticket.urgence}`) })}
+                  {t('maintenance.urgenceLabel', { label: URGENCE_LABELS[ticket.urgence] })}
                 </span>
               </div>
               {STATUT_BADGES[ticket.statut] && (

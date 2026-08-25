@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HistoriqueTicketsAgentSection } from './HistoriqueTicketsAgentSection'
+import i18n from '../i18n'
 import type { HistoriqueTicketAgent } from '../types'
 
 function ticketFixture(overrides: Partial<HistoriqueTicketAgent> = {}): HistoriqueTicketAgent {
@@ -50,6 +51,19 @@ function mockFetch(tickets: HistoriqueTicketAgent[]) {
 describe('HistoriqueTicketsAgentSection', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+  })
+
+  afterEach(() => {
+    void i18n.changeLanguage('fr')
+  })
+
+  it("le niveau d'urgence reste en français quand l'interface est en arabe", async () => {
+    await i18n.changeLanguage('ar')
+    globalThis.fetch = mockFetch([ticketFixture({ urgence: 'haute' })]) as typeof fetch
+
+    render(<HistoriqueTicketsAgentSection />)
+
+    expect(await screen.findByText('الأولوية Haute')).toBeInTheDocument()
   })
 
   it('affiche les tickets validés', async () => {
