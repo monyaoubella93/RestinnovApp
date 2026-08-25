@@ -69,6 +69,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/produits-signales/{produitSignale}/valider', [ProduitSignaleController::class, 'valider']);
         Route::patch('/produits-signales/{produitSignale}/rejeter', [ProduitSignaleController::class, 'rejeter']);
 
+        Route::get('/mission-menages/a-valider', [MissionMenageController::class, 'aValider']);
         Route::patch('/mission-menages/{missionMenage}/valider', [MissionMenageController::class, 'valider']);
         Route::patch('/mission-menages/{missionMenage}/refuser', [MissionMenageController::class, 'refuser']);
         Route::get('/mission-menages/historique', [MissionMenageController::class, 'historiqueManager']);

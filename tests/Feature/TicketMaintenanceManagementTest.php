@@ -655,7 +655,7 @@ class TicketMaintenanceManagementTest extends TestCase
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
             '_method' => 'PATCH',
-            'photo_apres' => UploadedFile::fake()->image('reparation.jpg'),
+            'photos_apres' => [UploadedFile::fake()->image('reparation.jpg')],
             'cout_reparation' => '45.50',
             'note' => 'Joint remplacé.',
         ]);
@@ -671,6 +671,29 @@ class TicketMaintenanceManagementTest extends TestCase
         ]);
     }
 
+    public function test_resoudre_accepts_several_photos_first_becomes_photo_apres_rest_go_to_photos_resolution(): void
+    {
+        Storage::fake('public');
+
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
+            '_method' => 'PATCH',
+            'photos_apres' => [
+                UploadedFile::fake()->image('reparation-1.jpg'),
+                UploadedFile::fake()->image('reparation-2.jpg'),
+            ],
+            'cout_reparation' => '45.50',
+        ]);
+
+        $response->assertOk();
+        $this->assertNotNull($response->json('photo_apres'));
+        $response->assertJsonCount(1, 'photos_resolution');
+        $this->assertSame(1, $ticket->fresh()->photosResolution()->count());
+    }
+
     public function test_resoudre_marks_a_ticket_a_refaire_resolu_en_attente_validation_again(): void
     {
         Storage::fake('public');
@@ -681,7 +704,7 @@ class TicketMaintenanceManagementTest extends TestCase
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
             '_method' => 'PATCH',
-            'photo_apres' => UploadedFile::fake()->image('reparation.jpg'),
+            'photos_apres' => [UploadedFile::fake()->image('reparation.jpg')],
             'cout_reparation' => '30',
         ]);
 
@@ -703,7 +726,7 @@ class TicketMaintenanceManagementTest extends TestCase
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
             '_method' => 'PATCH',
-            'photo_apres' => UploadedFile::fake()->image('reparation.jpg')->size(10240),
+            'photos_apres' => [UploadedFile::fake()->image('reparation.jpg')->size(10240)],
             'cout_reparation' => '45.50',
         ]);
 
@@ -720,12 +743,12 @@ class TicketMaintenanceManagementTest extends TestCase
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
             '_method' => 'PATCH',
-            'photo_apres' => UploadedFile::fake()->image('reparation.jpg')->size(10241),
+            'photos_apres' => [UploadedFile::fake()->image('reparation.jpg')->size(10241)],
             'cout_reparation' => '45.50',
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonFragment(['photo_apres' => ['Photo trop lourde, réessayez avec une photo plus légère (10 Mo maximum).']]);
+        $response->assertJsonFragment(['photos_apres.0' => ['Photo trop lourde, réessayez avec une photo plus légère (10 Mo maximum).']]);
         $this->assertDatabaseHas('tickets_maintenance', ['id' => $ticket->id, 'statut' => 'assigne']);
     }
 
@@ -738,7 +761,7 @@ class TicketMaintenanceManagementTest extends TestCase
         $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/resoudre", []);
 
         $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['photo_apres', 'cout_reparation']);
+        $response->assertJsonValidationErrors(['photos_apres', 'cout_reparation']);
     }
 
     public function test_resoudre_is_rejected_when_the_ticket_is_not_assigne(): void
@@ -751,7 +774,7 @@ class TicketMaintenanceManagementTest extends TestCase
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
             '_method' => 'PATCH',
-            'photo_apres' => UploadedFile::fake()->image('reparation.jpg'),
+            'photos_apres' => [UploadedFile::fake()->image('reparation.jpg')],
             'cout_reparation' => '10',
         ]);
 
@@ -769,7 +792,7 @@ class TicketMaintenanceManagementTest extends TestCase
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
             '_method' => 'PATCH',
-            'photo_apres' => UploadedFile::fake()->image('reparation.jpg'),
+            'photos_apres' => [UploadedFile::fake()->image('reparation.jpg')],
             'cout_reparation' => '10',
         ]);
 
@@ -797,7 +820,7 @@ class TicketMaintenanceManagementTest extends TestCase
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
             '_method' => 'PATCH',
-            'photo_apres' => UploadedFile::fake()->image('reparation.jpg'),
+            'photos_apres' => [UploadedFile::fake()->image('reparation.jpg')],
             'cout_reparation' => '10',
         ]);
 

@@ -25,11 +25,15 @@ interface TicketDetailAgentProps {
  * before or during the repair. Only shown while the ticket is actually on
  * this agent's plate (assigne/a_refaire), matching the backend precondition.
  */
+interface PhotoEntry {
+  file: File
+  previewUrl: string
+}
+
 function MessageAgentSection({ ticket }: { ticket: MonTicketMaintenance }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
-  const [photo, setPhoto] = useState<File | null>(null)
-  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+  const [photos, setPhotos] = useState<PhotoEntry[]>([])
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -54,23 +58,26 @@ function MessageAgentSection({ ticket }: { ticket: MonTicketMaintenance }) {
   })
 
   const resetForm = () => {
-    setPhoto(null)
-    setPhotoPreviewUrl(null)
+    setPhotos([])
     setNote('')
     resetAudio()
     setError(null)
   }
 
-  const handlePhotoChange = (file: File | undefined | null) => {
-    if (!file) return
-    setPhoto(file)
-    setPhotoPreviewUrl(URL.createObjectURL(file))
+  const handlePhotosChange = (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    const entries = Array.from(files).map((file) => ({ file, previewUrl: URL.createObjectURL(file) }))
+    setPhotos((current) => [...current, ...entries])
+  }
+
+  const removePhoto = (index: number) => {
+    setPhotos((current) => current.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async () => {
     setError(null)
 
-    if (!photo && !audioFile && !note.trim()) {
+    if (photos.length === 0 && !audioFile && !note.trim()) {
       setError(t('maintenance.detail.message.atLeastOne'))
       return
     }
@@ -78,7 +85,7 @@ function MessageAgentSection({ ticket }: { ticket: MonTicketMaintenance }) {
     setSubmitting(true)
     try {
       const updated = await envoyerMessageAgentMaintenance(ticket.id, {
-        photo,
+        photos: photos.map((p) => p.file),
         audio: audioFile,
         note: note.trim() ? note : null,
       })
@@ -89,7 +96,7 @@ function MessageAgentSection({ ticket }: { ticket: MonTicketMaintenance }) {
     } catch (err) {
       setError(
         friendlyUploadErrorMessage(err, {
-          tooLarge: photo ? t('maintenance.detail.message.photoTooLarge') : t('maintenance.detail.message.audioTooLarge'),
+          tooLarge: photos.length > 0 ? t('maintenance.detail.message.photoTooLarge') : t('maintenance.detail.message.audioTooLarge'),
           generic: t('common.genericError'),
         }),
       )
@@ -111,12 +118,24 @@ function MessageAgentSection({ ticket }: { ticket: MonTicketMaintenance }) {
                   // eslint-disable-next-line jsx-a11y/media-has-caption
                   <audio controls src={resolveStorageUrl(message.audio_url)} className="w-full" />
                 )}
-                {message.photo_url && (
-                  <img
-                    src={resolveStorageUrl(message.photo_url)}
-                    alt={t('maintenance.detail.message.photoAlt')}
-                    className="h-20 w-20 rounded object-cover"
-                  />
+                {(message.photo_url || (message.photos_supplementaires?.length ?? 0) > 0) && (
+                  <div className="flex flex-wrap gap-2">
+                    {message.photo_url && (
+                      <img
+                        src={resolveStorageUrl(message.photo_url)}
+                        alt={t('maintenance.detail.message.photoAlt')}
+                        className="h-20 w-20 rounded object-cover"
+                      />
+                    )}
+                    {message.photos_supplementaires?.map((photo) => (
+                      <img
+                        key={photo.id}
+                        src={resolveStorageUrl(photo.photo_url)}
+                        alt={t('maintenance.detail.message.photoAlt')}
+                        className="h-20 w-20 rounded object-cover"
+                      />
+                    ))}
+                  </div>
                 )}
               </li>
             ))}
@@ -157,16 +176,34 @@ function MessageAgentSection({ ticket }: { ticket: MonTicketMaintenance }) {
                 type="file"
                 accept="image/jpeg,image/png"
                 capture="environment"
+                multiple
                 className="hidden"
                 aria-label={t('maintenance.detail.message.photoAlt')}
-                onChange={(e) => handlePhotoChange(e.target.files?.[0])}
+                onChange={(e) => {
+                  handlePhotosChange(e.target.files)
+                  e.target.value = ''
+                }}
               />
-              {photoPreviewUrl && (
-                <img
-                  src={photoPreviewUrl}
-                  alt={t('maintenance.detail.message.previewAlt')}
-                  className="mt-1 h-16 w-16 rounded-lg object-cover"
-                />
+              {photos.length > 0 && (
+                <div className="mt-1 flex flex-wrap justify-center gap-2">
+                  {photos.map((photo, index) => (
+                    <div key={photo.previewUrl} className="relative">
+                      <img
+                        src={photo.previewUrl}
+                        alt={t('maintenance.detail.message.previewAlt', { index: index + 1 })}
+                        className="h-16 w-16 rounded-lg object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(index)}
+                        aria-label={t('maintenance.detail.message.removePhoto', { index: index + 1 })}
+                        className="absolute -end-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs font-bold text-white hover:brightness-110"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -277,8 +314,7 @@ function MessageAgentSection({ ticket }: { ticket: MonTicketMaintenance }) {
 
 export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgentProps) {
   const { t } = useTranslation()
-  const [photo, setPhoto] = useState<File | null>(null)
-  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+  const [photos, setPhotos] = useState<PhotoEntry[]>([])
   const [coutReparation, setCoutReparation] = useState('')
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -294,16 +330,20 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticket.id])
 
-  const handlePhotoChange = (file: File | undefined | null) => {
-    if (!file) return
-    setPhoto(file)
-    setPhotoPreviewUrl(URL.createObjectURL(file))
+  const handlePhotosChange = (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    const entries = Array.from(files).map((file) => ({ file, previewUrl: URL.createObjectURL(file) }))
+    setPhotos((current) => [...current, ...entries])
+  }
+
+  const removePhoto = (index: number) => {
+    setPhotos((current) => current.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async () => {
     setError(null)
 
-    if (!photo) {
+    if (photos.length === 0) {
       setError(t('maintenance.detail.photoRequise'))
       return
     }
@@ -315,7 +355,7 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
     setSubmitting(true)
     try {
       await resoudreTicketMaintenance(ticket.id, {
-        photoApres: photo,
+        photosApres: photos.map((p) => p.file),
         coutReparation: Number(coutReparation),
         note: note.trim() ? note : null,
       })
@@ -431,16 +471,34 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
               type="file"
               accept="image/jpeg,image/png"
               capture="environment"
+              multiple
               className="hidden"
               aria-label={t('maintenance.detail.photoReparation')}
-              onChange={(e) => handlePhotoChange(e.target.files?.[0])}
+              onChange={(e) => {
+                handlePhotosChange(e.target.files)
+                e.target.value = ''
+              }}
             />
-            {photoPreviewUrl && (
-              <img
-                src={photoPreviewUrl}
-                alt={t('maintenance.detail.previewAlt')}
-                className="mt-1 h-20 w-20 rounded-lg object-cover"
-              />
+            {photos.length > 0 && (
+              <div className="mt-1 flex flex-wrap justify-center gap-2">
+                {photos.map((photo, index) => (
+                  <div key={photo.previewUrl} className="relative">
+                    <img
+                      src={photo.previewUrl}
+                      alt={t('maintenance.detail.previewAlt', { index: index + 1 })}
+                      className="h-20 w-20 rounded-lg object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(index)}
+                      aria-label={t('maintenance.detail.removePhoto', { index: index + 1 })}
+                      className="absolute -end-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs font-bold text-white hover:brightness-110"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

@@ -64,6 +64,45 @@ describe('SignalerProblemeSection', () => {
     expect(await screen.findByAltText(/aperçu de la photo/i)).toBeInTheDocument()
   })
 
+  it('permet de sélectionner plusieurs photos et affiche un aperçu de chacune', async () => {
+    const user = userEvent.setup()
+    render(<SignalerProblemeSection missionMenageId={10} onSignaler={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /signaler un problème/i }))
+    await user.upload(screen.getByLabelText(/photo du problème/i), [makeFile('a.jpg'), makeFile('b.jpg')])
+
+    expect(await screen.findByAltText('Aperçu de la photo 1')).toBeInTheDocument()
+    expect(screen.getByAltText('Aperçu de la photo 2')).toBeInTheDocument()
+  })
+
+  it('permet de retirer une photo sélectionnée avant envoi', async () => {
+    const user = userEvent.setup()
+    render(<SignalerProblemeSection missionMenageId={10} onSignaler={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /signaler un problème/i }))
+    await user.upload(screen.getByLabelText(/photo du problème/i), [makeFile('a.jpg'), makeFile('b.jpg')])
+    await user.click(screen.getByRole('button', { name: 'Retirer la photo 1' }))
+
+    expect(screen.queryByAltText('Aperçu de la photo 2')).not.toBeInTheDocument()
+    expect(screen.getByAltText('Aperçu de la photo 1')).toBeInTheDocument()
+  })
+
+  it('envoie plusieurs photos sélectionnées', async () => {
+    const user = userEvent.setup()
+    const onSignaler = vi.fn().mockResolvedValue(undefined)
+    render(<SignalerProblemeSection missionMenageId={10} onSignaler={onSignaler} />)
+
+    await user.click(screen.getByRole('button', { name: /signaler un problème/i }))
+    const photoA = makeFile('a.jpg')
+    const photoB = makeFile('b.jpg')
+    await user.upload(screen.getByLabelText(/photo du problème/i), [photoA, photoB])
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
+
+    await waitFor(() =>
+      expect(onSignaler).toHaveBeenCalledWith(10, { photos: [photoA, photoB], audio: null, description: null }),
+    )
+  })
+
   it('indique que l\'enregistrement audio est indisponible quand MediaRecorder n\'existe pas', async () => {
     const user = userEvent.setup()
     render(<SignalerProblemeSection missionMenageId={10} onSignaler={vi.fn()} />)
@@ -86,7 +125,7 @@ describe('SignalerProblemeSection', () => {
     await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
 
     await waitFor(() =>
-      expect(onSignaler).toHaveBeenCalledWith(10, { photo, audio: null, description: 'Douche bouchée' }),
+      expect(onSignaler).toHaveBeenCalledWith(10, { photos: [photo], audio: null, description: 'Douche bouchée' }),
     )
     expect(await screen.findByTestId('signalement-confirmation')).toBeInTheDocument()
   })
@@ -202,7 +241,7 @@ describe('SignalerProblemeSection', () => {
 
     await waitFor(() => expect(onSignaler).toHaveBeenCalledTimes(1))
     const [, input] = onSignaler.mock.calls[0]
-    expect(input.photo).toBeNull()
+    expect(input.photos).toEqual([])
     expect(input.audio).toBeInstanceOf(File)
     expect(input.description).toBeNull()
   })

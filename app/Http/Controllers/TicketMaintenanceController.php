@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\AuthorizesTicketAccess;
 use App\Http\Controllers\Concerns\HasFriendlyUploadMessages;
 use App\Models\MessageAgentMaintenance;
+use App\Models\MessageAgentMaintenancePhoto;
 use App\Models\TicketMaintenance;
+use App\Models\TicketMaintenancePhoto;
 use App\Models\TicketMaintenanceRefus;
 use App\Models\Utilisateur;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -20,7 +22,15 @@ class TicketMaintenanceController extends Controller
     use AuthorizesTicketAccess;
     use HasFriendlyUploadMessages;
 
-    private const DETAIL_RELATIONS = ['appartement', 'missionOrigine.sejour', 'agent', 'refus.manager', 'messagesAgent'];
+    private const DETAIL_RELATIONS = [
+        'appartement',
+        'missionOrigine.sejour',
+        'agent',
+        'refus.manager',
+        'messagesAgent.photosSupplementaires',
+        'photosSignalement',
+        'photosResolution',
+    ];
 
     // An appartement is flagged "récurrent" in the par-appartement historique
     // view once it reaches this many tickets (any statut) within the
@@ -244,7 +254,7 @@ class TicketMaintenanceController extends Controller
                 TicketMaintenance::STATUT_A_REFAIRE,
                 TicketMaintenance::STATUT_RESOLU_EN_ATTENTE_VALIDATION,
             ])
-            ->with(['appartement:id,nom,adresse', 'refus', 'messagesAgent'])
+            ->with(['appartement:id,nom,adresse', 'refus', 'messagesAgent.photosSupplementaires'])
             ->latest()
             ->get()
             ->map(fn (TicketMaintenance $ticket) => [
@@ -274,6 +284,7 @@ class TicketMaintenanceController extends Controller
                 'messages_agent' => $ticket->messagesAgent->map(fn (MessageAgentMaintenance $message) => [
                     'id' => $message->id,
                     'photo_url' => $message->photo_url,
+                    'photos_supplementaires' => $message->photosSupplementaires->values(),
                     'audio_url' => $message->audio_url,
                     'note' => $message->note,
                     'created_at' => $message->created_at,
@@ -317,7 +328,7 @@ class TicketMaintenanceController extends Controller
 
         $query = TicketMaintenance::where('agent_id', $agentId)
             ->where('statut', TicketMaintenance::STATUT_RESOLU)
-            ->with(['appartement:id,nom,adresse', 'messagesAgent'])
+            ->with(['appartement:id,nom,adresse', 'messagesAgent.photosSupplementaires', 'photosResolution'])
             ->latest();
 
         $this->applyFilters($query, $validated);
@@ -328,6 +339,7 @@ class TicketMaintenanceController extends Controller
             'urgence' => $ticket->urgence,
             'description_manager' => $ticket->description_manager,
             'photo_apres' => $ticket->photo_apres,
+            'photos_resolution' => $ticket->photosResolution->values(),
             'cout_reparation' => $ticket->cout_reparation !== null ? round((float) $ticket->cout_reparation, 2) : null,
             'note_resolution' => $ticket->note_resolution,
             'appartement' => $ticket->appartement ? [
@@ -338,6 +350,7 @@ class TicketMaintenanceController extends Controller
             'messages_agent' => $ticket->messagesAgent->map(fn (MessageAgentMaintenance $message) => [
                 'id' => $message->id,
                 'photo_url' => $message->photo_url,
+                'photos_supplementaires' => $message->photosSupplementaires->values(),
                 'audio_url' => $message->audio_url,
                 'note' => $message->note,
                 'created_at' => $message->created_at,
@@ -388,7 +401,8 @@ class TicketMaintenanceController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+            'photos' => ['nullable', 'array'],
+            'photos.*' => ['image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:5120'],
             'note' => ['nullable', 'string', 'max:1000'],
         ], $this->uploadValidationMessages());
@@ -396,18 +410,26 @@ class TicketMaintenanceController extends Controller
         $validator->after(function ($validator) use ($request) {
             $hasNote = trim((string) $request->input('note', '')) !== '';
 
-            if (! $request->hasFile('photo') && ! $request->hasFile('audio') && ! $hasNote) {
+            if (! $request->hasFile('photos') && ! $request->hasFile('audio') && ! $hasNote) {
                 $validator->errors()->add('note', 'Ajoutez une photo, un audio ou une note.');
             }
         });
 
         $validated = $validator->validate();
 
-        $ticketMaintenance->messagesAgent()->create([
-            'photo_url' => $request->hasFile('photo') ? $request->file('photo')->store('tickets-maintenance', 'public') : null,
+        $photos = collect($validated['photos'] ?? [])
+            ->map(fn ($photo) => $photo->store('tickets-maintenance', 'public'))
+            ->values();
+
+        $message = $ticketMaintenance->messagesAgent()->create([
+            'photo_url' => $photos->first(),
             'audio_url' => $request->hasFile('audio') ? $request->file('audio')->store('tickets-maintenance', 'public') : null,
             'note' => $validated['note'] ?? null,
         ]);
+
+        foreach ($photos->slice(1) as $photoUrl) {
+            $message->photosSupplementaires()->create(['photo_url' => $photoUrl]);
+        }
 
         return response()->json($ticketMaintenance->fresh(self::DETAIL_RELATIONS));
     }
@@ -432,19 +454,34 @@ class TicketMaintenanceController extends Controller
         }
 
         $validated = $request->validate([
-            'photo_apres' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+            'photos_apres' => ['required', 'array', 'min:1'],
+            'photos_apres.*' => ['image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'cout_reparation' => ['required', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:1000'],
         ], $this->uploadValidationMessages());
 
-        $photoApresUrl = $request->file('photo_apres')->store('tickets-maintenance', 'public');
+        $photos = collect($validated['photos_apres'])
+            ->map(fn ($photo) => $photo->store('tickets-maintenance', 'public'))
+            ->values();
 
         $ticketMaintenance->update([
-            'photo_apres' => $photoApresUrl,
+            'photo_apres' => $photos->first(),
             'cout_reparation' => $validated['cout_reparation'],
             'note_resolution' => $validated['note'] ?? null,
             'statut' => TicketMaintenance::STATUT_RESOLU_EN_ATTENTE_VALIDATION,
         ]);
+
+        // A resoumission after a refus overwrites photo_apres the same way
+        // it always has -- the previous attempt's extra photos shouldn't
+        // linger here once they're no longer part of the current proof.
+        $ticketMaintenance->photosResolution()->delete();
+
+        foreach ($photos->slice(1) as $photoUrl) {
+            $ticketMaintenance->photosResolution()->create([
+                'contexte' => TicketMaintenancePhoto::CONTEXTE_RESOLUTION,
+                'photo_url' => $photoUrl,
+            ]);
+        }
 
         return response()->json($ticketMaintenance->fresh(self::DETAIL_RELATIONS));
     }

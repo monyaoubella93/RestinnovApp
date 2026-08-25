@@ -147,7 +147,14 @@ export interface MissionMenage {
   checklist_items?: ChecklistItem[]
   produits_signales?: ProduitMenageSignale[]
   photos_preuve?: MissionMenagePhotoPreuve[]
-  sejour?: { id: number; appartement: Appartement | null } | null
+  sejour?: {
+    id: number
+    appartement: Appartement | null
+    reference?: string
+    nom_voyageur?: string
+    date_arrivee?: string
+    date_depart?: string
+  } | null
   refus?: MissionMenageRefus[]
 }
 
@@ -166,9 +173,15 @@ export interface TicketMaintenanceRefus {
  * Manager on an in-progress ticket -- distinct from the final resolution
  * (photo_apres/cout_reparation/note_resolution). Chronological, oldest first.
  */
+export interface PhotoSupplementaire {
+  id: number
+  photo_url: string
+}
+
 export interface MessageAgentMaintenance {
   id: number
   photo_url: string | null
+  photos_supplementaires?: PhotoSupplementaire[]
   audio_url: string | null
   note: string | null
   created_at: string
@@ -205,6 +218,8 @@ export interface TicketMaintenance {
   mission_origine?: (Omit<MissionMenage, 'sejour'> & { sejour?: Sejour | null }) | null
   refus?: TicketMaintenanceRefus[]
   messages_agent?: MessageAgentMaintenance[]
+  photos_signalement?: PhotoSupplementaire[]
+  photos_resolution?: PhotoSupplementaire[]
 }
 
 /**
@@ -490,6 +505,7 @@ export interface HistoriqueTicketAgent {
   urgence: TicketMaintenanceUrgence
   description_manager: string | null
   photo_apres: string | null
+  photos_resolution?: PhotoSupplementaire[]
   cout_reparation: string | number | null
   note_resolution: string | null
   appartement: { id: number; nom: string; adresse: string } | null

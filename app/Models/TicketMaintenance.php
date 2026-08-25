@@ -106,4 +106,24 @@ class TicketMaintenance extends Model
     {
         return $this->hasMany(MessageAgentMaintenance::class)->orderBy('created_at');
     }
+
+    /**
+     * photo_url stays the primary/first signalement photo (everything that
+     * already reads it -- the "photo transférée" flow, the Dashboard
+     * thumbnail -- keeps working unchanged); any further photos the agent
+     * attached to the same report land here instead.
+     */
+    public function photosSignalement(): HasMany
+    {
+        return $this->hasMany(TicketMaintenancePhoto::class)->where('contexte', TicketMaintenancePhoto::CONTEXTE_SIGNALEMENT);
+    }
+
+    /**
+     * Same pattern as photosSignalement(), for photo_apres (the résolution
+     * proof) instead.
+     */
+    public function photosResolution(): HasMany
+    {
+        return $this->hasMany(TicketMaintenancePhoto::class)->where('contexte', TicketMaintenancePhoto::CONTEXTE_RESOLUTION);
+    }
 }

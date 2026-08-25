@@ -206,6 +206,29 @@ describe('TicketDetailAgent', () => {
     expect(screen.getByRole('button', { name: /retour à mes tickets/i })).toBeInTheDocument()
   })
 
+  it('permet de prendre plusieurs photos de réparation et les envoie toutes', async () => {
+    const user = userEvent.setup()
+    const fetchMock = mockFetch()
+    globalThis.fetch = fetchMock as typeof fetch
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    const photoA = new File(['a'], 'reparation-1.jpg', { type: 'image/jpeg' })
+    const photoB = new File(['b'], 'reparation-2.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText(/photo de la réparation/i), [photoA, photoB])
+
+    expect(await screen.findByAltText('Aperçu de la photo 1')).toBeInTheDocument()
+    expect(screen.getByAltText('Aperçu de la photo 2')).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/prix de la réparation/i), '45')
+    await user.click(screen.getByRole('button', { name: /marquer résolu/i }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    const [, init] = fetchMock.mock.calls.find(([input]) => String(input).includes('/resoudre'))!
+    const formData = init!.body as FormData
+    expect(formData.getAll('photos_apres[]')).toHaveLength(2)
+  })
+
   it('affiche un message clair quand la photo de réparation est trop lourde', async () => {
     const user = userEvent.setup()
     globalThis.fetch = vi.fn(async () => new Response(null, { status: 413 })) as typeof fetch
@@ -257,6 +280,29 @@ describe('TicketDetailAgent', () => {
     await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
 
     expect(screen.getByText(/ajoutez une photo, un audio ou une note/i)).toBeInTheDocument()
+  })
+
+  it('permet de joindre plusieurs photos à un message et les envoie toutes', async () => {
+    const user = userEvent.setup()
+    const fetchMock = mockFetch()
+    globalThis.fetch = fetchMock as typeof fetch
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    const photoA = new File(['a'], 'a.jpg', { type: 'image/jpeg' })
+    const photoB = new File(['b'], 'b.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText(/photo du message/i), [photoA, photoB])
+
+    expect(await screen.findByAltText('Aperçu de la photo 1')).toBeInTheDocument()
+    expect(screen.getByAltText('Aperçu de la photo 2')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    const [, init] = fetchMock.mock.calls.find(([input]) => String(input).includes('/message'))!
+    const formData = init!.body as FormData
+    expect(formData.getAll('photos[]')).toHaveLength(2)
   })
 
   it('affiche un message clair quand la photo du message est trop lourde', async () => {

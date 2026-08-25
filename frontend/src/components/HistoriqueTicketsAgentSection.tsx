@@ -40,12 +40,24 @@ function HistoriqueTicketRow({ ticket }: { ticket: HistoriqueTicketAgent }) {
       {expanded && (
         <div className="space-y-2 border-t border-border-light px-4 py-3 text-sm">
           {ticket.description_manager && <p className="text-ink-secondary">{ticket.description_manager}</p>}
-          {ticket.photo_apres && (
-            <img
-              src={resolveStorageUrl(ticket.photo_apres)}
-              alt={t('maintenance.historique.photoApres')}
-              className="h-24 w-24 rounded-lg object-cover"
-            />
+          {(ticket.photo_apres || (ticket.photos_resolution?.length ?? 0) > 0) && (
+            <div className="flex flex-wrap gap-2">
+              {ticket.photo_apres && (
+                <img
+                  src={resolveStorageUrl(ticket.photo_apres)}
+                  alt={t('maintenance.historique.photoApres')}
+                  className="h-24 w-24 rounded-lg object-cover"
+                />
+              )}
+              {ticket.photos_resolution?.map((photo) => (
+                <img
+                  key={photo.id}
+                  src={resolveStorageUrl(photo.photo_url)}
+                  alt={t('maintenance.historique.photoApres')}
+                  className="h-24 w-24 rounded-lg object-cover"
+                />
+              ))}
+            </div>
           )}
           {ticket.cout_reparation != null && (
             <p className="font-mono font-bold text-ink">
@@ -64,12 +76,24 @@ function HistoriqueTicketRow({ ticket }: { ticket: HistoriqueTicketAgent }) {
                       // eslint-disable-next-line jsx-a11y/media-has-caption
                       <audio controls src={resolveStorageUrl(message.audio_url)} className="mt-1 w-full" />
                     )}
-                    {message.photo_url && (
-                      <img
-                        src={resolveStorageUrl(message.photo_url)}
-                        alt={t('maintenance.detail.message.photoAlt')}
-                        className="mt-1 h-16 w-16 rounded object-cover"
-                      />
+                    {(message.photo_url || (message.photos_supplementaires?.length ?? 0) > 0) && (
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        {message.photo_url && (
+                          <img
+                            src={resolveStorageUrl(message.photo_url)}
+                            alt={t('maintenance.detail.message.photoAlt')}
+                            className="h-16 w-16 rounded object-cover"
+                          />
+                        )}
+                        {message.photos_supplementaires?.map((photo) => (
+                          <img
+                            key={photo.id}
+                            src={resolveStorageUrl(photo.photo_url)}
+                            alt={t('maintenance.detail.message.photoAlt')}
+                            className="h-16 w-16 rounded object-cover"
+                          />
+                        ))}
+                      </div>
                     )}
                   </li>
                 ))}

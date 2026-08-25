@@ -10,11 +10,15 @@ interface SignalerProblemeSectionProps {
   onSignaler: (missionMenageId: number, input: SignalerProblemeInput) => Promise<void>
 }
 
+interface PhotoEntry {
+  file: File
+  previewUrl: string
+}
+
 export function SignalerProblemeSection({ missionMenageId, onSignaler }: SignalerProblemeSectionProps) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
-  const [photo, setPhoto] = useState<File | null>(null)
-  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+  const [photos, setPhotos] = useState<PhotoEntry[]>([])
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,23 +42,26 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
   })
 
   const resetForm = () => {
-    setPhoto(null)
-    setPhotoPreviewUrl(null)
+    setPhotos([])
     setDescription('')
     resetAudio()
     setError(null)
   }
 
-  const handlePhotoChange = (file: File | undefined | null) => {
-    if (!file) return
-    setPhoto(file)
-    setPhotoPreviewUrl(URL.createObjectURL(file))
+  const handlePhotosChange = (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    const entries = Array.from(files).map((file) => ({ file, previewUrl: URL.createObjectURL(file) }))
+    setPhotos((current) => [...current, ...entries])
+  }
+
+  const removePhoto = (index: number) => {
+    setPhotos((current) => current.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async () => {
     setError(null)
 
-    if (!photo && !audioFile && !description.trim()) {
+    if (photos.length === 0 && !audioFile && !description.trim()) {
       setError(t('menage.signalerProbleme.atLeastOne'))
       return
     }
@@ -62,7 +69,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
     setSubmitting(true)
     try {
       await onSignaler(missionMenageId, {
-        photo,
+        photos: photos.map((p) => p.file),
         audio: audioFile,
         description: description.trim() ? description : null,
       })
@@ -72,7 +79,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
     } catch (err) {
       setError(
         friendlyUploadErrorMessage(err, {
-          tooLarge: photo
+          tooLarge: photos.length > 0
             ? t('menage.signalerProbleme.photoTooLarge')
             : t('menage.signalerProbleme.audioTooLarge'),
           generic: t('common.genericError'),
@@ -134,16 +141,34 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
             type="file"
             accept="image/jpeg,image/png"
             capture="environment"
+            multiple
             className="hidden"
             aria-label={t('menage.signalerProbleme.photoAlt')}
-            onChange={(e) => handlePhotoChange(e.target.files?.[0])}
+            onChange={(e) => {
+              handlePhotosChange(e.target.files)
+              e.target.value = ''
+            }}
           />
-          {photoPreviewUrl && (
-            <img
-              src={photoPreviewUrl}
-              alt={t('menage.signalerProbleme.previewAlt')}
-              className="mt-1 h-20 w-20 rounded-lg object-cover"
-            />
+          {photos.length > 0 && (
+            <div className="mt-1 flex flex-wrap justify-center gap-2">
+              {photos.map((photo, index) => (
+                <div key={photo.previewUrl} className="relative">
+                  <img
+                    src={photo.previewUrl}
+                    alt={t('menage.signalerProbleme.previewAlt', { index: index + 1 })}
+                    className="h-20 w-20 rounded-lg object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(index)}
+                    aria-label={t('menage.signalerProbleme.removePhoto', { index: index + 1 })}
+                    className="absolute -end-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-xs font-bold text-white hover:brightness-110"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
