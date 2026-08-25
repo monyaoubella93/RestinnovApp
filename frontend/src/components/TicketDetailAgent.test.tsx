@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TicketDetailAgent } from './TicketDetailAgent'
+import i18n from '../i18n'
 import type { MonTicketMaintenance } from '../types'
 
 const TICKET: MonTicketMaintenance = {
@@ -42,6 +43,10 @@ describe('TicketDetailAgent', () => {
     vi.restoreAllMocks()
   })
 
+  afterEach(() => {
+    void i18n.changeLanguage('fr')
+  })
+
   it('affiche les informations du ticket : appartement, urgence, description_manager', () => {
     render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
 
@@ -50,6 +55,14 @@ describe('TicketDetailAgent', () => {
     expect(screen.getByText('Changer le joint du robinet.')).toBeInTheDocument()
     expect(screen.getByText('Urgence Haute')).toBeInTheDocument()
     expect(screen.getByText('MNT-0001')).toBeInTheDocument()
+  })
+
+  it("le niveau d'urgence reste en français quand l'interface est en arabe", async () => {
+    await i18n.changeLanguage('ar')
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    expect(screen.getByText('الأولوية Haute')).toBeInTheDocument()
   })
 
   it('affiche le motif du refus quand le ticket a été renvoyé pour être refait', () => {

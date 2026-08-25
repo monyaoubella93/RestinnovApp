@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchMesTicketsMaintenanceHistorique, resolveStorageUrl } from '../api'
 import type { HistoriqueTicketAgent } from '../types'
-import { URGENCE_STYLES } from '../utils/urgence'
+import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 
 function HistoriqueTicketRow({ ticket }: { ticket: HistoriqueTicketAgent }) {
   const { t } = useTranslation()
@@ -30,7 +30,7 @@ function HistoriqueTicketRow({ ticket }: { ticket: HistoriqueTicketAgent }) {
           <p className="truncate text-sm text-ink-tertiary">{ticket.appartement?.adresse}</p>
         </div>
         <span className={`shrink-0 rounded-badge px-2 py-0.5 text-xs font-bold ${URGENCE_STYLES[ticket.urgence]}`}>
-          {t('maintenance.urgenceLabel', { label: t(`common.urgence.${ticket.urgence}`) })}
+          {t('maintenance.urgenceLabel', { label: URGENCE_LABELS[ticket.urgence] })}
         </span>
         <span aria-hidden="true" className="shrink-0 text-xl text-ink-disabled">
           {expanded ? '▲' : '▼'}

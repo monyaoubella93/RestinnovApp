@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { resolveStorageUrl } from '../api'
 import { InstallPromptCard } from '../pwa/InstallPromptCard'
 import type { MissionMenage, ProduitCatalogue } from '../types'
-import { STATUT_VALIDATION_STYLES } from '../utils/statutValidation'
+import { STATUT_VALIDATION_LABELS, STATUT_VALIDATION_STYLES } from '../utils/statutValidation'
 import { MissionDetailAgent } from './MissionDetailAgent'
 
 interface MesMissionsSectionProps {
@@ -36,11 +36,11 @@ export function MesMissionsSection({
   // a_faire/en_cours are the agent's normal current work and need no badge.
   const STATUT_BADGES: Partial<Record<MissionMenage['statut'], { label: string; style: string }>> = {
     en_attente_validation: {
-      label: t('common.statutValidation.enAttente'),
+      label: STATUT_VALIDATION_LABELS.en_attente,
       style: STATUT_VALIDATION_STYLES.en_attente,
     },
     non_conforme: {
-      label: t('common.statutValidation.refuse'),
+      label: STATUT_VALIDATION_LABELS.refuse,
       style: STATUT_VALIDATION_STYLES.refuse,
     },
   }

@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router'
 import { AppRoot } from './AppRoot'
 import { AuthProvider } from './auth/AuthContext'
+import i18n from './i18n'
 
 function seedSession(user: { id: number; nom: string; role: 'manager' | 'menage' | 'maintenance' }) {
   localStorage.setItem('auth_token', 'fake-token')
@@ -76,6 +77,10 @@ describe('AppRoot routing', () => {
     globalThis.fetch = mockFetch() as typeof fetch
   })
 
+  afterEach(() => {
+    void i18n.changeLanguage('fr')
+  })
+
   it("affiche l'écran de connexion sur '/' quand personne n'est connecté", async () => {
     renderAt('/')
 
@@ -99,6 +104,16 @@ describe('AppRoot routing', () => {
     for (const label of ['Séjours', 'Appartements', 'Ménage', 'Maintenance']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }
+  })
+
+  it("un compte manager reste en français même si un agent avait laissé l'interface en arabe sur ce navigateur", async () => {
+    await i18n.changeLanguage('ar')
+    seedSession({ id: 1, nom: 'Nadia M.', role: 'manager' })
+
+    renderAt('/')
+
+    await screen.findByRole('heading', { name: 'Dashboard', level: 2 })
+    expect(i18n.language).toBe('fr')
   })
 
   it('un compte menage accède à "/menage" et ne voit aucun élément du menu Manager', async () => {

@@ -7,7 +7,7 @@ import {
   resolveStorageUrl,
 } from '../api'
 import type { MessageAgentMaintenance, MonTicketMaintenance } from '../types'
-import { URGENCE_STYLES } from '../utils/urgence'
+import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 import { friendlyUploadErrorMessage } from '../utils/uploadError'
 import { useAudioRecorder, MAX_RECORDING_SECONDS } from '../hooks/useAudioRecorder'
 import { RecordingIndicator } from './RecordingIndicator'
@@ -353,7 +353,7 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
           <span
             className={`shrink-0 rounded-badge px-2 py-0.5 text-xs font-bold ${URGENCE_STYLES[ticket.urgence]}`}
           >
-            {t('maintenance.urgenceLabel', { label: t(`common.urgence.${ticket.urgence}`) })}
+            {t('maintenance.urgenceLabel', { label: URGENCE_LABELS[ticket.urgence] })}
           </span>
         </div>
 
