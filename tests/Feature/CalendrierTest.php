@@ -119,6 +119,16 @@ class CalendrierTest extends TestCase
         }
     }
 
+    public function test_it_excludes_cancelled_sejours_so_their_dates_appear_free(): void
+    {
+        $this->sejour(['date_arrivee' => '2026-08-10', 'date_depart' => '2026-08-15', 'statut' => 'annule']);
+
+        $response = $this->getJson('/api/calendrier?mois=2026-08');
+
+        $response->assertOk();
+        $response->assertJsonCount(0, 'jours.9.sejours');
+    }
+
     public function test_mois_must_be_provided_in_y_m_format(): void
     {
         $response = $this->getJson('/api/calendrier?mois=2026-08-01');

@@ -497,7 +497,7 @@ describe('App', () => {
     await screen.findByTestId('dashboard-revenus-totaux')
     await user.click(screen.getByRole('button', { name: /jean dupont/i }))
 
-    expect(await screen.findByText(/confirmer le checkout/i)).toBeInTheDocument()
+    expect(await screen.findByTestId('sejour-reference')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Liste des séjours' })).toHaveClass(/bg-brand/)
   })
 
@@ -676,7 +676,7 @@ describe('App', () => {
   it('confirme le checkout depuis le détail d\'un séjour et affiche la mission de ménage', async () => {
     const user = userEvent.setup()
     globalThis.fetch = mockFetch({
-      sejours: [sejourFixture()],
+      sejours: [sejourFixture({ statut: 'en_cours' })],
       onCheckout: () => ({
         sejour: sejourFixture({ statut: 'termine' }),
         mission_menage: {

@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react'
-import { downloadRelevePdf, fetchAppartements, fetchReleve } from '../api'
-import type { Appartement, ModeGestion, Releve } from '../types'
+import {
+  createChargeAppartement,
+  deleteChargeAppartement,
+  downloadRelevePdf,
+  fetchAppartements,
+  fetchReleve,
+  updateProprietaire,
+  type NewChargeAppartementInput,
+  type NewProprietaireInput,
+} from '../api'
+import type { Appartement, ModeGestion, Proprietaire, Releve } from '../types'
+import { ChargesAppartementModal } from './ChargesAppartementModal'
+import { EditProprietaireModal } from './EditProprietaireModal'
 
 function currentMonth(): string {
   const now = new Date()
@@ -35,6 +46,13 @@ export function RelevesProprietairesSection() {
   const [error, setError] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<number | null>(null)
   const [downloadingAll, setDownloadingAll] = useState(false)
+  const [editingProprietaire, setEditingProprietaire] = useState<Proprietaire | null>(null)
+  const [chargesAppartementId, setChargesAppartementId] = useState<number | null>(null)
+
+  const reloadReleve = async (appartementId: number) => {
+    const releve = await fetchReleve(appartementId, mois)
+    setReleves((current) => ({ ...current, [appartementId]: releve }))
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -63,6 +81,37 @@ export function RelevesProprietairesSection() {
       cancelled = true
     }
   }, [mois])
+
+  const handleSaveProprietaire = async (input: NewProprietaireInput) => {
+    if (!editingProprietaire) return
+    const updated = await updateProprietaire(editingProprietaire.id, input)
+    setAppartements((current) =>
+      current.map((appartement) =>
+        appartement.proprietaire?.id === updated.id ? { ...appartement, proprietaire: updated } : appartement,
+      ),
+    )
+    setReleves((current) =>
+      Object.fromEntries(
+        Object.entries(current).map(([id, releve]) => [
+          id,
+          releve.appartement.proprietaire?.id === updated.id
+            ? { ...releve, appartement: { ...releve.appartement, proprietaire: updated } }
+            : releve,
+        ]),
+      ),
+    )
+    setEditingProprietaire(null)
+  }
+
+  const handleAddCharge = async (appartementId: number, input: NewChargeAppartementInput) => {
+    await createChargeAppartement(appartementId, input)
+    await reloadReleve(appartementId)
+  }
+
+  const handleDeleteCharge = async (appartementId: number, chargeId: number) => {
+    await deleteChargeAppartement(chargeId)
+    await reloadReleve(appartementId)
+  }
 
   const handleDownload = async (appartementId: number) => {
     setError(null)
@@ -163,7 +212,9 @@ export function RelevesProprietairesSection() {
             <tbody className="divide-y divide-border-light">
               {appartements.map((appartement) => {
                 const releve = releves[appartement.id]
-                const frais = releve ? releve.frais_menage_total + releve.frais_maintenance_total : 0
+                const frais = releve
+                  ? releve.frais_menage_total + releve.frais_maintenance_total + releve.charges_supplementaires_total
+                  : 0
                 const modeGestion = releve?.appartement.mode_gestion
 
                 return (
@@ -183,14 +234,32 @@ export function RelevesProprietairesSection() {
                       {formatMontant(releve?.montant_proprietaire)}
                     </td>
                     <td className="py-2 pr-4">
-                      <button
-                        type="button"
-                        onClick={() => handleDownload(appartement.id)}
-                        disabled={downloadingId === appartement.id}
-                        className="text-sm font-semibold text-brand-light hover:text-brand disabled:opacity-50"
-                      >
-                        {downloadingId === appartement.id ? 'Téléchargement...' : 'Télécharger PDF'}
-                      </button>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(appartement.id)}
+                          disabled={downloadingId === appartement.id}
+                          className="text-sm font-semibold text-brand-light hover:text-brand disabled:opacity-50"
+                        >
+                          {downloadingId === appartement.id ? 'Téléchargement...' : 'Télécharger PDF'}
+                        </button>
+                        {appartement.proprietaire && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingProprietaire(appartement.proprietaire!)}
+                            className="text-sm font-semibold text-ink-secondary hover:text-ink"
+                          >
+                            Propriétaire
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setChargesAppartementId(appartement.id)}
+                          className="text-sm font-semibold text-ink-secondary hover:text-ink"
+                        >
+                          Charges
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -198,6 +267,25 @@ export function RelevesProprietairesSection() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {editingProprietaire && (
+        <EditProprietaireModal
+          proprietaire={editingProprietaire}
+          onCancel={() => setEditingProprietaire(null)}
+          onSave={handleSaveProprietaire}
+        />
+      )}
+
+      {chargesAppartementId != null && (
+        <ChargesAppartementModal
+          appartementNom={appartements.find((a) => a.id === chargesAppartementId)?.nom ?? ''}
+          mois={mois}
+          charges={releves[chargesAppartementId]?.charges_supplementaires_detail ?? []}
+          onClose={() => setChargesAppartementId(null)}
+          onAdd={(input) => handleAddCharge(chargesAppartementId, input)}
+          onDelete={(chargeId) => handleDeleteCharge(chargesAppartementId, chargeId)}
+        />
       )}
     </div>
   )

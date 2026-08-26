@@ -7,7 +7,7 @@ import type { Agent, Appartement, ChecklistModele, Proprietaire } from '../types
 
 const checklistModeles: ChecklistModele[] = [{ id: 1, nom: 'Checklist standard' }]
 const agentsMenage: Agent[] = [{ id: 2, nom: 'Fatima Z.', role: 'menage', telephone: null }]
-const proprietaires: Proprietaire[] = [{ id: 5, nom: 'Karim Alaoui', telephone: null, email: null }]
+const proprietaires: Proprietaire[] = [{ id: 5, nom: 'Karim Alaoui', telephone: null, email: null, adresse: null }]
 
 function baseProps() {
   return {
@@ -167,14 +167,21 @@ describe('NouvelAppartementForm', () => {
 
   it('permet de créer un nouveau propriétaire à la volée et le sélectionne', async () => {
     const user = userEvent.setup()
-    const onCreateProprietaire = vi.fn().mockResolvedValue({ id: 42, nom: 'Sara Bennani', telephone: null, email: null })
+    const onCreateProprietaire = vi
+      .fn()
+      .mockResolvedValue({ id: 42, nom: 'Sara Bennani', telephone: null, email: null, adresse: null })
     render(<ManagedFormWithProprietaire onCreateProprietaire={onCreateProprietaire} />)
 
     await user.click(screen.getByRole('button', { name: /créer un nouveau propriétaire/i }))
     await user.type(screen.getByPlaceholderText(/nom du propriétaire/i), 'Sara Bennani')
     await user.click(screen.getByRole('button', { name: /^créer$/i }))
 
-    expect(onCreateProprietaire).toHaveBeenCalledWith({ nom: 'Sara Bennani', telephone: null, email: null })
+    expect(onCreateProprietaire).toHaveBeenCalledWith({
+      nom: 'Sara Bennani',
+      telephone: null,
+      email: null,
+      adresse: null,
+    })
     expect(await screen.findByRole('combobox', { name: /propriétaire/i })).toHaveValue('42')
   })
 

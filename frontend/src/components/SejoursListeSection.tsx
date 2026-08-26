@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  annulerSejour,
   checkoutSejour,
   createFraisMaintenance,
   deleteFraisMaintenance,
@@ -21,6 +22,7 @@ import {
   type ValiderProduitSignaleInput,
 } from '../api'
 import type { Appartement, PlateformeOrigine, ProduitCatalogue, Sejour, SejourStatut } from '../types'
+import { ConfirmModal } from './ConfirmModal'
 import { SejourCard } from './SejourCard'
 
 interface SejoursListeSectionProps {
@@ -39,18 +41,21 @@ const STATUT_FILTER_OPTIONS: { value: SejourStatut | ''; label: string }[] = [
   { value: 'a_venir', label: 'À venir' },
   { value: 'en_cours', label: 'En cours' },
   { value: 'termine', label: 'Checkout effectué' },
+  { value: 'annule', label: 'Annulé' },
 ]
 
 const STATUT_BADGE_LABELS: Record<SejourStatut, string> = {
   a_venir: 'À venir',
   en_cours: 'En cours',
   termine: 'Terminé',
+  annule: 'Annulé',
 }
 
 const STATUT_BADGE_STYLES: Record<SejourStatut, string> = {
   a_venir: 'bg-brand-pale text-brand',
   en_cours: 'bg-warning-bg text-warning-text',
   termine: 'bg-table-header-bg text-ink-tertiary',
+  annule: 'bg-danger-bg text-danger',
 }
 
 const PLATEFORME_LABELS: Record<PlateformeOrigine, string> = {
@@ -86,6 +91,14 @@ function EyeIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
       <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  )
+}
+
+function XIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
     </svg>
   )
 }
@@ -133,6 +146,7 @@ export function SejoursListeSection({
   const [error, setError] = useState<string | null>(null)
   const [selectedSejourId, setSelectedSejourId] = useState<number | null>(initialSejourId ?? null)
   const [initialDetailLoading, setInitialDetailLoading] = useState(initialSejourId != null)
+  const [annulerSejourId, setAnnulerSejourId] = useState<number | null>(null)
 
   const applySejourUpdate = (predicate: (sejour: Sejour) => boolean, updater: (sejour: Sejour) => Sejour) => {
     setSejours((current) => current.map((s) => (predicate(s) ? updater(s) : s)))
@@ -210,6 +224,14 @@ export function SejoursListeSection({
     applySejourUpdate(
       (s) => s.id === id,
       (s) => ({ ...s, statut: updated.statut, mission_menage }),
+    )
+  }
+
+  const handleAnnuler = async (id: number) => {
+    const updated = await annulerSejour(id)
+    applySejourUpdate(
+      (s) => s.id === id,
+      (s) => ({ ...s, statut: updated.statut }),
     )
   }
 
@@ -327,6 +349,7 @@ export function SejoursListeSection({
             sejour={selectedSejour}
             catalogue={catalogue}
             onCheckout={handleCheckout}
+            onAnnuler={handleAnnuler}
             onValiderMission={handleValiderMission}
             onRefuserMission={handleRefuserMission}
             onUpdateMissionProduits={handleUpdateMissionProduits}
@@ -531,9 +554,11 @@ export function SejoursListeSection({
                         title={
                           sejour.statut === 'termine'
                             ? 'Ce séjour est terminé et ne peut plus être modifié.'
-                            : undefined
+                            : sejour.statut === 'annule'
+                              ? 'Ce séjour est annulé et ne peut plus être modifié.'
+                              : undefined
                         }
-                        disabled={sejour.statut === 'termine'}
+                        disabled={sejour.statut === 'termine' || sejour.statut === 'annule'}
                         onClick={() => onEditSejour(sejour)}
                         className="text-ink-tertiary hover:text-brand disabled:cursor-not-allowed disabled:text-ink-disabled disabled:hover:text-ink-disabled"
                       >
@@ -547,6 +572,16 @@ export function SejoursListeSection({
                       >
                         <EyeIcon />
                       </button>
+                      {sejour.statut === 'a_venir' && (
+                        <button
+                          type="button"
+                          aria-label={`Annuler le séjour de ${sejour.nom_voyageur}`}
+                          onClick={() => setAnnulerSejourId(sejour.id)}
+                          className="text-ink-tertiary hover:text-danger"
+                        >
+                          <XIcon />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -590,6 +625,19 @@ export function SejoursListeSection({
             Suivant
           </button>
         </div>
+      )}
+
+      {annulerSejourId != null && (
+        <ConfirmModal
+          title="Annuler ce séjour"
+          message="Êtes-vous sûr de vouloir annuler ce séjour ?"
+          confirmLabel="Annuler le séjour"
+          onCancel={() => setAnnulerSejourId(null)}
+          onConfirm={async () => {
+            await handleAnnuler(annulerSejourId)
+            setAnnulerSejourId(null)
+          }}
+        />
       )}
     </div>
   )

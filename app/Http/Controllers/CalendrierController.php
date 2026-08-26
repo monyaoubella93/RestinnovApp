@@ -32,6 +32,7 @@ class CalendrierController extends Controller
                 ! empty($validated['appartement_id']),
                 fn ($query) => $query->where('appartement_id', $validated['appartement_id']),
             )
+            ->where('statut', '!=', Sejour::STATUT_ANNULE)
             ->where('date_arrivee', '<=', $fin->toDateString())
             ->where('date_depart', '>', $debut->toDateString())
             ->orderBy('date_arrivee')

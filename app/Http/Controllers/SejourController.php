@@ -28,7 +28,7 @@ class SejourController extends Controller
     {
         $validated = $request->validate([
             'search' => ['sometimes', 'string'],
-            'statut' => ['sometimes', 'in:a_venir,en_cours,termine'],
+            'statut' => ['sometimes', 'in:a_venir,en_cours,termine,annule'],
             'appartement_id' => ['sometimes', 'integer', 'exists:appartements,id'],
             'date_debut' => ['sometimes', 'date'],
             'date_fin' => ['sometimes', 'date'],
@@ -99,7 +99,7 @@ class SejourController extends Controller
             'date_depart' => ['required', 'date', 'after:date_arrivee'],
             'plateforme_origine' => ['sometimes', 'in:airbnb,direct,autre,booking'],
             'montant_mad' => ['nullable', 'numeric', 'min:0'],
-            'statut' => ['sometimes', 'in:a_venir,en_cours,termine'],
+            'statut' => ['sometimes', 'in:a_venir,en_cours,termine,annule'],
             'voyageurs' => ['required', 'array', 'min:1'],
             'voyageurs.*.nom' => ['required', 'string', 'max:255'],
             'voyageurs.*.numero_passeport' => ['nullable', 'string', 'max:255'],
@@ -169,6 +169,12 @@ class SejourController extends Controller
         if ($sejour->statut === Sejour::STATUT_TERMINE) {
             return response()->json([
                 'message' => 'Ce séjour est déjà terminé et ne peut plus être modifié.',
+            ], 422);
+        }
+
+        if ($sejour->statut === Sejour::STATUT_ANNULE) {
+            return response()->json([
+                'message' => 'Ce séjour est annulé et ne peut plus être modifié.',
             ], 422);
         }
 
@@ -336,11 +342,37 @@ class SejourController extends Controller
             ], 422);
         }
 
+        if ($sejour->statut === Sejour::STATUT_ANNULE) {
+            return response()->json([
+                'message' => 'Ce séjour est annulé et ne peut pas être checkouté.',
+            ], 422);
+        }
+
         $mission = $this->checkoutService->checkout($sejour);
 
         return response()->json([
             'sejour' => $sejour->fresh(),
             'mission_menage' => $mission->fresh(['agent', 'produits', 'checklistItems']),
         ]);
+    }
+
+    /**
+     * Cancel a sejour that hasn't started yet. Only "a_venir" sejours can be
+     * cancelled: once a stay is under way (en_cours) or finished (termine),
+     * cancelling it makes no sense. Cancelling frees the appartement's dates
+     * immediately -- findChevauchement() already ignores any sejour whose
+     * statut isn't a_venir/en_cours, and the calendrier excludes annule too.
+     */
+    public function annuler(Sejour $sejour): JsonResponse
+    {
+        if ($sejour->statut !== Sejour::STATUT_A_VENIR) {
+            return response()->json([
+                'message' => 'Seul un séjour à venir peut être annulé.',
+            ], 422);
+        }
+
+        $sejour->update(['statut' => Sejour::STATUT_ANNULE]);
+
+        return response()->json($sejour->fresh()->load(['appartement', 'voyageurs']));
     }
 }
