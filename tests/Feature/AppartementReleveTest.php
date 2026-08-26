@@ -53,8 +53,11 @@ class AppartementReleveTest extends TestCase
         $response->assertJsonPath('frais_menage_total', 100); // 80 forfait + 20 produit
         $response->assertJsonPath('frais_maintenance_total', 100);
         $response->assertJsonPath('resultat_net', 800); // 1000 - 100 - 100
-        $response->assertJsonPath('montant_proprietaire', 640); // 800 * (1 - 20/100)
-        $response->assertJsonPath('commission_restinnov', 160); // 800 - 640
+        // Commission is taken on the gross chiffre d'affaires, not on the
+        // net result: 1000 * 20% = 200 -- matches how RestInnov's real
+        // invoices are computed.
+        $response->assertJsonPath('commission_restinnov', 200);
+        $response->assertJsonPath('montant_proprietaire', 600); // 800 - 200
         $response->assertJsonPath('appartement.proprietaire.nom', 'Karim Alaoui');
         $response->assertJsonCount(1, 'sejours');
     }
@@ -86,6 +89,64 @@ class AppartementReleveTest extends TestCase
         // The owner is paid the fixed rent, not a share of resultat_net.
         $response->assertJsonPath('montant_proprietaire', 4000);
         $response->assertJsonPath('commission_restinnov', -3000);
+    }
+
+    public function test_charges_supplementaires_are_deducted_before_commission_like_the_reference_invoice(): void
+    {
+        // Mirrors the real invoice example: CA=7238.96, charges=1255.49,
+        // taux=25% -> commission = CA * 25% = 1809.74, propriétaire =
+        // CA - charges - commission = 4173.73.
+        $appartement = Appartement::create([
+            'nom' => 'HM4',
+            'adresse' => 'A',
+            'statut' => 'disponible',
+            'mode_gestion' => 'mandat',
+            'taux_commission' => 25,
+        ]);
+
+        Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-08-01',
+            'date_depart' => '2026-08-20',
+            'nom_voyageur' => 'Jean Dupont',
+            'statut' => 'termine',
+            'montant_mad' => 7238.96,
+        ]);
+
+        \App\Models\ChargeAppartement::create([
+            'appartement_id' => $appartement->id,
+            'mois' => '2026-08',
+            'description' => 'WiFi',
+            'quantite' => 1,
+            'prix_unitaire' => 1255.49,
+        ]);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2026-08");
+
+        $response->assertOk();
+        $response->assertJsonPath('revenus_bruts', 7238.96);
+        $response->assertJsonPath('charges_supplementaires_total', 1255.49);
+        $response->assertJsonPath('commission_restinnov', 1809.74);
+        $response->assertJsonPath('montant_proprietaire', 4173.73);
+    }
+
+    public function test_charges_supplementaires_are_scoped_to_the_requested_month(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);
+
+        \App\Models\ChargeAppartement::create([
+            'appartement_id' => $appartement->id,
+            'mois' => '2026-07',
+            'description' => 'WiFi juillet',
+            'quantite' => 1,
+            'prix_unitaire' => 149,
+        ]);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2026-08");
+
+        $response->assertOk();
+        $response->assertJsonPath('charges_supplementaires_total', 0);
+        $response->assertJsonCount(0, 'charges_supplementaires_detail');
     }
 
     public function test_it_returns_zeroed_amounts_for_a_month_with_no_sejour(): void

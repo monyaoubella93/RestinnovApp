@@ -47,6 +47,7 @@ export interface Proprietaire {
   nom: string
   telephone: string | null
   email: string | null
+  adresse: string | null
 }
 
 export interface Appartement {
@@ -391,6 +392,8 @@ export interface ReleveSejour {
   nom_voyageur: string
   date_arrivee: string
   date_depart: string
+  nuitees: number
+  periode: string
   montant_mad: number
 }
 
@@ -416,6 +419,14 @@ export interface ReleveFraisMaintenanceDetail {
   prix: number
 }
 
+export interface ChargeAppartement {
+  id: number
+  description: string
+  quantite: number
+  prix_unitaire: number
+  total: number
+}
+
 export interface Releve {
   appartement: {
     id: number
@@ -430,12 +441,14 @@ export interface Releve {
   revenus_bruts: number
   frais_menage_total: number
   frais_maintenance_total: number
+  charges_supplementaires_total: number
   resultat_net: number
   montant_proprietaire: number
   commission_restinnov: number
   sejours: ReleveSejour[]
   frais_menage_detail: ReleveFraisMenageDetail[]
   frais_maintenance_detail: ReleveFraisMaintenanceDetail[]
+  charges_supplementaires_detail: ChargeAppartement[]
 }
 
 export interface HistoriqueChecklistItem {

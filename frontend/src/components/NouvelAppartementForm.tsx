@@ -49,6 +49,7 @@ export function NouvelAppartementForm({
   const [newProprietaireNom, setNewProprietaireNom] = useState('')
   const [newProprietaireTelephone, setNewProprietaireTelephone] = useState('')
   const [newProprietaireEmail, setNewProprietaireEmail] = useState('')
+  const [newProprietaireAdresse, setNewProprietaireAdresse] = useState('')
   const [creatingProprietaire, setCreatingProprietaire] = useState(false)
   const [modeGestion, setModeGestion] = useState<ModeGestion>('mandat')
   const [tauxCommission, setTauxCommission] = useState('')
@@ -71,6 +72,7 @@ export function NouvelAppartementForm({
     setNewProprietaireNom('')
     setNewProprietaireTelephone('')
     setNewProprietaireEmail('')
+    setNewProprietaireAdresse('')
     setModeGestion('mandat')
     setTauxCommission('')
     setLoyerFixeMensuel('')
@@ -144,12 +146,14 @@ export function NouvelAppartementForm({
         nom: newProprietaireNom.trim(),
         telephone: newProprietaireTelephone.trim() || null,
         email: newProprietaireEmail.trim() || null,
+        adresse: newProprietaireAdresse.trim() || null,
       })
       setProprietaireId(String(created.id))
       setShowNewProprietaireInput(false)
       setNewProprietaireNom('')
       setNewProprietaireTelephone('')
       setNewProprietaireEmail('')
+      setNewProprietaireAdresse('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de créer ce propriétaire.')
     } finally {
@@ -373,6 +377,13 @@ export function NouvelAppartementForm({
               value={newProprietaireEmail}
               onChange={(e) => setNewProprietaireEmail(e.target.value)}
               placeholder="Email (optionnel)"
+              className="block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
+            />
+            <input
+              type="text"
+              value={newProprietaireAdresse}
+              onChange={(e) => setNewProprietaireAdresse(e.target.value)}
+              placeholder="Adresse (optionnel)"
               className="block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
             />
             <div className="flex gap-2">

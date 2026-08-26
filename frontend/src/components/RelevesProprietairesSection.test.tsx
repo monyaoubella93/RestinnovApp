@@ -12,7 +12,7 @@ function appartementFixture(overrides: Partial<Appartement> = {}): Appartement {
     statut: 'disponible',
     photo_principale: null,
     agent_habituel_id: null,
-    proprietaire: { id: 5, nom: 'Karim Alaoui', telephone: null, email: null },
+    proprietaire: { id: 5, nom: 'Karim Alaoui', telephone: null, email: null, adresse: null },
     ...overrides,
   }
 }
@@ -26,25 +26,30 @@ function releveFixture(overrides: Partial<Releve> = {}): Releve {
       mode_gestion: 'mandat',
       taux_commission: 20,
       loyer_fixe_mensuel: null,
-      proprietaire: { id: 5, nom: 'Karim Alaoui', telephone: null, email: null },
+      proprietaire: { id: 5, nom: 'Karim Alaoui', telephone: null, email: null, adresse: null },
     },
     mois: '2026-08',
     revenus_bruts: 1000,
     frais_menage_total: 100,
     frais_maintenance_total: 50,
+    charges_supplementaires_total: 0,
     resultat_net: 850,
     montant_proprietaire: 680,
     commission_restinnov: 170,
     sejours: [],
     frais_menage_detail: [],
     frais_maintenance_detail: [],
+    charges_supplementaires_detail: [],
     ...overrides,
   }
 }
 
 function mockFetch(appartements: Appartement[], releves: Record<number, Releve>) {
-  return vi.fn(async (input: RequestInfo | URL) => {
+  let nextChargeId = 100
+
+  return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input))
+    const method = init?.method ?? 'GET'
 
     if (url.pathname === '/api/appartements' && !url.pathname.includes('releve')) {
       return new Response(JSON.stringify(appartements), { status: 200 })
@@ -53,9 +58,8 @@ function mockFetch(appartements: Appartement[], releves: Record<number, Releve>)
     const releveMatch = url.pathname.match(/^\/api\/appartements\/(\d+)\/releve$/)
     if (releveMatch) {
       const id = Number(releveMatch[1])
-      return new Response(JSON.stringify(releves[id] ?? releveFixture({ appartement: { ...releveFixture().appartement, id } })), {
-        status: 200,
-      })
+      releves[id] ??= releveFixture({ appartement: { ...releveFixture().appartement, id } })
+      return new Response(JSON.stringify(releves[id]), { status: 200 })
     }
 
     const pdfMatch = url.pathname.match(/^\/api\/appartements\/(\d+)\/releve\/pdf$/)
@@ -64,6 +68,49 @@ function mockFetch(appartements: Appartement[], releves: Record<number, Releve>)
         status: 200,
         headers: { 'Content-Type': 'application/pdf' },
       })
+    }
+
+    const proprietaireMatch = url.pathname.match(/^\/api\/proprietaires\/(\d+)$/)
+    if (proprietaireMatch && method === 'PATCH') {
+      const body = JSON.parse(String(init?.body))
+      return new Response(JSON.stringify({ id: Number(proprietaireMatch[1]), ...body }), { status: 200 })
+    }
+
+    const chargesMatch = url.pathname.match(/^\/api\/appartements\/(\d+)\/charges$/)
+    if (chargesMatch && method === 'POST') {
+      const appartementId = Number(chargesMatch[1])
+      const body = JSON.parse(String(init?.body))
+      const charge = {
+        id: nextChargeId++,
+        description: body.description,
+        quantite: body.quantite,
+        prix_unitaire: body.prix_unitaire,
+        total: body.quantite * body.prix_unitaire,
+      }
+      const releve = releves[appartementId] ?? releveFixture({ appartement: { ...releveFixture().appartement, id: appartementId } })
+      releves[appartementId] = {
+        ...releve,
+        charges_supplementaires_detail: [...releve.charges_supplementaires_detail, charge],
+        charges_supplementaires_total: releve.charges_supplementaires_total + charge.total,
+      }
+      return new Response(JSON.stringify(charge), { status: 201 })
+    }
+
+    const deleteChargeMatch = url.pathname.match(/^\/api\/charges-appartement\/(\d+)$/)
+    if (deleteChargeMatch && method === 'DELETE') {
+      const chargeId = Number(deleteChargeMatch[1])
+      for (const id of Object.keys(releves)) {
+        const releve = releves[Number(id)]
+        const removed = releve.charges_supplementaires_detail.find((c) => c.id === chargeId)
+        if (removed) {
+          releves[Number(id)] = {
+            ...releve,
+            charges_supplementaires_detail: releve.charges_supplementaires_detail.filter((c) => c.id !== chargeId),
+            charges_supplementaires_total: releve.charges_supplementaires_total - removed.total,
+          }
+        }
+      }
+      return new Response(null, { status: 204 })
     }
 
     throw new Error(`Unhandled request: ${url.pathname}`)
@@ -173,5 +220,47 @@ describe('RelevesProprietairesSection', () => {
       expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/appartements/1/releve/pdf?mois='), expect.anything()),
     )
     await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
+  })
+
+  it('modifie les coordonnées du propriétaire via la modal "Propriétaire"', async () => {
+    globalThis.fetch = mockFetch([appartementFixture()], { 1: releveFixture() }) as typeof fetch
+    const user = userEvent.setup()
+
+    render(<RelevesProprietairesSection />)
+    await screen.findByText('Loft Bastille')
+
+    await user.click(screen.getByRole('button', { name: 'Propriétaire' }))
+    expect(screen.getByText('Modifier le propriétaire')).toBeInTheDocument()
+
+    const telephoneInput = screen.getByLabelText('Téléphone')
+    await user.clear(telephoneInput)
+    await user.type(telephoneInput, '0600000000')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => expect(screen.queryByText('Modifier le propriétaire')).not.toBeInTheDocument())
+  })
+
+  it('ajoute puis supprime une charge mensuelle via la modal "Charges"', async () => {
+    globalThis.fetch = mockFetch([appartementFixture()], { 1: releveFixture() }) as typeof fetch
+    const user = userEvent.setup()
+
+    render(<RelevesProprietairesSection />)
+    await screen.findByText('Loft Bastille')
+
+    await user.click(screen.getByRole('button', { name: 'Charges' }))
+    expect(screen.getByText('Charges — Loft Bastille')).toBeInTheDocument()
+    expect(screen.getByText('Aucune charge ajoutée ce mois-ci.')).toBeInTheDocument()
+
+    await user.type(screen.getByPlaceholderText('Description (ex : WiFi)'), 'WiFi')
+    const prixInput = screen.getByPlaceholderText('Prix unitaire')
+    await user.type(prixInput, '149')
+    await user.click(screen.getByRole('button', { name: /ajouter la charge/i }))
+
+    expect(await screen.findByText('WiFi')).toBeInTheDocument()
+    expect(screen.queryByText('Aucune charge ajoutée ce mois-ci.')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /supprimer la charge wifi/i }))
+
+    await waitFor(() => expect(screen.getByText('Aucune charge ajoutée ce mois-ci.')).toBeInTheDocument())
   })
 })

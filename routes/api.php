@@ -3,6 +3,7 @@
 use App\Http\Controllers\AppartementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CalendrierController;
+use App\Http\Controllers\ChargeAppartementController;
 use App\Http\Controllers\ChecklistItemController;
 use App\Http\Controllers\ChecklistModeleController;
 use App\Http\Controllers\ChecklistModeleItemController;
@@ -37,9 +38,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/appartements/{appartement}/historique', [AppartementController::class, 'historique']);
         Route::get('/appartements/{appartement}/releve', [AppartementController::class, 'releve']);
         Route::get('/appartements/{appartement}/releve/pdf', [AppartementController::class, 'relevePdf']);
+        Route::post('/appartements/{appartement}/charges', [ChargeAppartementController::class, 'store']);
+        Route::delete('/charges-appartement/{chargeAppartement}', [ChargeAppartementController::class, 'destroy']);
 
         Route::get('/proprietaires', [ProprietaireController::class, 'index']);
         Route::post('/proprietaires', [ProprietaireController::class, 'store']);
+        Route::patch('/proprietaires/{proprietaire}', [ProprietaireController::class, 'update']);
 
         Route::get('/checklist-modeles', [ChecklistModeleController::class, 'index']);
         Route::post('/checklist-modeles', [ChecklistModeleController::class, 'store']);

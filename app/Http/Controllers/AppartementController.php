@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HasFriendlyUploadMessages;
 use App\Models\Appartement;
+use App\Models\ChargeAppartement;
 use App\Models\MissionMenage;
 use App\Models\Sejour;
 use App\Models\TicketMaintenance;
@@ -326,16 +327,31 @@ class AppartementController extends Controller
             }
         }
 
-        $resultatNet = $revenusBruts - $fraisMenageTotal - $fraisMaintenanceTotal;
+        $chargesSupplementaires = $appartement->chargesAppartement()->where('mois', $mois)->orderBy('id')->get();
+        $chargesSupplementairesDetail = $chargesSupplementaires->map(fn (ChargeAppartement $charge) => [
+            'id' => $charge->id,
+            'description' => $charge->description,
+            'quantite' => round((float) $charge->quantite, 2),
+            'prix_unitaire' => round((float) $charge->prix_unitaire, 2),
+            'total' => round((float) $charge->quantite * (float) $charge->prix_unitaire, 2),
+        ])->values();
+        $chargesSupplementairesTotal = $chargesSupplementairesDetail->sum('total');
 
+        $depensesTotal = $fraisMenageTotal + $fraisMaintenanceTotal + $chargesSupplementairesTotal;
+        $resultatNet = $revenusBruts - $depensesTotal;
+
+        // The commission is always taken on the gross chiffre d'affaires
+        // (not on the net result after charges) -- matches how RestInnov's
+        // real invoices are computed: propriétaire is paid CA - charges -
+        // commission, not (CA - charges) x (1 - taux).
         if ($appartement->mode_gestion === Appartement::MODE_GESTION_SOUS_LOCATION) {
             $montantProprietaire = (float) ($appartement->loyer_fixe_mensuel ?? 0);
+            $commissionRestinnov = $resultatNet - $montantProprietaire;
         } else {
             $tauxCommission = (float) ($appartement->taux_commission ?? 0);
-            $montantProprietaire = $resultatNet * (1 - $tauxCommission / 100);
+            $commissionRestinnov = $revenusBruts * $tauxCommission / 100;
+            $montantProprietaire = $resultatNet - $commissionRestinnov;
         }
-
-        $commissionRestinnov = $resultatNet - $montantProprietaire;
 
         return [
             'appartement' => [
@@ -351,6 +367,7 @@ class AppartementController extends Controller
             'revenus_bruts' => round($revenusBruts, 2),
             'frais_menage_total' => round($fraisMenageTotal, 2),
             'frais_maintenance_total' => round($fraisMaintenanceTotal, 2),
+            'charges_supplementaires_total' => round($chargesSupplementairesTotal, 2),
             'resultat_net' => round($resultatNet, 2),
             'montant_proprietaire' => round($montantProprietaire, 2),
             'commission_restinnov' => round($commissionRestinnov, 2),
@@ -359,10 +376,33 @@ class AppartementController extends Controller
                 'nom_voyageur' => $sejour->nom_voyageur,
                 'date_arrivee' => $sejour->date_arrivee->toDateString(),
                 'date_depart' => $sejour->date_depart->toDateString(),
+                'nuitees' => $sejour->date_arrivee->diffInDays($sejour->date_depart),
+                'periode' => $this->periodeSejour($sejour->date_arrivee, $sejour->date_depart),
                 'montant_mad' => round((float) $sejour->montant_mad, 2),
             ])->values(),
             'frais_menage_detail' => $fraisMenageDetail,
             'frais_maintenance_detail' => $fraisMaintenanceDetail,
+            'charges_supplementaires_detail' => $chargesSupplementairesDetail,
         ];
+    }
+
+    /**
+     * The invoice's short "Séjour N: dd-dd/mm" label -- the departure date
+     * shown is the last night stayed, not the checkout date, and a
+     * single-night stay collapses to just its one date.
+     */
+    private function periodeSejour(Carbon $arrivee, Carbon $depart): string
+    {
+        $derniereNuit = $depart->copy()->subDay();
+
+        if ($arrivee->isSameDay($derniereNuit)) {
+            return $arrivee->format('d/m');
+        }
+
+        if ($arrivee->isSameMonth($derniereNuit)) {
+            return sprintf('%s-%s/%s', $arrivee->format('d'), $derniereNuit->format('d'), $arrivee->format('m'));
+        }
+
+        return sprintf('%s - %s', $arrivee->format('d/m'), $derniereNuit->format('d/m'));
     }
 }

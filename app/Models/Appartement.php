@@ -47,6 +47,11 @@ class Appartement extends Model
         return $this->hasMany(Sejour::class);
     }
 
+    public function chargesAppartement(): HasMany
+    {
+        return $this->hasMany(ChargeAppartement::class);
+    }
+
     public function proprietaire(): BelongsTo
     {
         return $this->belongsTo(Proprietaire::class);

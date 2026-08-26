@@ -2,6 +2,7 @@ import type {
   Agent,
   Appartement,
   CalendrierData,
+  ChargeAppartement,
   ChecklistItem,
   ChecklistModele,
   ChecklistModeleItem,
@@ -147,6 +148,14 @@ export interface NewProprietaireInput {
   nom: string
   telephone?: string | null
   email?: string | null
+  adresse?: string | null
+}
+
+export interface NewChargeAppartementInput {
+  mois: string
+  description: string
+  quantite: number
+  prix_unitaire: number
 }
 
 export interface NewUtilisateurInput {
@@ -413,6 +422,43 @@ export async function createProprietaire(input: NewProprietaireInput): Promise<P
   })
 
   return parseJsonOrThrow(response)
+}
+
+export async function updateProprietaire(id: number, input: NewProprietaireInput): Promise<Proprietaire> {
+  const response = await fetch(`${API_BASE_URL}/api/proprietaires/${id}`, {
+    method: 'PATCH',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(input),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
+export async function createChargeAppartement(
+  appartementId: number,
+  input: NewChargeAppartementInput,
+): Promise<ChargeAppartement> {
+  const response = await fetch(`${API_BASE_URL}/api/appartements/${appartementId}/charges`, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(input),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
+export async function deleteChargeAppartement(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/charges-appartement/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+
+  handleUnauthorized(response)
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
+  }
 }
 
 export async function fetchChecklistModeles(): Promise<ChecklistModele[]> {
