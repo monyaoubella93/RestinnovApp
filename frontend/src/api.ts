@@ -616,6 +616,15 @@ export async function checkoutSejour(id: number): Promise<{
   return parseJsonOrThrow(response)
 }
 
+export async function annulerSejour(id: number): Promise<Sejour> {
+  const response = await fetch(`${API_BASE_URL}/api/sejours/${id}/annuler`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
 export async function fetchProduitsCatalogue(): Promise<ProduitCatalogue[]> {
   const response = await fetch(`${API_BASE_URL}/api/produits-catalogue`, {
     headers: authHeaders(),

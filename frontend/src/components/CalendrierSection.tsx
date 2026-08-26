@@ -11,18 +11,21 @@ const STATUT_LABELS: Record<SejourStatut, string> = {
   a_venir: 'À venir',
   en_cours: 'En cours',
   termine: 'Terminé',
+  annule: 'Annulé',
 }
 
 const STATUT_CELL_STYLES: Record<SejourStatut, string> = {
   a_venir: 'bg-brand-pale text-brand',
   en_cours: 'bg-warning-bg text-warning-text',
   termine: 'bg-success-bg text-success-text',
+  annule: 'bg-danger-bg text-danger',
 }
 
 const STATUT_DOT_STYLES: Record<SejourStatut, string> = {
   a_venir: 'bg-brand',
   en_cours: 'bg-warning',
   termine: 'bg-success',
+  annule: 'bg-danger',
 }
 
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']

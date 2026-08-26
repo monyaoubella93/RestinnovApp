@@ -59,6 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/sejours', [SejourController::class, 'store']);
         Route::patch('/sejours/{sejour}', [SejourController::class, 'update']);
         Route::patch('/sejours/{sejour}/checkout', [SejourController::class, 'checkout']);
+        Route::patch('/sejours/{sejour}/annuler', [SejourController::class, 'annuler']);
 
         Route::post('/sejours/{sejour}/frais-maintenance', [FraisMaintenanceController::class, 'store']);
         Route::delete('/frais-maintenance/{fraisMaintenance}', [FraisMaintenanceController::class, 'destroy']);

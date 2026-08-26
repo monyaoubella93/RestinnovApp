@@ -1,4 +1,4 @@
-export type SejourStatut = 'a_venir' | 'en_cours' | 'termine'
+export type SejourStatut = 'a_venir' | 'en_cours' | 'termine' | 'annule'
 
 export type MissionStatut = 'a_faire' | 'en_cours' | 'en_attente_validation' | 'conforme' | 'non_conforme'
 

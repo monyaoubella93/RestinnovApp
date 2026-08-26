@@ -39,6 +39,7 @@ function renderCard(sejour: Sejour, overrides: Partial<ComponentProps<typeof Sej
       sejour={sejour}
       catalogue={[]}
       onCheckout={noop}
+      onAnnuler={noop}
       onValiderMission={noop}
       onRefuserMission={noop}
       onUpdateMissionProduits={noop}
@@ -118,6 +119,7 @@ describe('SejourCard', () => {
         })}
         catalogue={[]}
         onCheckout={noop}
+        onAnnuler={noop}
         onValiderMission={onValiderMission}
         onRefuserMission={noop}
         onUpdateMissionProduits={noop}
@@ -317,5 +319,69 @@ describe('SejourCard', () => {
     expect(screen.queryByRole('button', { name: /retirer/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /signaler un nouveau produit/i })).not.toBeInTheDocument()
     expect(document.querySelector('input[type="file"]')).not.toBeInTheDocument()
+  })
+
+  it('affiche le bouton "Annuler" uniquement pour un séjour à venir', () => {
+    renderCard(sejourFixture({ statut: 'a_venir' }))
+    expect(screen.getByRole('button', { name: /^annuler$/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /confirmer le checkout/i })).not.toBeInTheDocument()
+  })
+
+  it('n\'affiche pas le bouton "Annuler" pour un séjour en cours, terminé ou annulé', () => {
+    let view = renderCard(sejourFixture({ statut: 'en_cours' }))
+    expect(screen.queryByRole('button', { name: /^annuler$/i })).not.toBeInTheDocument()
+    view.unmount()
+
+    view = renderCard(sejourFixture({ statut: 'termine' }))
+    expect(screen.queryByRole('button', { name: /^annuler$/i })).not.toBeInTheDocument()
+    view.unmount()
+
+    view = renderCard(sejourFixture({ statut: 'annule' }))
+    expect(screen.queryByRole('button', { name: /^annuler$/i })).not.toBeInTheDocument()
+  })
+
+  it('affiche "Confirmer le checkout" uniquement pour un séjour en cours', () => {
+    let view = renderCard(sejourFixture({ statut: 'en_cours' }))
+    expect(screen.getByRole('button', { name: /confirmer le checkout/i })).toBeInTheDocument()
+    view.unmount()
+
+    view = renderCard(sejourFixture({ statut: 'a_venir' }))
+    expect(screen.queryByRole('button', { name: /confirmer le checkout/i })).not.toBeInTheDocument()
+    view.unmount()
+
+    view = renderCard(sejourFixture({ statut: 'termine' }))
+    expect(screen.queryByRole('button', { name: /confirmer le checkout/i })).not.toBeInTheDocument()
+    view.unmount()
+
+    view = renderCard(sejourFixture({ statut: 'annule' }))
+    expect(screen.queryByRole('button', { name: /confirmer le checkout/i })).not.toBeInTheDocument()
+  })
+
+  it('ouvre une modal de confirmation et appelle onAnnuler quand on confirme l\'annulation', async () => {
+    const user = userEvent.setup()
+    const onAnnuler = vi.fn().mockResolvedValue(undefined)
+
+    renderCard(sejourFixture({ statut: 'a_venir' }), { onAnnuler })
+
+    await user.click(screen.getByRole('button', { name: /^annuler$/i }))
+
+    expect(screen.getByText('Êtes-vous sûr de vouloir annuler ce séjour ?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /annuler le séjour$/i }))
+
+    expect(onAnnuler).toHaveBeenCalledWith(1)
+  })
+
+  it('ne fait rien quand on annule la modal de confirmation d\'annulation', async () => {
+    const user = userEvent.setup()
+    const onAnnuler = vi.fn().mockResolvedValue(undefined)
+
+    renderCard(sejourFixture({ statut: 'a_venir' }), { onAnnuler })
+
+    await user.click(screen.getByRole('button', { name: /^annuler$/i }))
+    // Two "Annuler" buttons now: the row action and the modal's own cancel button.
+    await user.click(screen.getAllByRole('button', { name: /^annuler$/i })[1])
+
+    expect(onAnnuler).not.toHaveBeenCalled()
+    expect(screen.queryByText('Êtes-vous sûr de vouloir annuler ce séjour ?')).not.toBeInTheDocument()
   })
 })

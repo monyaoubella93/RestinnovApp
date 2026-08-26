@@ -21,18 +21,21 @@ const STATUT_LABELS: Record<SejourStatut, string> = {
   a_venir: 'À venir',
   en_cours: 'En cours',
   termine: 'Terminé',
+  annule: 'Annulé',
 }
 
 const STATUT_BADGE_STYLES: Record<SejourStatut, string> = {
   a_venir: 'bg-brand-pale text-brand',
   en_cours: 'bg-warning-bg text-warning-text',
   termine: 'bg-success-bg text-success-text',
+  annule: 'bg-danger-bg text-danger',
 }
 
 const STATUT_CARD_STYLES: Record<SejourStatut, string> = {
   a_venir: 'border-brand-border bg-brand-pale text-brand hover:bg-brand-pale/70',
   en_cours: 'border-warning-border bg-warning-bg text-warning-text hover:bg-warning-bg/70',
   termine: 'border-success-border bg-success-bg text-success-text hover:bg-success-bg/70',
+  annule: 'border-danger-border bg-danger-bg text-danger hover:bg-danger-bg/70',
 }
 
 // Appartement statut labels/colors, kept identical to AppartementsListeSection.tsx.
@@ -50,7 +53,7 @@ const APPARTEMENT_STATUT_STYLES: Record<string, string> = {
   maintenance: 'bg-danger-bg text-danger',
 }
 
-const STATUT_ORDER: SejourStatut[] = ['a_venir', 'en_cours', 'termine']
+const STATUT_ORDER: (keyof DashboardData['sejours_par_statut'])[] = ['a_venir', 'en_cours', 'termine']
 
 const DONUT_RADIUS = 54
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS

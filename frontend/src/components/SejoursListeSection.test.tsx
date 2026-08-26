@@ -56,6 +56,14 @@ function mockFetchSejours(allSejours: Sejour[]) {
       return new Response(JSON.stringify(updated), { status: 200 })
     }
 
+    const annulerMatch = url.pathname.match(/^\/api\/sejours\/(\d+)\/annuler$/)
+    if (annulerMatch && method === 'PATCH') {
+      const id = Number(annulerMatch[1])
+      const sejour = allSejours.find((s) => s.id === id)
+      sejour!.statut = 'annule'
+      return new Response(JSON.stringify(sejour), { status: 200 })
+    }
+
     const showMatch = url.pathname.match(/^\/api\/sejours\/(\d+)$/)
     if (showMatch) {
       const id = Number(showMatch[1])
@@ -303,7 +311,7 @@ describe('SejoursListeSection', () => {
   })
 
   it('l\'icône œil affiche le détail du séjour, avec un bouton de retour', async () => {
-    globalThis.fetch = mockFetchSejours([sejourFixture()]) as typeof fetch
+    globalThis.fetch = mockFetchSejours([sejourFixture({ statut: 'en_cours' })]) as typeof fetch
     const user = userEvent.setup()
 
     render(
@@ -378,7 +386,7 @@ describe('SejoursListeSection', () => {
   })
 
   it('affiche directement le détail via initialSejourId (venu du Dashboard), même hors de la page courante', async () => {
-    const farAwaySejour = sejourFixture({ id: 42, nom_voyageur: 'Karim Benali' })
+    const farAwaySejour = sejourFixture({ id: 42, nom_voyageur: 'Karim Benali', statut: 'en_cours' })
     globalThis.fetch = mockFetchSejours([sejourFixture({ id: 1 }), farAwaySejour]) as typeof fetch
 
     render(
@@ -394,5 +402,50 @@ describe('SejoursListeSection', () => {
     expect(await screen.findByText(/confirmer le checkout/i)).toBeInTheDocument()
     expect(screen.getByText('Karim Benali')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /retour à la liste/i })).toBeInTheDocument()
+  })
+
+  it('le bouton "Annuler" n\'apparaît que pour un séjour à venir, dans la liste', async () => {
+    globalThis.fetch = mockFetchSejours([
+      sejourFixture({ id: 1, statut: 'a_venir' }),
+      sejourFixture({ id: 2, statut: 'en_cours', nom_voyageur: 'Marie Curie' }),
+      sejourFixture({ id: 3, statut: 'termine', nom_voyageur: 'Karim Benali' }),
+      sejourFixture({ id: 4, statut: 'annule', nom_voyageur: 'Fatima Zahra' }),
+    ]) as typeof fetch
+
+    render(
+      <SejoursListeSection appartements={[]} catalogue={[]} onNavigateToCreer={vi.fn()} onEditSejour={vi.fn()} />,
+    )
+
+    await screen.findByText('4 séjours trouvés')
+
+    expect(screen.getByRole('button', { name: /annuler le séjour de jean dupont/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /annuler le séjour de marie curie/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /annuler le séjour de karim benali/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /annuler le séjour de fatima zahra/i })).not.toBeInTheDocument()
+    expect(within(screen.getAllByRole('row')[4]).getByText('Annulé')).toBeInTheDocument()
+  })
+
+  it('annule un séjour depuis la liste après confirmation dans la modal', async () => {
+    globalThis.fetch = mockFetchSejours([sejourFixture({ id: 1, statut: 'a_venir' })]) as typeof fetch
+    const user = userEvent.setup()
+
+    render(
+      <SejoursListeSection appartements={[]} catalogue={[]} onNavigateToCreer={vi.fn()} onEditSejour={vi.fn()} />,
+    )
+
+    await screen.findByText('1 séjours trouvés')
+    await user.click(screen.getByRole('button', { name: /annuler le séjour de jean dupont/i }))
+
+    expect(screen.getByText('Êtes-vous sûr de vouloir annuler ce séjour ?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /annuler le séjour$/i }))
+
+    await waitFor(() =>
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/sejours/1/annuler'),
+        expect.objectContaining({ method: 'PATCH' }),
+      ),
+    )
+    await waitFor(() => expect(within(screen.getAllByRole('row')[1]).getByText('Annulé')).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: /annuler le séjour de jean dupont/i })).not.toBeInTheDocument()
   })
 })
