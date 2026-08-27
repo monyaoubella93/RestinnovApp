@@ -148,10 +148,12 @@ $logoBase64 = base64_encode(file_get_contents(resource_path('images/logo.png')))
                     ->where('type_utilisation', 'rachete')
                     ->sum('prix_paye');
                 $nbMenages = count($frais_menage_detail);
+                $chargesRestinnov = collect($charges_detail)->where('a_charge_de', 'restinnov')->values();
+                $chargesProprietaire = collect($charges_detail)->where('a_charge_de', 'proprietaire')->values();
                 $chargesVides = $nbMenages === 0
                     && $fraisMenageProduitsTotal <= 0
                     && count($frais_maintenance_detail) === 0
-                    && count($charges_supplementaires_detail) === 0;
+                    && $chargesRestinnov->isEmpty();
             @endphp
             @if ($chargesVides)
                 <tr><td colspan="4" class="empty">Aucune charge ce mois-ci.</td></tr>
@@ -180,17 +182,33 @@ $logoBase64 = base64_encode(file_get_contents(resource_path('images/logo.png')))
                         <td class="montant montant-vert">{{ number_format($frais['prix'], 2) }}</td>
                     </tr>
                 @endforeach
-                @foreach ($charges_supplementaires_detail as $charge)
+                @foreach ($chargesRestinnov as $charge)
                     <tr>
-                        <td>{{ $charge['description'] }}:</td>
-                        <td>{{ rtrim(rtrim(number_format($charge['quantite'], 2), '0'), '.') }}</td>
-                        <td class="montant">{{ number_format($charge['prix_unitaire'], 2) }}</td>
-                        <td class="montant montant-vert">{{ number_format($charge['total'], 2) }}</td>
+                        <td>{{ $charge['nom_service'] }} ({{ $charge['frequence'] === 'annuel' ? 'annuel, proratisé' : 'mensuel' }}):</td>
+                        <td>1</td>
+                        <td class="montant">{{ number_format($charge['montant_mensuel'], 2) }}</td>
+                        <td class="montant montant-vert">{{ number_format($charge['montant_mensuel'], 2) }}</td>
                     </tr>
                 @endforeach
                 <tr class="ligne-total">
-                    <td colspan="3">Total:</td>
-                    <td class="montant montant-vert">{{ number_format($frais_menage_total + $frais_maintenance_total + $charges_supplementaires_total, 2) }}</td>
+                    <td colspan="3">Total (déduit du relevé):</td>
+                    <td class="montant montant-vert">{{ number_format($frais_menage_total + $frais_maintenance_total + $charges_restinnov_total, 2) }}</td>
+                </tr>
+            @endif
+
+            @if ($chargesProprietaire->isNotEmpty())
+                <tr class="section-titre"><td colspan="4">Charges à la charge du propriétaire (informatif, non déduit) :</td></tr>
+                @foreach ($chargesProprietaire as $charge)
+                    <tr>
+                        <td>{{ $charge['nom_service'] }} ({{ $charge['frequence'] === 'annuel' ? 'annuel, proratisé' : 'mensuel' }}):</td>
+                        <td>1</td>
+                        <td class="montant">{{ number_format($charge['montant_mensuel'], 2) }}</td>
+                        <td class="montant">{{ number_format($charge['montant_mensuel'], 2) }}</td>
+                    </tr>
+                @endforeach
+                <tr>
+                    <td colspan="3" class="empty">Total informatif (géré et payé directement par le propriétaire) :</td>
+                    <td class="montant">{{ number_format($charges_proprietaire_total, 2) }}</td>
                 </tr>
             @endif
         </tbody>
@@ -209,7 +227,7 @@ $logoBase64 = base64_encode(file_get_contents(resource_path('images/logo.png')))
         </tr>
         <tr>
             <td class="label">TOTAL Depense:</td>
-            <td class="montant">{{ number_format($frais_menage_total + $frais_maintenance_total + $charges_supplementaires_total, 2) }}</td>
+            <td class="montant">{{ number_format($frais_menage_total + $frais_maintenance_total + $charges_restinnov_total, 2) }}</td>
         </tr>
         @unless ($sousLocation)
             <tr>

@@ -35,7 +35,7 @@ class AppartementController extends Controller
             'page' => ['sometimes', 'integer', 'min:1'],
         ]);
 
-        $query = Appartement::with(['checklistModeles', 'agentHabituel', 'proprietaire'])
+        $query = Appartement::with(['checklistModeles', 'agentHabituel', 'proprietaire', 'chargesActives'])
             ->withCount('sejours')
             ->withMax('sejours', 'date_depart')
             ->avecStatutCalcule();
@@ -131,6 +131,11 @@ class AppartementController extends Controller
             'mode_gestion' => ['sometimes', Rule::in([Appartement::MODE_GESTION_MANDAT, Appartement::MODE_GESTION_SOUS_LOCATION])],
             'taux_commission' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'loyer_fixe_mensuel' => ['nullable', 'numeric', 'min:0'],
+            'charges' => ['sometimes', 'array'],
+            'charges.*.nom_service' => ['required', 'string', 'max:255'],
+            'charges.*.montant' => ['required', 'numeric', 'min:0'],
+            'charges.*.frequence' => ['required', Rule::in([ChargeAppartement::FREQUENCE_MENSUEL, ChargeAppartement::FREQUENCE_ANNUEL])],
+            'charges.*.a_charge_de' => ['required', Rule::in([ChargeAppartement::A_CHARGE_RESTINNOV, ChargeAppartement::A_CHARGE_PROPRIETAIRE])],
         ], $this->uploadValidationMessages());
 
         if ($request->hasFile('photo')) {
@@ -141,13 +146,26 @@ class AppartementController extends Controller
         $checklistModeleIds = $validated['checklist_modele_ids'] ?? [];
         unset($validated['checklist_modele_ids']);
 
+        $charges = $validated['charges'] ?? [];
+        unset($validated['charges']);
+
         $validated['statut'] = Appartement::STATUT_DISPONIBLE;
         $validated['mode_gestion'] ??= Appartement::MODE_GESTION_MANDAT;
 
         $appartement = Appartement::create($validated);
         $appartement->checklistModeles()->sync($checklistModeleIds);
 
-        return response()->json($appartement->load(['checklistModeles', 'agentHabituel', 'proprietaire']), 201);
+        foreach ($charges as $chargeInput) {
+            $appartement->chargesAppartement()->create([
+                'nom_service' => $chargeInput['nom_service'],
+                'montant' => $chargeInput['montant'],
+                'frequence' => $chargeInput['frequence'],
+                'a_charge_de' => $chargeInput['a_charge_de'],
+                'date_debut' => now()->toDateString(),
+            ]);
+        }
+
+        return response()->json($appartement->load(['checklistModeles', 'agentHabituel', 'proprietaire', 'chargesActives']), 201);
     }
 
     /**
@@ -178,6 +196,12 @@ class AppartementController extends Controller
             'mode_gestion' => ['sometimes', Rule::in([Appartement::MODE_GESTION_MANDAT, Appartement::MODE_GESTION_SOUS_LOCATION])],
             'taux_commission' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'loyer_fixe_mensuel' => ['nullable', 'numeric', 'min:0'],
+            'charges' => ['sometimes', 'array'],
+            'charges.*.id' => ['sometimes', 'integer', 'exists:charges_appartement,id'],
+            'charges.*.nom_service' => ['required', 'string', 'max:255'],
+            'charges.*.montant' => ['required', 'numeric', 'min:0'],
+            'charges.*.frequence' => ['required', Rule::in([ChargeAppartement::FREQUENCE_MENSUEL, ChargeAppartement::FREQUENCE_ANNUEL])],
+            'charges.*.a_charge_de' => ['required', Rule::in([ChargeAppartement::A_CHARGE_RESTINNOV, ChargeAppartement::A_CHARGE_PROPRIETAIRE])],
         ], $this->uploadValidationMessages());
 
         if ($request->hasFile('photo')) {
@@ -188,10 +212,63 @@ class AppartementController extends Controller
         $checklistModeleIds = $validated['checklist_modele_ids'] ?? [];
         unset($validated['checklist_modele_ids']);
 
+        // FormData can't carry a truly empty array (an empty `charges`
+        // would simply produce no field at all), so an explicit
+        // sync_charges flag -- not the mere presence of the `charges` key
+        // -- is what tells us the form is submitting its full, current
+        // list (possibly empty, e.g. every service was unchecked) versus
+        // an unrelated caller that never touches charges at all.
+        $charges = $validated['charges'] ?? [];
+        unset($validated['charges']);
+
         $appartement->update($validated);
         $appartement->checklistModeles()->sync($checklistModeleIds);
 
-        return response()->json($appartement->fresh()->load(['checklistModeles', 'agentHabituel', 'proprietaire']));
+        if ($request->boolean('sync_charges')) {
+            $this->syncCharges($appartement, $charges);
+        }
+
+        return response()->json($appartement->fresh()->load(['checklistModeles', 'agentHabituel', 'proprietaire', 'chargesActives']));
+    }
+
+    /**
+     * Reconciles an appartement's active charges with the form's submitted
+     * list: a charge carrying an existing id is updated in place, one
+     * without an id is a brand new service (starts today), and any
+     * currently-active charge missing from the list is closed (date_fin =
+     * today) rather than deleted -- so a past relevé still finds it.
+     */
+    private function syncCharges(Appartement $appartement, array $charges): void
+    {
+        $chargesActives = $appartement->chargesAppartement()->whereNull('date_fin')->get()->keyBy('id');
+        $idsSoumis = collect($charges)->pluck('id')->filter()->all();
+
+        foreach ($charges as $chargeInput) {
+            $id = $chargeInput['id'] ?? null;
+
+            if ($id && $chargesActives->has($id)) {
+                $chargesActives[$id]->update([
+                    'nom_service' => $chargeInput['nom_service'],
+                    'montant' => $chargeInput['montant'],
+                    'frequence' => $chargeInput['frequence'],
+                    'a_charge_de' => $chargeInput['a_charge_de'],
+                ]);
+            } else {
+                $appartement->chargesAppartement()->create([
+                    'nom_service' => $chargeInput['nom_service'],
+                    'montant' => $chargeInput['montant'],
+                    'frequence' => $chargeInput['frequence'],
+                    'a_charge_de' => $chargeInput['a_charge_de'],
+                    'date_debut' => now()->toDateString(),
+                ]);
+            }
+        }
+
+        foreach ($chargesActives as $id => $charge) {
+            if (! in_array($id, $idsSoumis, true)) {
+                $charge->update(['date_fin' => now()->toDateString()]);
+            }
+        }
     }
 
     /**
@@ -327,17 +404,35 @@ class AppartementController extends Controller
             }
         }
 
-        $chargesSupplementaires = $appartement->chargesAppartement()->where('mois', $mois)->orderBy('id')->get();
-        $chargesSupplementairesDetail = $chargesSupplementaires->map(fn (ChargeAppartement $charge) => [
-            'id' => $charge->id,
-            'description' => $charge->description,
-            'quantite' => round((float) $charge->quantite, 2),
-            'prix_unitaire' => round((float) $charge->prix_unitaire, 2),
-            'total' => round((float) $charge->quantite * (float) $charge->prix_unitaire, 2),
-        ])->values();
-        $chargesSupplementairesTotal = $chargesSupplementairesDetail->sum('total');
+        // A charge is included if it overlaps the month at all (like the
+        // sejour date-range queries above) -- no day-level proration for
+        // a charge starting/ending mid-month, only the frequence-based one
+        // below. Only "restinnov" charges reduce the propriétaire's payout;
+        // "proprietaire" charges are shown on the relevé for information
+        // only, since the owner pays and manages those themselves.
+        $charges = $appartement->chargesAppartement()
+            ->where('date_debut', '<=', $fin->toDateString())
+            ->where(fn ($q) => $q->whereNull('date_fin')->orWhere('date_fin', '>=', $debut->toDateString()))
+            ->orderBy('date_debut')
+            ->get();
 
-        $depensesTotal = $fraisMenageTotal + $fraisMaintenanceTotal + $chargesSupplementairesTotal;
+        $chargesDetail = $charges->map(fn (ChargeAppartement $charge) => [
+            'id' => $charge->id,
+            'nom_service' => $charge->nom_service,
+            'montant' => round((float) $charge->montant, 2),
+            'frequence' => $charge->frequence,
+            'a_charge_de' => $charge->a_charge_de,
+            'montant_mensuel' => $charge->montantMensuel(),
+        ])->values();
+
+        $chargesRestinnovTotal = round($chargesDetail
+            ->where('a_charge_de', ChargeAppartement::A_CHARGE_RESTINNOV)
+            ->sum('montant_mensuel'), 2);
+        $chargesProprietaireTotal = round($chargesDetail
+            ->where('a_charge_de', ChargeAppartement::A_CHARGE_PROPRIETAIRE)
+            ->sum('montant_mensuel'), 2);
+
+        $depensesTotal = $fraisMenageTotal + $fraisMaintenanceTotal + $chargesRestinnovTotal;
         $resultatNet = $revenusBruts - $depensesTotal;
 
         // The commission is always taken on the gross chiffre d'affaires
@@ -367,7 +462,8 @@ class AppartementController extends Controller
             'revenus_bruts' => round($revenusBruts, 2),
             'frais_menage_total' => round($fraisMenageTotal, 2),
             'frais_maintenance_total' => round($fraisMaintenanceTotal, 2),
-            'charges_supplementaires_total' => round($chargesSupplementairesTotal, 2),
+            'charges_restinnov_total' => $chargesRestinnovTotal,
+            'charges_proprietaire_total' => $chargesProprietaireTotal,
             'resultat_net' => round($resultatNet, 2),
             'montant_proprietaire' => round($montantProprietaire, 2),
             'commission_restinnov' => round($commissionRestinnov, 2),
@@ -382,7 +478,7 @@ class AppartementController extends Controller
             ])->values(),
             'frais_menage_detail' => $fraisMenageDetail,
             'frais_maintenance_detail' => $fraisMaintenanceDetail,
-            'charges_supplementaires_detail' => $chargesSupplementairesDetail,
+            'charges_detail' => $chargesDetail,
         ];
     }
 

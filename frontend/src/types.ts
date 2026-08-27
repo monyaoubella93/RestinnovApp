@@ -50,6 +50,19 @@ export interface Proprietaire {
   adresse: string | null
 }
 
+export type FrequenceCharge = 'mensuel' | 'annuel'
+export type AChargeDe = 'restinnov' | 'proprietaire'
+
+export interface ChargeAppartement {
+  id: number
+  nom_service: string
+  montant: string | number
+  frequence: FrequenceCharge
+  a_charge_de: AChargeDe
+  date_debut: string
+  date_fin: string | null
+}
+
 export interface Appartement {
   id: number
   nom: string
@@ -66,6 +79,7 @@ export interface Appartement {
   proprietaire?: Proprietaire | null
   sejours_count?: number
   dernier_sejour?: string | null
+  charges_actives?: ChargeAppartement[]
 }
 
 export interface Agent {
@@ -419,12 +433,13 @@ export interface ReleveFraisMaintenanceDetail {
   prix: number
 }
 
-export interface ChargeAppartement {
+export interface ReleveChargeDetail {
   id: number
-  description: string
-  quantite: number
-  prix_unitaire: number
-  total: number
+  nom_service: string
+  montant: number
+  frequence: FrequenceCharge
+  a_charge_de: AChargeDe
+  montant_mensuel: number
 }
 
 export interface Releve {
@@ -441,14 +456,15 @@ export interface Releve {
   revenus_bruts: number
   frais_menage_total: number
   frais_maintenance_total: number
-  charges_supplementaires_total: number
+  charges_restinnov_total: number
+  charges_proprietaire_total: number
   resultat_net: number
   montant_proprietaire: number
   commission_restinnov: number
   sejours: ReleveSejour[]
   frais_menage_detail: ReleveFraisMenageDetail[]
   frais_maintenance_detail: ReleveFraisMaintenanceDetail[]
-  charges_supplementaires_detail: ChargeAppartement[]
+  charges_detail: ReleveChargeDetail[]
 }
 
 export interface HistoriqueChecklistItem {

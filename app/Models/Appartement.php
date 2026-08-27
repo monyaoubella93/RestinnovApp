@@ -52,6 +52,12 @@ class Appartement extends Model
         return $this->hasMany(ChargeAppartement::class);
     }
 
+    /** Charges/services not yet closed (date_fin null) -- what the "Charges et services" form shows as checked. */
+    public function chargesActives(): HasMany
+    {
+        return $this->chargesAppartement()->whereNull('date_fin');
+    }
+
     public function proprietaire(): BelongsTo
     {
         return $this->belongsTo(Proprietaire::class);

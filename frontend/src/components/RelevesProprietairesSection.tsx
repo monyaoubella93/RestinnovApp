@@ -1,16 +1,6 @@
 import { useEffect, useState } from 'react'
-import {
-  createChargeAppartement,
-  deleteChargeAppartement,
-  downloadRelevePdf,
-  fetchAppartements,
-  fetchReleve,
-  updateProprietaire,
-  type NewChargeAppartementInput,
-  type NewProprietaireInput,
-} from '../api'
+import { downloadRelevePdf, fetchAppartements, fetchReleve, updateProprietaire, type NewProprietaireInput } from '../api'
 import type { Appartement, ModeGestion, Proprietaire, Releve } from '../types'
-import { ChargesAppartementModal } from './ChargesAppartementModal'
 import { EditProprietaireModal } from './EditProprietaireModal'
 
 function currentMonth(): string {
@@ -47,12 +37,6 @@ export function RelevesProprietairesSection() {
   const [downloadingId, setDownloadingId] = useState<number | null>(null)
   const [downloadingAll, setDownloadingAll] = useState(false)
   const [editingProprietaire, setEditingProprietaire] = useState<Proprietaire | null>(null)
-  const [chargesAppartementId, setChargesAppartementId] = useState<number | null>(null)
-
-  const reloadReleve = async (appartementId: number) => {
-    const releve = await fetchReleve(appartementId, mois)
-    setReleves((current) => ({ ...current, [appartementId]: releve }))
-  }
 
   useEffect(() => {
     let cancelled = false
@@ -101,16 +85,6 @@ export function RelevesProprietairesSection() {
       ),
     )
     setEditingProprietaire(null)
-  }
-
-  const handleAddCharge = async (appartementId: number, input: NewChargeAppartementInput) => {
-    await createChargeAppartement(appartementId, input)
-    await reloadReleve(appartementId)
-  }
-
-  const handleDeleteCharge = async (appartementId: number, chargeId: number) => {
-    await deleteChargeAppartement(chargeId)
-    await reloadReleve(appartementId)
   }
 
   const handleDownload = async (appartementId: number) => {
@@ -213,7 +187,7 @@ export function RelevesProprietairesSection() {
               {appartements.map((appartement) => {
                 const releve = releves[appartement.id]
                 const frais = releve
-                  ? releve.frais_menage_total + releve.frais_maintenance_total + releve.charges_supplementaires_total
+                  ? releve.frais_menage_total + releve.frais_maintenance_total + releve.charges_restinnov_total
                   : 0
                 const modeGestion = releve?.appartement.mode_gestion
 
@@ -252,13 +226,6 @@ export function RelevesProprietairesSection() {
                             Propriétaire
                           </button>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => setChargesAppartementId(appartement.id)}
-                          className="text-sm font-semibold text-ink-secondary hover:text-ink"
-                        >
-                          Charges
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -274,17 +241,6 @@ export function RelevesProprietairesSection() {
           proprietaire={editingProprietaire}
           onCancel={() => setEditingProprietaire(null)}
           onSave={handleSaveProprietaire}
-        />
-      )}
-
-      {chargesAppartementId != null && (
-        <ChargesAppartementModal
-          appartementNom={appartements.find((a) => a.id === chargesAppartementId)?.nom ?? ''}
-          mois={mois}
-          charges={releves[chargesAppartementId]?.charges_supplementaires_detail ?? []}
-          onClose={() => setChargesAppartementId(null)}
-          onAdd={(input) => handleAddCharge(chargesAppartementId, input)}
-          onDelete={(chargeId) => handleDeleteCharge(chargesAppartementId, chargeId)}
         />
       )}
     </div>

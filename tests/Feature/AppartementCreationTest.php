@@ -233,4 +233,47 @@ class AppartementCreationTest extends TestCase
         $response->assertStatus(422);
         $response->assertJsonValidationErrors('nom');
     }
+
+    public function test_it_creates_an_appartement_with_several_recurring_charges(): void
+    {
+        $response = $this->postJson('/api/appartements', [
+            'nom' => 'Zenith 3ème étage',
+            'adresse' => '10 avenue Hassan II, Casablanca',
+            'charges' => [
+                ['nom_service' => 'WiFi', 'montant' => 149, 'frequence' => 'mensuel', 'a_charge_de' => 'restinnov'],
+                ['nom_service' => 'Netflix', 'montant' => 80, 'frequence' => 'mensuel', 'a_charge_de' => 'proprietaire'],
+            ],
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonCount(2, 'charges_actives');
+        $appartementId = $response->json('id');
+        $this->assertDatabaseHas('charges_appartement', [
+            'appartement_id' => $appartementId,
+            'nom_service' => 'WiFi',
+            'montant' => 149,
+            'a_charge_de' => 'restinnov',
+            'date_debut' => now()->toDateString(),
+            'date_fin' => null,
+        ]);
+        $this->assertDatabaseHas('charges_appartement', [
+            'appartement_id' => $appartementId,
+            'nom_service' => 'Netflix',
+            'a_charge_de' => 'proprietaire',
+        ]);
+    }
+
+    public function test_charges_frequence_and_a_charge_de_are_validated_on_creation(): void
+    {
+        $response = $this->postJson('/api/appartements', [
+            'nom' => 'Zenith 3ème étage',
+            'adresse' => '10 avenue Hassan II, Casablanca',
+            'charges' => [
+                ['nom_service' => 'WiFi', 'montant' => 149, 'frequence' => 'hebdomadaire', 'a_charge_de' => 'locataire'],
+            ],
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['charges.0.frequence', 'charges.0.a_charge_de']);
+    }
 }
