@@ -1,13 +1,14 @@
 import type {
+  AChargeDe,
   Agent,
   Appartement,
   CalendrierData,
-  ChargeAppartement,
   ChecklistItem,
   ChecklistModele,
   ChecklistModeleItem,
   DashboardData,
   FraisMaintenance,
+  FrequenceCharge,
   HistoriqueMission,
   HistoriqueMissionAgent,
   HistoriqueMissionManager,
@@ -142,6 +143,7 @@ export interface NewAppartementInput {
   mode_gestion?: ModeGestion
   taux_commission?: number | null
   loyer_fixe_mensuel?: number | null
+  charges?: NewChargeInput[]
 }
 
 export interface NewProprietaireInput {
@@ -151,11 +153,12 @@ export interface NewProprietaireInput {
   adresse?: string | null
 }
 
-export interface NewChargeAppartementInput {
-  mois: string
-  description: string
-  quantite: number
-  prix_unitaire: number
+export interface NewChargeInput {
+  id?: number
+  nom_service: string
+  montant: number
+  frequence: FrequenceCharge
+  a_charge_de: AChargeDe
 }
 
 export interface NewUtilisateurInput {
@@ -369,6 +372,26 @@ function appendProprietaireFields(formData: FormData, input: NewAppartementInput
   if (input.loyer_fixe_mensuel != null) formData.append('loyer_fixe_mensuel', String(input.loyer_fixe_mensuel))
 }
 
+/**
+ * A FormData submission can't carry a genuinely empty array (an empty
+ * `charges` produces no field at all), so `sync_charges=1` is what tells
+ * the backend "this is the form's full, current list" -- as opposed to no
+ * `charges` key ever being sent, which the backend correctly reads as
+ * "not touching charges at all".
+ */
+function appendCharges(formData: FormData, input: NewAppartementInput): void {
+  if (!input.charges) return
+
+  formData.append('sync_charges', '1')
+  input.charges.forEach((charge, i) => {
+    if (charge.id != null) formData.append(`charges[${i}][id]`, String(charge.id))
+    formData.append(`charges[${i}][nom_service]`, charge.nom_service)
+    formData.append(`charges[${i}][montant]`, String(charge.montant))
+    formData.append(`charges[${i}][frequence]`, charge.frequence)
+    formData.append(`charges[${i}][a_charge_de]`, charge.a_charge_de)
+  })
+}
+
 export async function updateAppartement(id: number, input: NewAppartementInput): Promise<Appartement> {
   const formData = new FormData()
   formData.append('nom', input.nom)
@@ -377,6 +400,7 @@ export async function updateAppartement(id: number, input: NewAppartementInput):
   input.checklist_modele_ids.forEach((id) => formData.append('checklist_modele_ids[]', String(id)))
   if (input.agent_habituel_id) formData.append('agent_habituel_id', String(input.agent_habituel_id))
   appendProprietaireFields(formData, input)
+  appendCharges(formData, input)
   formData.append('_method', 'PATCH')
 
   const response = await fetch(`${API_BASE_URL}/api/appartements/${id}`, {
@@ -396,6 +420,7 @@ export async function createAppartement(input: NewAppartementInput): Promise<App
   input.checklist_modele_ids.forEach((id) => formData.append('checklist_modele_ids[]', String(id)))
   if (input.agent_habituel_id) formData.append('agent_habituel_id', String(input.agent_habituel_id))
   appendProprietaireFields(formData, input)
+  appendCharges(formData, input)
 
   const response = await fetch(`${API_BASE_URL}/api/appartements`, {
     method: 'POST',
@@ -432,33 +457,6 @@ export async function updateProprietaire(id: number, input: NewProprietaireInput
   })
 
   return parseJsonOrThrow(response)
-}
-
-export async function createChargeAppartement(
-  appartementId: number,
-  input: NewChargeAppartementInput,
-): Promise<ChargeAppartement> {
-  const response = await fetch(`${API_BASE_URL}/api/appartements/${appartementId}/charges`, {
-    method: 'POST',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(input),
-  })
-
-  return parseJsonOrThrow(response)
-}
-
-export async function deleteChargeAppartement(id: number): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/charges-appartement/${id}`, {
-    method: 'DELETE',
-    headers: authHeaders(),
-  })
-
-  handleUnauthorized(response)
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => null)
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
-  }
 }
 
 export async function fetchChecklistModeles(): Promise<ChecklistModele[]> {

@@ -32,21 +32,20 @@ function releveFixture(overrides: Partial<Releve> = {}): Releve {
     revenus_bruts: 1000,
     frais_menage_total: 100,
     frais_maintenance_total: 50,
-    charges_supplementaires_total: 0,
+    charges_restinnov_total: 0,
+    charges_proprietaire_total: 0,
     resultat_net: 850,
     montant_proprietaire: 680,
     commission_restinnov: 170,
     sejours: [],
     frais_menage_detail: [],
     frais_maintenance_detail: [],
-    charges_supplementaires_detail: [],
+    charges_detail: [],
     ...overrides,
   }
 }
 
 function mockFetch(appartements: Appartement[], releves: Record<number, Releve>) {
-  let nextChargeId = 100
-
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input))
     const method = init?.method ?? 'GET'
@@ -76,43 +75,6 @@ function mockFetch(appartements: Appartement[], releves: Record<number, Releve>)
       return new Response(JSON.stringify({ id: Number(proprietaireMatch[1]), ...body }), { status: 200 })
     }
 
-    const chargesMatch = url.pathname.match(/^\/api\/appartements\/(\d+)\/charges$/)
-    if (chargesMatch && method === 'POST') {
-      const appartementId = Number(chargesMatch[1])
-      const body = JSON.parse(String(init?.body))
-      const charge = {
-        id: nextChargeId++,
-        description: body.description,
-        quantite: body.quantite,
-        prix_unitaire: body.prix_unitaire,
-        total: body.quantite * body.prix_unitaire,
-      }
-      const releve = releves[appartementId] ?? releveFixture({ appartement: { ...releveFixture().appartement, id: appartementId } })
-      releves[appartementId] = {
-        ...releve,
-        charges_supplementaires_detail: [...releve.charges_supplementaires_detail, charge],
-        charges_supplementaires_total: releve.charges_supplementaires_total + charge.total,
-      }
-      return new Response(JSON.stringify(charge), { status: 201 })
-    }
-
-    const deleteChargeMatch = url.pathname.match(/^\/api\/charges-appartement\/(\d+)$/)
-    if (deleteChargeMatch && method === 'DELETE') {
-      const chargeId = Number(deleteChargeMatch[1])
-      for (const id of Object.keys(releves)) {
-        const releve = releves[Number(id)]
-        const removed = releve.charges_supplementaires_detail.find((c) => c.id === chargeId)
-        if (removed) {
-          releves[Number(id)] = {
-            ...releve,
-            charges_supplementaires_detail: releve.charges_supplementaires_detail.filter((c) => c.id !== chargeId),
-            charges_supplementaires_total: releve.charges_supplementaires_total - removed.total,
-          }
-        }
-      }
-      return new Response(null, { status: 204 })
-    }
-
     throw new Error(`Unhandled request: ${url.pathname}`)
   })
 }
@@ -135,6 +97,20 @@ describe('RelevesProprietairesSection', () => {
     expect(within(table).getByText('1000.00 MAD')).toBeInTheDocument()
     expect(within(table).getByText('150.00 MAD')).toBeInTheDocument() // 100 menage + 50 maintenance
     expect(within(table).getByText('680.00 MAD')).toBeInTheDocument()
+  })
+
+  it('inclut les charges à la charge de RestInnov dans la colonne Frais', async () => {
+    globalThis.fetch = mockFetch(
+      [appartementFixture()],
+      { 1: releveFixture({ charges_restinnov_total: 149 }) },
+    ) as typeof fetch
+
+    render(<RelevesProprietairesSection />)
+    await screen.findByText('Loft Bastille')
+
+    const table = screen.getByRole('table')
+    // 100 menage + 50 maintenance + 149 charges restinnov
+    expect(within(table).getByText('299.00 MAD')).toBeInTheDocument()
   })
 
   it('affiche les 3 KPI (revenus bruts, reversé aux propriétaires, commission Restinnov)', async () => {
@@ -238,29 +214,5 @@ describe('RelevesProprietairesSection', () => {
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
 
     await waitFor(() => expect(screen.queryByText('Modifier le propriétaire')).not.toBeInTheDocument())
-  })
-
-  it('ajoute puis supprime une charge mensuelle via la modal "Charges"', async () => {
-    globalThis.fetch = mockFetch([appartementFixture()], { 1: releveFixture() }) as typeof fetch
-    const user = userEvent.setup()
-
-    render(<RelevesProprietairesSection />)
-    await screen.findByText('Loft Bastille')
-
-    await user.click(screen.getByRole('button', { name: 'Charges' }))
-    expect(screen.getByText('Charges — Loft Bastille')).toBeInTheDocument()
-    expect(screen.getByText('Aucune charge ajoutée ce mois-ci.')).toBeInTheDocument()
-
-    await user.type(screen.getByPlaceholderText('Description (ex : WiFi)'), 'WiFi')
-    const prixInput = screen.getByPlaceholderText('Prix unitaire')
-    await user.type(prixInput, '149')
-    await user.click(screen.getByRole('button', { name: /ajouter la charge/i }))
-
-    expect(await screen.findByText('WiFi')).toBeInTheDocument()
-    expect(screen.queryByText('Aucune charge ajoutée ce mois-ci.')).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: /supprimer la charge wifi/i }))
-
-    await waitFor(() => expect(screen.getByText('Aucune charge ajoutée ce mois-ci.')).toBeInTheDocument())
   })
 })

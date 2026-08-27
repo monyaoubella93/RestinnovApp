@@ -16,35 +16,94 @@ class ChargeAppartementTest extends TestCase
         return Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);
     }
 
-    public function test_it_creates_a_charge_for_an_appartement_and_month(): void
+    public function test_it_creates_a_recurring_charge_starting_today_by_default(): void
     {
         $appartement = $this->appartement();
 
         $response = $this->postJson("/api/appartements/{$appartement->id}/charges", [
-            'mois' => '2026-08',
-            'description' => 'WiFi Août',
-            'quantite' => 1,
-            'prix_unitaire' => 149,
+            'nom_service' => 'WiFi',
+            'montant' => 149,
+            'frequence' => 'mensuel',
+            'a_charge_de' => 'restinnov',
         ]);
 
         $response->assertCreated();
-        $response->assertJsonPath('description', 'WiFi Août');
+        $response->assertJsonPath('nom_service', 'WiFi');
+        $response->assertJsonPath('date_debut', now()->toDateString());
         $this->assertDatabaseHas('charges_appartement', [
             'appartement_id' => $appartement->id,
-            'mois' => '2026-08',
-            'description' => 'WiFi Août',
-            'prix_unitaire' => 149,
+            'nom_service' => 'WiFi',
+            'montant' => 149,
+            'frequence' => 'mensuel',
+            'a_charge_de' => 'restinnov',
+            'date_fin' => null,
         ]);
     }
 
-    public function test_mois_description_quantite_and_prix_unitaire_are_required(): void
+    public function test_nom_service_montant_frequence_and_a_charge_de_are_required(): void
     {
         $appartement = $this->appartement();
 
         $response = $this->postJson("/api/appartements/{$appartement->id}/charges", []);
 
         $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['mois', 'description', 'quantite', 'prix_unitaire']);
+        $response->assertJsonValidationErrors(['nom_service', 'montant', 'frequence', 'a_charge_de']);
+    }
+
+    public function test_frequence_and_a_charge_de_are_restricted_to_known_values(): void
+    {
+        $appartement = $this->appartement();
+
+        $response = $this->postJson("/api/appartements/{$appartement->id}/charges", [
+            'nom_service' => 'WiFi',
+            'montant' => 149,
+            'frequence' => 'hebdomadaire',
+            'a_charge_de' => 'locataire',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['frequence', 'a_charge_de']);
+    }
+
+    public function test_it_updates_a_charge_in_place(): void
+    {
+        $appartement = $this->appartement();
+        $charge = ChargeAppartement::create([
+            'appartement_id' => $appartement->id,
+            'nom_service' => 'WiFi',
+            'montant' => 149,
+            'frequence' => 'mensuel',
+            'a_charge_de' => 'restinnov',
+            'date_debut' => '2026-01-01',
+        ]);
+
+        $response = $this->patchJson("/api/charges-appartement/{$charge->id}", [
+            'montant' => 199,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('montant', '199.00');
+        $this->assertDatabaseHas('charges_appartement', ['id' => $charge->id, 'montant' => 199]);
+    }
+
+    public function test_it_closes_a_charge_by_setting_date_fin(): void
+    {
+        $appartement = $this->appartement();
+        $charge = ChargeAppartement::create([
+            'appartement_id' => $appartement->id,
+            'nom_service' => 'Netflix',
+            'montant' => 80,
+            'frequence' => 'mensuel',
+            'a_charge_de' => 'proprietaire',
+            'date_debut' => '2026-01-01',
+        ]);
+
+        $response = $this->patchJson("/api/charges-appartement/{$charge->id}", [
+            'date_fin' => '2026-06-30',
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('charges_appartement', ['id' => $charge->id, 'date_fin' => '2026-06-30']);
     }
 
     public function test_it_deletes_a_charge(): void
@@ -52,10 +111,11 @@ class ChargeAppartementTest extends TestCase
         $appartement = $this->appartement();
         $charge = ChargeAppartement::create([
             'appartement_id' => $appartement->id,
-            'mois' => '2026-08',
-            'description' => 'Pressing',
-            'quantite' => 6,
-            'prix_unitaire' => 20,
+            'nom_service' => 'Pressing',
+            'montant' => 20,
+            'frequence' => 'mensuel',
+            'a_charge_de' => 'restinnov',
+            'date_debut' => '2026-01-01',
         ]);
 
         $response = $this->delete("/api/charges-appartement/{$charge->id}");
@@ -70,10 +130,10 @@ class ChargeAppartementTest extends TestCase
         $this->actingAsMenage();
 
         $response = $this->postJson("/api/appartements/{$appartement->id}/charges", [
-            'mois' => '2026-08',
-            'description' => 'WiFi',
-            'quantite' => 1,
-            'prix_unitaire' => 149,
+            'nom_service' => 'WiFi',
+            'montant' => 149,
+            'frequence' => 'mensuel',
+            'a_charge_de' => 'restinnov',
         ]);
 
         $response->assertStatus(403);
