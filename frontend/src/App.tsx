@@ -503,9 +503,7 @@ function App() {
     <div className="flex min-h-screen bg-app-bg font-sans text-ink">
       <nav className="flex w-[246px] shrink-0 flex-col bg-marine px-3.5 py-5">
         <div className="flex items-center px-2 pb-5">
-          <div className="flex h-[38px] w-fit shrink-0 items-center justify-center rounded-[10px] bg-white px-2">
-            <img src="/logo.png" alt="RestInnov" className="h-[26px] w-auto object-contain" />
-          </div>
+          <img src="/logo.png" alt="RestInnov" className="h-[38px] w-auto object-contain" />
         </div>
 
         <div className="flex flex-col gap-0.5">
