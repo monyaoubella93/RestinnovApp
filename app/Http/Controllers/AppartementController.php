@@ -110,6 +110,44 @@ class AppartementController extends Controller
     }
 
     /**
+     * The single-appartement detail screen: the appartement itself (photo,
+     * checklists, agent habituel, propriétaire, charges actives, statut,
+     * séjours count/dernier), the current month's financial summary (the
+     * same numbers as the relevé, reused rather than recomputed
+     * differently), and its linked maintenance tickets with the same
+     * "récurrent" flag used on the Tickets de maintenance screen. Nothing
+     * here is new data -- it is all already computed/stored elsewhere,
+     * just gathered into one response for this screen.
+     */
+    public function show(Appartement $appartement): JsonResponse
+    {
+        $appartement = Appartement::with(['checklistModeles', 'agentHabituel', 'proprietaire', 'chargesActives'])
+            ->withCount('sejours')
+            ->withMax('sejours', 'date_depart')
+            ->avecStatutCalcule()
+            ->findOrFail($appartement->id);
+
+        $appartement->setAttribute('dernier_sejour', $appartement->sejours_max_date_depart);
+        $appartement->setAttribute('statut', $appartement->statutCalcule());
+
+        $mois = now()->format('Y-m');
+        $releve = $this->buildReleve($appartement, $mois);
+
+        return response()->json([
+            'appartement' => $appartement,
+            'resume_financier' => [
+                'mois' => $mois,
+                'revenus_bruts' => $releve['revenus_bruts'],
+                'frais_menage_total' => $releve['frais_menage_total'],
+                'frais_maintenance_total' => $releve['frais_maintenance_total'],
+                'resultat_net' => $releve['resultat_net'],
+            ],
+            'tickets_maintenance' => $appartement->ticketsMaintenance()->with('agent')->latest()->get(),
+            'tickets_maintenance_recurrent' => TicketMaintenance::estRecurrentPourAppartement($appartement->id),
+        ]);
+    }
+
+    /**
      * Store a newly created appartement.
      */
     public function store(Request $request): JsonResponse

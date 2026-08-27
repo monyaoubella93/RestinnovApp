@@ -32,14 +32,6 @@ class TicketMaintenanceController extends Controller
         'photosResolution',
     ];
 
-    // An appartement is flagged "récurrent" in the par-appartement historique
-    // view once it reaches this many tickets (any statut) within the
-    // rolling window below -- easy to retune from one place if the Manager
-    // wants a stricter/looser definition later.
-    private const SEUIL_RECURRENCE_TICKETS = 3;
-
-    private const FENETRE_RECURRENCE_MOIS = 2;
-
     /**
      * Shared statut/appartement/date-range/search filtering, used by both
      * index() (flat chronological list) and parAppartement() (grouped
@@ -138,12 +130,12 @@ class TicketMaintenanceController extends Controller
 
         $tickets = $query->get();
 
-        $recurrenceDepuis = now()->subMonths(self::FENETRE_RECURRENCE_MOIS);
+        $recurrenceDepuis = now()->subMonths(TicketMaintenance::FENETRE_RECURRENCE_MOIS);
         $recurrentAppartementIds = TicketMaintenance::query()
             ->where('created_at', '>=', $recurrenceDepuis)
             ->selectRaw('appartement_id, count(*) as total')
             ->groupBy('appartement_id')
-            ->having('total', '>=', self::SEUIL_RECURRENCE_TICKETS)
+            ->having('total', '>=', TicketMaintenance::SEUIL_RECURRENCE_TICKETS)
             ->pluck('appartement_id');
 
         $groupes = $tickets->groupBy('appartement_id')

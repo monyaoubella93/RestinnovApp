@@ -29,6 +29,15 @@ class TicketMaintenance extends Model
 
     public const STATUT_A_REFAIRE = 'a_refaire';
 
+    // An appartement is "récurrent" once it reaches this many tickets (any
+    // statut) within the rolling window below -- shared by
+    // TicketMaintenanceController::parAppartement() (bulk, many appartements
+    // at once) and estRecurrentPourAppartement() (single appartement), so
+    // both always agree on the same definition.
+    public const SEUIL_RECURRENCE_TICKETS = 3;
+
+    public const FENETRE_RECURRENCE_MOIS = 2;
+
     protected $fillable = [
         'appartement_id',
         'mission_origine_id',
@@ -79,6 +88,15 @@ class TicketMaintenance extends Model
     public function appartement(): BelongsTo
     {
         return $this->belongsTo(Appartement::class);
+    }
+
+    /** Same "récurrent" definition as TicketMaintenanceController::parAppartement(), for a single appartement. */
+    public static function estRecurrentPourAppartement(int $appartementId): bool
+    {
+        return static::query()
+            ->where('appartement_id', $appartementId)
+            ->where('created_at', '>=', now()->subMonths(self::FENETRE_RECURRENCE_MOIS))
+            ->count() >= self::SEUIL_RECURRENCE_TICKETS;
     }
 
     public function missionOrigine(): BelongsTo

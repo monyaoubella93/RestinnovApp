@@ -16,6 +16,7 @@ import { RefuserModal } from './RefuserModal'
 import { useAudioRecorder, MAX_RECORDING_SECONDS } from '../hooks/useAudioRecorder'
 import { RecordingIndicator } from './RecordingIndicator'
 import { friendlyUploadErrorMessage } from '../utils/uploadError'
+import { RecurrentBadge } from './RecurrentBadge'
 
 type Vue = 'liste' | 'groupe'
 
@@ -28,7 +29,7 @@ interface AssignerValues {
   photoTransferee: boolean
 }
 
-const STATUT_LABELS: Record<TicketMaintenanceStatut, string> = {
+export const STATUT_LABELS: Record<TicketMaintenanceStatut, string> = {
   ouvert: 'Ouvert',
   assigne: 'Assigné',
   resolu_en_attente_validation: 'Résolu — en attente de validation',
@@ -36,7 +37,7 @@ const STATUT_LABELS: Record<TicketMaintenanceStatut, string> = {
   resolu: 'Résolu',
 }
 
-const STATUT_STYLES: Record<TicketMaintenanceStatut, string> = {
+export const STATUT_STYLES: Record<TicketMaintenanceStatut, string> = {
   ouvert: 'bg-warning-bg text-warning-text',
   assigne: 'bg-brand-pale text-brand',
   resolu_en_attente_validation: STATUT_VALIDATION_STYLES.en_attente,
@@ -535,14 +536,7 @@ function AppartementGroupeCard({
         <div className="min-w-0">
           <p className="flex items-center gap-2 font-semibold text-ink">
             <span className="truncate">{groupe.appartement?.nom ?? 'Appartement inconnu'}</span>
-            {groupe.recurrent && (
-              <span
-                data-testid={`recurrent-badge-${groupe.appartement?.id}`}
-                className="shrink-0 rounded-badge bg-danger-bg px-2 py-0.5 text-xs font-bold text-danger"
-              >
-                Récurrent
-              </span>
-            )}
+            {groupe.recurrent && <RecurrentBadge appartementId={groupe.appartement?.id} />}
           </p>
           <p className="truncate text-sm text-ink-tertiary">{groupe.appartement?.adresse}</p>
         </div>

@@ -63,6 +63,21 @@ export interface ChargeAppartement {
   date_fin: string | null
 }
 
+export interface ResumeFinancierMensuel {
+  mois: string
+  revenus_bruts: number
+  frais_menage_total: number
+  frais_maintenance_total: number
+  resultat_net: number
+}
+
+export interface AppartementDetail {
+  appartement: Appartement
+  resume_financier: ResumeFinancierMensuel
+  tickets_maintenance: TicketMaintenance[]
+  tickets_maintenance_recurrent: boolean
+}
+
 export interface Appartement {
   id: number
   nom: string

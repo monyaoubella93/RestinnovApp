@@ -12,12 +12,12 @@ function formatMontant(value: number | undefined): string {
   return `${(value ?? 0).toFixed(2)} MAD`
 }
 
-const MODE_GESTION_LABELS: Record<ModeGestion, string> = {
+export const MODE_GESTION_LABELS: Record<ModeGestion, string> = {
   mandat: 'Mandat',
   sous_location: 'Sous-location',
 }
 
-const MODE_GESTION_STYLES: Record<ModeGestion, string> = {
+export const MODE_GESTION_STYLES: Record<ModeGestion, string> = {
   mandat: 'bg-brand-pale text-brand',
   sous_location: 'bg-violet-bg text-violet',
 }
