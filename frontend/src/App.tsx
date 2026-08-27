@@ -727,6 +727,11 @@ function App() {
                 navigateTo('appartement-creer')
               }}
               onEditAppartement={handleEditAppartement}
+              onNavigateToCreerSejour={() => {
+                setEditingSejour(null)
+                navigateTo('sejour-creer')
+              }}
+              onNavigateToReleves={() => navigateTo('dashboard')}
               initialAppartement={pendingAppartementDetail}
             />
           )}

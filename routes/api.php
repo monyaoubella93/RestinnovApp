@@ -34,6 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/appartements', [AppartementController::class, 'index']);
         Route::post('/appartements', [AppartementController::class, 'store']);
+        Route::get('/appartements/{appartement}', [AppartementController::class, 'show']);
         Route::patch('/appartements/{appartement}', [AppartementController::class, 'update']);
         Route::get('/appartements/{appartement}/historique', [AppartementController::class, 'historique']);
         Route::get('/appartements/{appartement}/releve', [AppartementController::class, 'releve']);

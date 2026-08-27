@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppartementsListeSection } from './AppartementsListeSection'
-import type { Appartement, HistoriqueMission } from '../types'
+import type { Appartement, AppartementDetail, HistoriqueMission } from '../types'
 
 function appartementFixture(overrides: Partial<Appartement> = {}): Appartement {
   return {
@@ -20,8 +20,28 @@ function appartementFixture(overrides: Partial<Appartement> = {}): Appartement {
   }
 }
 
+function appartementDetailFixture(overrides: Partial<AppartementDetail> = {}, appartementOverrides: Partial<Appartement> = {}): AppartementDetail {
+  return {
+    appartement: appartementFixture(appartementOverrides),
+    resume_financier: {
+      mois: '2026-08',
+      revenus_bruts: 1000,
+      frais_menage_total: 100,
+      frais_maintenance_total: 50,
+      resultat_net: 850,
+    },
+    tickets_maintenance: [],
+    tickets_maintenance_recurrent: false,
+    ...overrides,
+  }
+}
+
 /** Fakes the backend's filter/sort/pagination behaviour over an in-memory list of appartements. */
-function mockFetchAppartements(all: Appartement[], historique: Record<number, HistoriqueMission[]> = {}) {
+function mockFetchAppartements(
+  all: Appartement[],
+  historique: Record<number, HistoriqueMission[]> = {},
+  details: Record<number, AppartementDetail> = {},
+) {
   return vi.fn(async (input: RequestInfo | URL) => {
     const url = new URL(String(input))
 
@@ -29,6 +49,14 @@ function mockFetchAppartements(all: Appartement[], historique: Record<number, Hi
     if (historiqueMatch) {
       const id = Number(historiqueMatch[1])
       return new Response(JSON.stringify(historique[id] ?? []), { status: 200 })
+    }
+
+    const detailMatch = url.pathname.match(/^\/api\/appartements\/(\d+)$/)
+    if (detailMatch) {
+      const id = Number(detailMatch[1])
+      const appartement = all.find((a) => a.id === id)
+      const detail = details[id] ?? appartementDetailFixture({}, appartement ?? {})
+      return new Response(JSON.stringify(detail), { status: 200 })
     }
 
     let result = [...all]
@@ -229,6 +257,135 @@ describe('AppartementsListeSection', () => {
 
     await user.click(screen.getByRole('button', { name: /retour à la liste/i }))
     expect(await screen.findByText('1 appartements trouvés')).toBeInTheDocument()
+  })
+
+  describe('sections du détail enrichi', () => {
+    it('affiche le propriétaire, les charges actives et le résumé financier du mois en cours', async () => {
+      const appartement = appartementFixture()
+      const detail = appartementDetailFixture(
+        {
+          appartement: {
+            ...appartement,
+            proprietaire: { id: 9, nom: 'Karim Alaoui', telephone: '0600000000', email: null, adresse: null },
+            mode_gestion: 'mandat',
+            taux_commission: 20,
+            charges_actives: [
+              { id: 1, nom_service: 'WiFi', montant: 149, frequence: 'mensuel', a_charge_de: 'restinnov', date_debut: '2026-01-01', date_fin: null },
+            ],
+          },
+        },
+      )
+      globalThis.fetch = mockFetchAppartements([appartement], {}, { 1: detail }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      expect(await screen.findByText('Karim Alaoui')).toBeInTheDocument()
+      expect(screen.getByText('0600000000')).toBeInTheDocument()
+      expect(screen.getByText('MANDAT')).toBeInTheDocument()
+
+      expect(screen.getByText('WiFi', { exact: false })).toBeInTheDocument()
+      expect(screen.getByText('149.00 MAD')).toBeInTheDocument()
+      expect(screen.getByText('À la charge de RestInnov')).toBeInTheDocument()
+
+      expect(screen.getByText('Résumé financier (mois en cours)')).toBeInTheDocument()
+      expect(screen.getByText('1000.00 MAD')).toBeInTheDocument()
+      expect(screen.getByText('850.00 MAD')).toBeInTheDocument()
+    })
+
+    it('affiche un message quand aucun propriétaire ou aucune charge n\'est renseigné', async () => {
+      globalThis.fetch = mockFetchAppartements([appartementFixture()]) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      expect(await screen.findByText('Aucun propriétaire renseigné.')).toBeInTheDocument()
+      expect(screen.getByText('Aucune charge active.')).toBeInTheDocument()
+    })
+
+    it('liste les tickets de maintenance liés avec leur statut et le badge "Récurrent"', async () => {
+      const appartement = appartementFixture()
+      const detail = appartementDetailFixture({
+        tickets_maintenance: [
+          {
+            id: 1,
+            reference: 'MNT-0001',
+            appartement_id: 1,
+            mission_origine_id: null,
+            agent_id: null,
+            description: 'Robinet qui fuit.',
+            description_manager: null,
+            description_manager_audio_url: null,
+            photo_url: null,
+            photo_transferee: false,
+            audio_url: null,
+            photo_apres: null,
+            cout_reparation: null,
+            note_resolution: null,
+            urgence: 'normale',
+            statut: 'ouvert',
+            created_at: '2026-08-01T00:00:00Z',
+          },
+        ],
+        tickets_maintenance_recurrent: true,
+      })
+      globalThis.fetch = mockFetchAppartements([appartement], {}, { 1: detail }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      expect(await screen.findByText('MNT-0001', { exact: false })).toBeInTheDocument()
+      expect(screen.getByText('Ouvert')).toBeInTheDocument()
+      expect(screen.getByTestId('recurrent-badge-1')).toBeInTheDocument()
+    })
+
+    it('les boutons d\'action rapide déclenchent la navigation et le téléchargement du PDF', async () => {
+      const fetchMock = mockFetchAppartements([appartementFixture()])
+      globalThis.fetch = fetchMock as typeof fetch
+      const onNavigateToCreerSejour = vi.fn()
+      const onNavigateToReleves = vi.fn()
+      const onEditAppartement = vi.fn()
+      const user = userEvent.setup()
+
+      URL.createObjectURL = vi.fn().mockReturnValue('blob:fake-url')
+      URL.revokeObjectURL = vi.fn()
+
+      render(
+        <AppartementsListeSection
+          onNavigateToCreer={vi.fn()}
+          onEditAppartement={onEditAppartement}
+          onNavigateToCreerSejour={onNavigateToCreerSejour}
+          onNavigateToReleves={onNavigateToReleves}
+        />,
+      )
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+      await screen.findByText('Résumé financier (mois en cours)')
+
+      await user.click(screen.getByRole('button', { name: 'Créer un séjour' }))
+      expect(onNavigateToCreerSejour).toHaveBeenCalledTimes(1)
+
+      await user.click(screen.getByRole('button', { name: "Modifier l'appartement" }))
+      expect(onEditAppartement).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }))
+
+      await user.click(screen.getByRole('button', { name: 'Voir le relevé complet →' }))
+      expect(onNavigateToReleves).toHaveBeenCalledTimes(1)
+
+      await user.click(screen.getByRole('button', { name: /télécharger le relevé pdf du mois/i }))
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/appartements/1/releve/pdf?mois='), expect.anything()),
+      )
+    })
   })
 
   describe('onglet "Historique ménage"', () => {

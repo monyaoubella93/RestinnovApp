@@ -2,6 +2,7 @@ import type {
   AChargeDe,
   Agent,
   Appartement,
+  AppartementDetail,
   CalendrierData,
   ChecklistItem,
   ChecklistModele,
@@ -1121,6 +1122,14 @@ export async function fetchCalendrier(params: { mois: string; appartementId?: nu
 
 export async function fetchNotifications(): Promise<NotificationsData> {
   const response = await fetch(`${API_BASE_URL}/api/notifications`, {
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
+export async function fetchAppartementDetail(appartementId: number): Promise<AppartementDetail> {
+  const response = await fetch(`${API_BASE_URL}/api/appartements/${appartementId}`, {
     headers: authHeaders(),
   })
 

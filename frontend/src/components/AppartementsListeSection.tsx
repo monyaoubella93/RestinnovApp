@@ -1,12 +1,26 @@
 import { useEffect, useState } from 'react'
-import { fetchAppartementsListe, resolveStorageUrl } from '../api'
-import type { Appartement } from '../types'
+import { downloadRelevePdf, fetchAppartementDetail, fetchAppartementsListe, resolveStorageUrl } from '../api'
+import type { AppartementDetail, Appartement } from '../types'
 import { AppartementHistoriqueSection } from './AppartementHistoriqueSection'
+import { MODE_GESTION_LABELS, MODE_GESTION_STYLES } from './RelevesProprietairesSection'
+import { STATUT_LABELS as TICKET_STATUT_LABELS, STATUT_STYLES as TICKET_STATUT_STYLES } from './TicketsMaintenanceSection'
+import { RecurrentBadge } from './RecurrentBadge'
 
 interface AppartementsListeSectionProps {
   onNavigateToCreer: () => void
   onEditAppartement: (appartement: Appartement) => void
+  onNavigateToCreerSejour?: () => void
+  onNavigateToReleves?: () => void
   initialAppartement?: Appartement | null
+}
+
+function currentMonth(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+function formatMontant(value: number | undefined): string {
+  return `${(value ?? 0).toFixed(2)} MAD`
 }
 
 const PER_PAGE = 10
@@ -62,6 +76,8 @@ function formatDate(value: string | null | undefined): string {
 export function AppartementsListeSection({
   onNavigateToCreer,
   onEditAppartement,
+  onNavigateToCreerSejour,
+  onNavigateToReleves,
   initialAppartement,
 }: AppartementsListeSectionProps) {
   const [search, setSearch] = useState('')
@@ -81,6 +97,17 @@ export function AppartementsListeSection({
   const [selectedAppartementId, setSelectedAppartementId] = useState<number | null>(initialAppartement?.id ?? null)
   const [detailTab, setDetailTab] = useState<'infos' | 'historique'>('infos')
 
+  // The detail screen's extra sections (propriétaire, charges, résumé
+  // financier, tickets liés) all come from the single GET
+  // /api/appartements/{id} endpoint -- fetched on demand once a row is
+  // opened, on top of the already-loaded list row (which renders the
+  // header + Ménage section immediately, without waiting on this).
+  const [detail, setDetail] = useState<AppartementDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailError, setDetailError] = useState<string | null>(null)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
+
   useEffect(() => {
     if (!initialAppartement) return
     setExtraAppartements((current) =>
@@ -88,6 +115,44 @@ export function AppartementsListeSection({
     )
     setSelectedAppartementId(initialAppartement.id)
   }, [initialAppartement])
+
+  useEffect(() => {
+    if (!selectedAppartementId) {
+      setDetail(null)
+      return
+    }
+
+    let cancelled = false
+    setDetailLoading(true)
+    setDetailError(null)
+    fetchAppartementDetail(selectedAppartementId)
+      .then((data) => {
+        if (!cancelled) setDetail(data)
+      })
+      .catch((err) => {
+        if (!cancelled) setDetailError(err instanceof Error ? err.message : "Impossible de charger le détail de l'appartement.")
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedAppartementId])
+
+  const handleDownloadPdf = async () => {
+    if (!selectedAppartementId) return
+    setPdfError(null)
+    setDownloadingPdf(true)
+    try {
+      await downloadRelevePdf(selectedAppartementId, currentMonth())
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : 'Impossible de télécharger le PDF.')
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -129,6 +194,13 @@ export function AppartementsListeSection({
     null
 
   if (selectedAppartement) {
+    // The header and the Ménage section render immediately from the list
+    // row already in hand; propriétaire/charges/résumé financier/tickets
+    // only appear once the detail fetch resolves.
+    const proprietaire = detail?.appartement.proprietaire
+    const chargesActives = detail?.appartement.charges_actives ?? []
+    const modeGestion = detail?.appartement.mode_gestion
+
     return (
       <div>
         <button
@@ -140,22 +212,150 @@ export function AppartementsListeSection({
         </button>
 
         <div className="mt-4 rounded-card-manager border border-border-default bg-surface p-6">
-          <div className="flex flex-wrap items-start gap-4">
-            {selectedAppartement.photo_principale && (
-              <img
-                src={resolveStorageUrl(selectedAppartement.photo_principale)}
-                alt={selectedAppartement.nom}
-                className="h-24 w-24 rounded-md object-cover"
-              />
-            )}
-            <div>
-              <h3 className="text-lg font-bold text-ink">{selectedAppartement.nom}</h3>
-              <p className="text-sm text-ink-secondary">{selectedAppartement.adresse}</p>
-              <div className="mt-2">
-                <StatutBadge statut={selectedAppartement.statut} />
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex flex-wrap items-start gap-4">
+              {selectedAppartement.photo_principale && (
+                <img
+                  src={resolveStorageUrl(selectedAppartement.photo_principale)}
+                  alt={selectedAppartement.nom}
+                  className="h-24 w-24 rounded-md object-cover"
+                />
+              )}
+              <div>
+                <h3 className="text-lg font-bold text-ink">{selectedAppartement.nom}</h3>
+                <p className="text-sm text-ink-secondary">{selectedAppartement.adresse}</p>
+                <div className="mt-2">
+                  <StatutBadge statut={selectedAppartement.statut} />
+                </div>
               </div>
             </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onNavigateToCreerSejour?.()}
+                className="rounded-field bg-brand px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-light"
+              >
+                Créer un séjour
+              </button>
+              <button
+                type="button"
+                onClick={() => onEditAppartement(selectedAppartement)}
+                className="rounded-field border border-border-default px-3 py-1.5 text-sm font-semibold text-ink-secondary hover:bg-table-header-bg"
+              >
+                Modifier l'appartement
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={downloadingPdf}
+                className="rounded-field border border-border-default px-3 py-1.5 text-sm font-semibold text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
+              >
+                {downloadingPdf ? 'Téléchargement...' : 'Télécharger le relevé PDF du mois'}
+              </button>
+            </div>
           </div>
+          {pdfError && <p className="mt-2 text-sm text-danger">{pdfError}</p>}
+
+          {detailLoading && <p className="mt-4 text-sm text-ink-tertiary">Chargement du détail...</p>}
+          {detailError && <p className="mt-4 text-sm text-danger">{detailError}</p>}
+
+          {detail && (
+            <>
+              <section className="mt-4 border-t border-border-default pt-4">
+                <h4 className="text-sm font-bold text-ink">Propriétaire</h4>
+                {proprietaire ? (
+                  <dl className="mt-2 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-ink-tertiary">Nom</dt>
+                      <dd className="text-ink">{proprietaire.nom}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-ink-tertiary">Contact</dt>
+                      <dd className="text-ink">{proprietaire.telephone ?? proprietaire.email ?? 'Aucun'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-ink-tertiary">Mode de gestion</dt>
+                      <dd className="text-ink">
+                        {modeGestion && (
+                          <span className={`rounded-badge px-2 py-0.5 text-xs font-bold ${MODE_GESTION_STYLES[modeGestion]}`}>
+                            {MODE_GESTION_LABELS[modeGestion].toUpperCase()}
+                          </span>
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-ink-tertiary">{modeGestion === 'sous_location' ? 'Loyer fixe mensuel' : 'Taux de commission'}</dt>
+                      <dd className="font-mono text-ink">
+                        {modeGestion === 'sous_location'
+                          ? formatMontant(Number(detail.appartement.loyer_fixe_mensuel ?? 0))
+                          : `${Number(detail.appartement.taux_commission ?? 0)}%`}
+                      </dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <p className="mt-2 text-sm text-ink-tertiary">Aucun propriétaire renseigné.</p>
+                )}
+              </section>
+
+              <section className="mt-4 border-t border-border-default pt-4">
+                <h4 className="text-sm font-bold text-ink">Charges et services</h4>
+                {chargesActives.length > 0 ? (
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {chargesActives.map((charge) => (
+                      <li key={charge.id} className="flex flex-wrap items-center justify-between gap-2 rounded-field bg-table-header-bg px-3 py-2">
+                        <span className="text-ink">
+                          {charge.nom_service}{' '}
+                          <span className="text-ink-tertiary">({charge.frequence === 'annuel' ? 'annuel' : 'mensuel'})</span>
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <span className="font-mono text-ink">{formatMontant(Number(charge.montant))}</span>
+                          <span className="rounded-badge bg-surface px-2 py-0.5 text-xs font-semibold text-ink-secondary">
+                            {charge.a_charge_de === 'restinnov' ? 'À la charge de RestInnov' : 'À la charge du propriétaire'}
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-sm text-ink-tertiary">Aucune charge active.</p>
+                )}
+              </section>
+
+              <section className="mt-4 border-t border-border-default pt-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="text-sm font-bold text-ink">Résumé financier (mois en cours)</h4>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToReleves?.()}
+                    className="text-sm font-semibold text-brand-light hover:text-brand"
+                  >
+                    Voir le relevé complet →
+                  </button>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-field border border-border-default p-3">
+                    <p className="text-xs font-semibold text-ink-tertiary">Revenus</p>
+                    <p className="mt-1 font-mono text-sm font-bold text-ink">{formatMontant(detail.resume_financier.revenus_bruts)}</p>
+                  </div>
+                  <div className="rounded-field border border-border-default p-3">
+                    <p className="text-xs font-semibold text-ink-tertiary">Frais ménage</p>
+                    <p className="mt-1 font-mono text-sm font-bold text-ink">{formatMontant(detail.resume_financier.frais_menage_total)}</p>
+                  </div>
+                  <div className="rounded-field border border-border-default p-3">
+                    <p className="text-xs font-semibold text-ink-tertiary">Frais maintenance</p>
+                    <p className="mt-1 font-mono text-sm font-bold text-ink">
+                      {formatMontant(detail.resume_financier.frais_maintenance_total)}
+                    </p>
+                  </div>
+                  <div className="rounded-field border border-border-default border-l-[3px] border-l-success p-3">
+                    <p className="text-xs font-semibold text-ink-tertiary">Résultat net</p>
+                    <p className="mt-1 font-mono text-sm font-bold text-success-text">{formatMontant(detail.resume_financier.resultat_net)}</p>
+                  </div>
+                </div>
+              </section>
+            </>
+          )}
 
           <div className="mt-4 flex gap-4 border-b border-border-default">
             <button
@@ -179,28 +379,58 @@ export function AppartementsListeSection({
           </div>
 
           {detailTab === 'infos' ? (
-            <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-ink-tertiary">Checklists assignées</dt>
-                <dd className="text-ink">
-                  {selectedAppartement.checklist_modeles && selectedAppartement.checklist_modeles.length > 0
-                    ? selectedAppartement.checklist_modeles.map((modele) => modele.nom).join(', ')
-                    : 'Aucune'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-ink-tertiary">Agent habituel</dt>
-                <dd className="text-ink">{selectedAppartement.agent_habituel?.nom ?? 'Aucun'}</dd>
-              </div>
-              <div>
-                <dt className="text-ink-tertiary">Nombre de séjours</dt>
-                <dd className="text-ink">{selectedAppartement.sejours_count ?? 0}</dd>
-              </div>
-              <div>
-                <dt className="text-ink-tertiary">Dernier séjour</dt>
-                <dd className="text-ink">{formatDate(selectedAppartement.dernier_sejour)}</dd>
-              </div>
-            </dl>
+            <>
+              <section>
+                <h4 className="mt-4 text-sm font-bold text-ink">Ménage</h4>
+                <dl className="mt-2 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-ink-tertiary">Checklists assignées</dt>
+                    <dd className="text-ink">
+                      {selectedAppartement.checklist_modeles && selectedAppartement.checklist_modeles.length > 0
+                        ? selectedAppartement.checklist_modeles.map((modele) => modele.nom).join(', ')
+                        : 'Aucune'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-ink-tertiary">Agent habituel</dt>
+                    <dd className="text-ink">{selectedAppartement.agent_habituel?.nom ?? 'Aucun'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-ink-tertiary">Nombre de séjours</dt>
+                    <dd className="text-ink">{selectedAppartement.sejours_count ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-ink-tertiary">Dernier séjour</dt>
+                    <dd className="text-ink">{formatDate(selectedAppartement.dernier_sejour)}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              {detail && (
+                <section className="mt-4 border-t border-border-default pt-4">
+                  <h4 className="flex items-center gap-2 text-sm font-bold text-ink">
+                    Maintenance
+                    {detail.tickets_maintenance_recurrent && <RecurrentBadge appartementId={selectedAppartement.id} />}
+                  </h4>
+                  {detail.tickets_maintenance.length > 0 ? (
+                    <ul className="mt-2 space-y-1 text-sm">
+                      {detail.tickets_maintenance.map((ticket) => (
+                        <li key={ticket.id} className="flex flex-wrap items-center justify-between gap-2 rounded-field bg-table-header-bg px-3 py-2">
+                          <span className="text-ink">
+                            {ticket.reference} <span className="text-ink-tertiary">— {ticket.description || 'Aucune description.'}</span>
+                          </span>
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TICKET_STATUT_STYLES[ticket.statut]}`}>
+                            {TICKET_STATUT_LABELS[ticket.statut]}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 text-sm text-ink-tertiary">Aucun ticket de maintenance.</p>
+                  )}
+                </section>
+              )}
+            </>
           ) : (
             <div className="mt-4">
               <AppartementHistoriqueSection appartementId={selectedAppartement.id} />
