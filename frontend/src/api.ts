@@ -432,6 +432,20 @@ export async function createAppartement(input: NewAppartementInput): Promise<App
   return parseJsonOrThrow(response)
 }
 
+export async function deleteAppartement(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/appartements/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+
+  handleUnauthorized(response)
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
+  }
+}
+
 export async function fetchProprietaires(): Promise<Proprietaire[]> {
   const response = await fetch(`${API_BASE_URL}/api/proprietaires`, {
     headers: authHeaders(),

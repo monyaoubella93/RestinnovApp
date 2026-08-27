@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { downloadRelevePdf, fetchAppartementDetail, fetchAppartementsListe, resolveStorageUrl } from '../api'
+import { deleteAppartement, downloadRelevePdf, fetchAppartementDetail, fetchAppartementsListe, resolveStorageUrl } from '../api'
 import type { AppartementDetail, Appartement } from '../types'
 import { AppartementHistoriqueSection } from './AppartementHistoriqueSection'
+import { ConfirmModal } from './ConfirmModal'
 import { MODE_GESTION_LABELS, MODE_GESTION_STYLES } from './RelevesProprietairesSection'
 import { STATUT_LABELS as TICKET_STATUT_LABELS, STATUT_STYLES as TICKET_STATUT_STYLES } from './TicketsMaintenanceSection'
 import { RecurrentBadge } from './RecurrentBadge'
@@ -68,6 +69,18 @@ function PencilIcon() {
   )
 }
 
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+      />
+    </svg>
+  )
+}
+
 function formatDate(value: string | null | undefined): string {
   if (!value) return 'Aucun'
   return new Date(value).toLocaleDateString('fr-FR')
@@ -96,6 +109,16 @@ export function AppartementsListeSection({
   const [error, setError] = useState<string | null>(null)
   const [selectedAppartementId, setSelectedAppartementId] = useState<number | null>(initialAppartement?.id ?? null)
   const [detailTab, setDetailTab] = useState<'infos' | 'historique'>('infos')
+  const [deletingAppartement, setDeletingAppartement] = useState<Appartement | null>(null)
+  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null)
+
+  // The success banner is transient: it disappears on its own rather than
+  // sitting there until the next unrelated action clears it.
+  useEffect(() => {
+    if (!deleteSuccessMessage) return
+    const timer = setTimeout(() => setDeleteSuccessMessage(null), 4000)
+    return () => clearTimeout(timer)
+  }, [deleteSuccessMessage])
 
   // The detail screen's extra sections (propriétaire, charges, résumé
   // financier, tickets liés) all come from the single GET
@@ -186,6 +209,22 @@ export function AppartementsListeSection({
   const handleSortNom = () => {
     setSortDir((current) => (current === 'asc' ? 'desc' : 'asc'))
     setPage(1)
+  }
+
+  // A blocked deletion (active/upcoming séjour, unresolved ticket) throws
+  // and is shown inline by ConfirmModal itself -- the row is only removed
+  // here once the backend has actually confirmed the soft delete.
+  const handleConfirmDelete = async () => {
+    if (!deletingAppartement) return
+    const { id } = deletingAppartement
+
+    await deleteAppartement(id)
+
+    setAppartements((current) => current.filter((a) => a.id !== id))
+    setExtraAppartements((current) => current.filter((a) => a.id !== id))
+    setMeta((current) => ({ ...current, total: Math.max(0, current.total - 1) }))
+    setDeletingAppartement(null)
+    setDeleteSuccessMessage('Appartement supprimé avec succès.')
   }
 
   const selectedAppartement =
@@ -443,6 +482,10 @@ export function AppartementsListeSection({
 
   return (
     <div className="space-y-4">
+      {deleteSuccessMessage && (
+        <p className="rounded-field bg-success-bg px-3 py-2 text-sm font-semibold text-success-text">{deleteSuccessMessage}</p>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-xl font-bold tracking-[-0.02em] text-ink">Appartements</h3>
@@ -574,6 +617,14 @@ export function AppartementsListeSection({
                       >
                         <EyeIcon />
                       </button>
+                      <button
+                        type="button"
+                        aria-label={`Supprimer l'appartement ${appartement.nom}`}
+                        onClick={() => setDeletingAppartement(appartement)}
+                        className="text-ink-tertiary hover:text-danger"
+                      >
+                        <TrashIcon />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -617,6 +668,16 @@ export function AppartementsListeSection({
             Suivant
           </button>
         </div>
+      )}
+
+      {deletingAppartement && (
+        <ConfirmModal
+          title="Supprimer l'appartement"
+          message={`Êtes-vous sûr de vouloir supprimer ${deletingAppartement.nom} ? Cette action est irréversible.`}
+          confirmLabel="Confirmer la suppression"
+          onCancel={() => setDeletingAppartement(null)}
+          onConfirm={handleConfirmDelete}
+        />
       )}
     </div>
   )
