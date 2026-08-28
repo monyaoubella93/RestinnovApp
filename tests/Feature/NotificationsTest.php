@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Appartement;
+use App\Models\MaintenanceAlerte;
 use App\Models\MissionMenage;
 use App\Models\Sejour;
 use App\Models\TicketMaintenance;
@@ -41,8 +42,10 @@ class NotificationsTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('problemes_signales_count', 0);
         $response->assertJsonPath('menages_a_valider_count', 0);
+        $response->assertJsonPath('alertes_maintenance_count', 0);
         $response->assertJsonPath('problemes_signales', []);
         $response->assertJsonPath('menages_a_valider', []);
+        $response->assertJsonPath('alertes_maintenance', []);
     }
 
     public function test_it_counts_and_lists_unresolved_tickets_as_problemes_signales(): void
@@ -62,6 +65,51 @@ class NotificationsTest extends TestCase
         $response->assertJsonPath('problemes_signales.0.appartement.nom', 'Loft Bastille');
         $response->assertJsonPath('problemes_signales.0.appartement.adresse', '12 rue de la Roquette');
         $response->assertJsonPath('problemes_signales.0.urgence', 'normale');
+    }
+
+    public function test_a_ticket_en_cours_is_still_counted_as_a_probleme_signale(): void
+    {
+        $appartement = $this->appartement();
+        TicketMaintenance::create(['appartement_id' => $appartement->id, 'urgence' => 'normale', 'statut' => 'en_cours']);
+
+        $response = $this->getJson('/api/notifications');
+
+        $response->assertOk();
+        $response->assertJsonPath('problemes_signales_count', 1);
+    }
+
+    public function test_it_counts_and_lists_maintenance_alertes_for_unresolved_tickets(): void
+    {
+        $appartement = $this->appartement(['nom' => 'Zenith', 'adresse' => '5 avenue de la Paix']);
+        $ticket = TicketMaintenance::create(['appartement_id' => $appartement->id, 'statut' => 'en_cours']);
+        MaintenanceAlerte::create([
+            'ticket_maintenance_id' => $ticket->id,
+            'niveau' => 'urgente',
+            'message' => "Le ticket {$ticket->reference} est en retard, contactez l'agent Karim B.",
+        ]);
+
+        $response = $this->getJson('/api/notifications');
+
+        $response->assertOk();
+        $response->assertJsonPath('alertes_maintenance_count', 1);
+        $response->assertJsonPath('alertes_maintenance.0.niveau', 'urgente');
+        $response->assertJsonPath('alertes_maintenance.0.appartement.nom', 'Zenith');
+    }
+
+    public function test_maintenance_alertes_disappear_once_their_ticket_is_resolu(): void
+    {
+        $appartement = $this->appartement();
+        $ticket = TicketMaintenance::create(['appartement_id' => $appartement->id, 'statut' => 'resolu']);
+        MaintenanceAlerte::create([
+            'ticket_maintenance_id' => $ticket->id,
+            'niveau' => 'urgente',
+            'message' => 'Ancienne alerte.',
+        ]);
+
+        $response = $this->getJson('/api/notifications');
+
+        $response->assertOk();
+        $response->assertJsonPath('alertes_maintenance_count', 0);
     }
 
     public function test_it_counts_and_lists_en_attente_validation_missions_as_menages_a_valider(): void

@@ -10,6 +10,8 @@ function ticketFixture(overrides: Partial<MonTicketMaintenance> = {}): MonTicket
     reference: 'MNT-0001',
     statut: 'assigne',
     urgence: 'normale',
+    date_limite_intervention: null,
+    est_en_retard: false,
     description_manager: 'Changer le joint du robinet.',
     description_manager_audio_url: null,
     photo_url: null,
@@ -68,9 +70,28 @@ describe('MesTicketsSection', () => {
     expect(await screen.findByText(/aucun ticket pour l'instant/i)).toBeInTheDocument()
   })
 
+  it('affiche la date limite sous le badge d\'urgence quand elle est renseignée', async () => {
+    globalThis.fetch = mockFetch([ticketFixture({ date_limite_intervention: '2026-09-01' })]) as typeof fetch
+
+    render(<MesTicketsSection />)
+
+    expect(await screen.findByText(/à effectuer avant 01\/09\/2026/i)).toBeInTheDocument()
+  })
+
+  it('remplace le badge d\'urgence par un badge "En retard" quand le ticket est en retard', async () => {
+    globalThis.fetch = mockFetch([
+      ticketFixture({ date_limite_intervention: '2026-08-01', est_en_retard: true }),
+    ]) as typeof fetch
+
+    render(<MesTicketsSection />)
+
+    expect(await screen.findByText('En retard')).toBeInTheDocument()
+    expect(screen.queryByText('Urgence Normale')).not.toBeInTheDocument()
+  })
+
   it('ouvre le détail du ticket au clic sur la carte', async () => {
     const user = userEvent.setup()
-    globalThis.fetch = mockFetch([ticketFixture()]) as typeof fetch
+    globalThis.fetch = mockFetch([ticketFixture({ statut: 'en_cours' })]) as typeof fetch
 
     render(<MesTicketsSection />)
 
@@ -82,7 +103,7 @@ describe('MesTicketsSection', () => {
 
   it('reste sur la confirmation de résolution même une fois le ticket disparu de la liste rafraîchie', async () => {
     const user = userEvent.setup()
-    let current = [ticketFixture()]
+    let current = [ticketFixture({ statut: 'en_cours' })]
 
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = new URL(String(input))

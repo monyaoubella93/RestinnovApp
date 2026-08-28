@@ -11,6 +11,8 @@ function ticketFixture(overrides: Partial<TicketMaintenance> = {}): TicketMainte
     appartement_id: 1,
     mission_origine_id: 1,
     agent_id: null,
+    date_limite_intervention: null,
+    est_en_retard: false,
     description: 'Le robinet fuit.',
     description_manager: null,
     description_manager_audio_url: null,
@@ -86,6 +88,7 @@ function mockFetch(tickets: TicketMaintenance[], agents: Agent[]) {
               description_manager: descriptionManager,
               description_manager_audio_url: hasAudio ? 'tickets-maintenance/manager-note.webm' : null,
               photo_transferee: body.get('photo_transferee') === '1',
+              date_limite_intervention: (body.get('date_limite_intervention') as string | null) ?? null,
             }
           : t,
       )
@@ -225,6 +228,39 @@ describe('TicketsMaintenanceSection', () => {
     })
     await waitFor(() => expect(screen.queryByText('Le robinet fuit.')).not.toBeInTheDocument())
     expect(screen.getByText(/aucun ticket de maintenance\./i)).toBeInTheDocument()
+  })
+
+  it("envoie la date limite d'intervention quand elle est renseignée", async () => {
+    const user = userEvent.setup()
+    const agent = agentFixture()
+    const fetchMock = mockFetch([ticketFixture()], [agent])
+    globalThis.fetch = fetchMock as typeof fetch
+
+    render(<TicketsMaintenanceSection />)
+    await expandTicket(user, 'Le robinet fuit.')
+    await user.selectOptions(screen.getByLabelText(/^agent de maintenance$/i), String(agent.id))
+    await user.type(screen.getByLabelText(/instruction écrite pour l'agent/i), 'Changer le joint.')
+    await user.type(screen.getByLabelText(/date limite d'intervention/i), '2026-09-01')
+    await user.click(screen.getByRole('button', { name: /assigner/i }))
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input]) => String(input).includes('/assigner'))
+      expect(call).toBeDefined()
+      const body = call![1]!.body as FormData
+      expect(body.get('date_limite_intervention')).toBe('2026-09-01')
+    })
+  })
+
+  it('affiche un badge "En retard" à la place du badge d\'urgence sur la carte', async () => {
+    globalThis.fetch = mockFetch(
+      [ticketFixture({ date_limite_intervention: '2026-08-01', est_en_retard: true })],
+      [],
+    ) as typeof fetch
+
+    render(<TicketsMaintenanceSection />)
+
+    expect(await screen.findByText('En retard')).toBeInTheDocument()
+    expect(screen.queryByText('Urgence Normale')).not.toBeInTheDocument()
   })
 
   it('bascule vers l\'onglet audio, enregistre un message et l\'envoie sans texte', async () => {

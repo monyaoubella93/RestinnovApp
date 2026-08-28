@@ -97,6 +97,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // the agent's own assigned tickets, resolved with a photo proof + cost.
     Route::middleware('role:maintenance,manager')->group(function () {
         Route::get('/tickets-maintenance/mes-tickets', [TicketMaintenanceController::class, 'mesTickets']);
+        Route::patch('/tickets-maintenance/{ticketMaintenance}/commencer', [TicketMaintenanceController::class, 'commencer']);
         Route::patch('/tickets-maintenance/{ticketMaintenance}/resoudre', [TicketMaintenanceController::class, 'resoudre']);
     });
 });

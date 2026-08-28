@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { assignerTicketMaintenance, fetchTicketsMaintenance, fetchUtilisateurs, resolveStorageUrl } from '../api'
 import type { Agent, TicketMaintenance } from '../types'
-import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
+import { EN_RETARD_STYLE, formatDateLimite, URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 
 type ExpressionMode = 'texte' | 'audio'
 
@@ -12,6 +12,7 @@ interface AssignerValues {
   descriptionManager: string
   descriptionManagerAudio: File | null
   photoTransferee: boolean
+  dateLimiteIntervention: string
 }
 
 function formatDate(iso: string): string {
@@ -34,6 +35,7 @@ function AssignerForm({
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null)
   const [photoTransferee, setPhotoTransferee] = useState(false)
+  const [dateLimiteIntervention, setDateLimiteIntervention] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -106,6 +108,7 @@ function AssignerForm({
         descriptionManager,
         descriptionManagerAudio: audioFile,
         photoTransferee,
+        dateLimiteIntervention,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue.')
@@ -222,6 +225,18 @@ function AssignerForm({
             ))}
           </select>
         </div>
+        <div className="min-w-0 flex-1">
+          <label htmlFor={`ticket_date_limite_${ticket.id}`} className="block text-xs font-medium text-gray-600">
+            Date limite d'intervention
+          </label>
+          <input
+            id={`ticket_date_limite_${ticket.id}`}
+            type="date"
+            value={dateLimiteIntervention}
+            onChange={(e) => setDateLimiteIntervention(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+        </div>
         <button
           type="button"
           onClick={handleAssigner}
@@ -266,6 +281,11 @@ function TicketMaintenanceCard({
             {formatDate(ticket.created_at)}
             {ticket.mission_origine?.agent?.nom && ` · Signalé par ${ticket.mission_origine.agent.nom}`}
           </p>
+          {ticket.date_limite_intervention && !ticket.est_en_retard && (
+            <p className="text-xs text-gray-400">
+              À effectuer avant {formatDateLimite(ticket.date_limite_intervention)}
+            </p>
+          )}
           {isARefaire && (
             <span className="mt-1 inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
               Renvoyé par le Manager — à refaire
@@ -273,9 +293,11 @@ function TicketMaintenanceCard({
           )}
         </div>
         <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${URGENCE_STYLES[ticket.urgence]}`}
+          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+            ticket.est_en_retard ? EN_RETARD_STYLE : URGENCE_STYLES[ticket.urgence]
+          }`}
         >
-          Urgence {URGENCE_LABELS[ticket.urgence]}
+          {ticket.est_en_retard ? 'En retard' : `Urgence ${URGENCE_LABELS[ticket.urgence]}`}
         </span>
       </button>
 
@@ -313,6 +335,14 @@ function TicketMaintenanceCard({
                 <p className="text-sm text-gray-700">
                   <span className="font-medium">Agent assigné : </span>
                   {ticket.agent.nom}
+                </p>
+              )}
+              {ticket.date_limite_intervention && (
+                <p className={`text-sm ${ticket.est_en_retard ? 'font-medium text-red-700' : 'text-gray-700'}`}>
+                  <span className="font-medium">
+                    {ticket.est_en_retard ? 'En retard depuis le ' : "À effectuer avant "}
+                  </span>
+                  {formatDateLimite(ticket.date_limite_intervention)}
                 </p>
               )}
               {ticket.refus && ticket.refus.length > 0 && (
@@ -375,6 +405,7 @@ export function TicketsMaintenanceSection() {
       descriptionManager: values.descriptionManager.trim() ? values.descriptionManager : null,
       descriptionManagerAudio: values.descriptionManagerAudio,
       photoTransferee: values.photoTransferee,
+      dateLimiteIntervention: values.dateLimiteIntervention || null,
     })
     // Assigning removes it from the list this screen shows -- the
     // maintenance agent's own workspace is where it lives on from here.

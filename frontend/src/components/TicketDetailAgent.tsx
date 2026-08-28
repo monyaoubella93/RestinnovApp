@@ -1,16 +1,17 @@
 import { useRef, useState } from 'react'
-import { resoudreTicketMaintenance, resolveStorageUrl } from '../api'
+import { commencerTicketMaintenance, resoudreTicketMaintenance, resolveStorageUrl } from '../api'
 import { useAudioRecorder } from '../hooks/useAudioRecorder'
 import type { MonTicketMaintenance } from '../types'
-import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
+import { EN_RETARD_STYLE, formatDateLimite, URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 
 interface TicketDetailAgentProps {
   ticket: MonTicketMaintenance
   onBack: () => void
   onResolu: () => void
+  onCommence: () => void
 }
 
-export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgentProps) {
+export function TicketDetailAgent({ ticket, onBack, onResolu, onCommence }: TicketDetailAgentProps) {
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
   const [coutReparation, setCoutReparation] = useState('')
@@ -18,6 +19,9 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [resolu, setResolu] = useState(false)
+  const [statutActuel, setStatutActuel] = useState(ticket.statut)
+  const [commencing, setCommencing] = useState(false)
+  const [commencerError, setCommencerError] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -35,6 +39,20 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
     if (!file) return
     setPhoto(file)
     setPhotoPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const handleCommencer = async () => {
+    setCommencerError(null)
+    setCommencing(true)
+    try {
+      await commencerTicketMaintenance(ticket.id)
+      setStatutActuel('en_cours')
+      onCommence()
+    } catch (err) {
+      setCommencerError(err instanceof Error ? err.message : 'Une erreur est survenue.')
+    } finally {
+      setCommencing(false)
+    }
   }
 
   const handleSubmit = async () => {
@@ -82,11 +100,19 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
             <p className="text-sm text-gray-500">{ticket.appartement?.adresse}</p>
           </div>
           <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${URGENCE_STYLES[ticket.urgence]}`}
+            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+              ticket.est_en_retard ? EN_RETARD_STYLE : URGENCE_STYLES[ticket.urgence]
+            }`}
           >
-            Urgence {URGENCE_LABELS[ticket.urgence]}
+            {ticket.est_en_retard ? 'En retard' : `Urgence ${URGENCE_LABELS[ticket.urgence]}`}
           </span>
         </div>
+
+        {ticket.date_limite_intervention && (
+          <p className="mt-2 text-sm text-gray-500">
+            À effectuer avant {formatDateLimite(ticket.date_limite_intervention)}
+          </p>
+        )}
 
         {ticket.statut === 'a_refaire' && ticket.refus.length > 0 && (
           <p
@@ -131,6 +157,23 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
             ✅
           </span>
           <p className="text-base font-medium text-emerald-800">Envoyé au Manager pour validation</p>
+        </div>
+      ) : statutActuel === 'assigne' ? (
+        <div className="space-y-3 rounded-2xl border-2 border-gray-200 bg-white p-4 shadow-sm">
+          {commencerError && (
+            <p className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+              <span aria-hidden="true">⚠️</span>
+              {commencerError}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={handleCommencer}
+            disabled={commencing}
+            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-base font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {commencing ? 'Démarrage...' : 'Commencer le travail'}
+          </button>
         </div>
       ) : (
         <div className="space-y-4 rounded-2xl border-2 border-gray-200 bg-white p-4 shadow-sm">

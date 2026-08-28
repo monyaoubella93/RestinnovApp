@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchMesTicketsMaintenance } from '../api'
 import type { MonTicketMaintenance } from '../types'
-import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
+import { EN_RETARD_STYLE, formatDateLimite, URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 import { TicketDetailAgent } from './TicketDetailAgent'
 
 // Only "a_refaire" needs a clear, distinct callout in this list -- the
@@ -51,6 +51,11 @@ export function MesTicketsSection() {
           // back to "Mes tickets".
           chargerTickets()
         }}
+        onCommence={() => {
+          // Same rationale as onResolu -- keep the underlying list fresh in
+          // the background while the agent stays on the detail view.
+          chargerTickets()
+        }}
       />
     )
   }
@@ -90,11 +95,18 @@ export function MesTicketsSection() {
                   <p className="truncate text-sm text-gray-500">{ticket.appartement?.adresse}</p>
                 </div>
                 <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${URGENCE_STYLES[ticket.urgence]}`}
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                    ticket.est_en_retard ? EN_RETARD_STYLE : URGENCE_STYLES[ticket.urgence]
+                  }`}
                 >
-                  Urgence {URGENCE_LABELS[ticket.urgence]}
+                  {ticket.est_en_retard ? 'En retard' : `Urgence ${URGENCE_LABELS[ticket.urgence]}`}
                 </span>
               </div>
+              {ticket.date_limite_intervention && (
+                <p className="mt-1 text-xs text-gray-400">
+                  À effectuer avant {formatDateLimite(ticket.date_limite_intervention)}
+                </p>
+              )}
               {STATUT_BADGES[ticket.statut] && (
                 <span
                   className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUT_BADGES[ticket.statut]!.style}`}

@@ -14,3 +14,9 @@ export const URGENCE_STYLES: Record<TicketMaintenanceUrgence, string> = {
   normale: 'bg-blue-100 text-blue-800',
   haute: 'bg-red-100 text-red-800',
 }
+
+export const EN_RETARD_STYLE = 'bg-red-100 text-red-800'
+
+export function formatDateLimite(dateLimite: string): string {
+  return new Date(dateLimite).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}

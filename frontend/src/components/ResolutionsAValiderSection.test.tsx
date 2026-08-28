@@ -11,6 +11,8 @@ function ticketFixture(overrides: Partial<TicketMaintenance> = {}): TicketMainte
     appartement_id: 1,
     mission_origine_id: 1,
     agent_id: 5,
+    date_limite_intervention: null,
+    est_en_retard: false,
     description: null,
     description_manager: 'Changer le joint du robinet.',
     description_manager_audio_url: null,

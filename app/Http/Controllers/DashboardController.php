@@ -82,6 +82,7 @@ class DashboardController extends Controller
             ->whereIn('statut', [
                 TicketMaintenance::STATUT_OUVERT,
                 TicketMaintenance::STATUT_ASSIGNE,
+                TicketMaintenance::STATUT_EN_COURS,
                 TicketMaintenance::STATUT_A_REFAIRE,
             ])
             ->with('appartement:id,nom,adresse')

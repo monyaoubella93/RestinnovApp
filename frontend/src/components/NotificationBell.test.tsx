@@ -8,8 +8,10 @@ function notificationsFixture(overrides: Partial<NotificationsData> = {}): Notif
   return {
     menages_a_valider_count: 0,
     problemes_signales_count: 0,
+    alertes_maintenance_count: 0,
     menages_a_valider: [],
     problemes_signales: [],
+    alertes_maintenance: [],
     ...overrides,
   }
 }
@@ -163,6 +165,115 @@ describe('NotificationBell', () => {
     await user.click(screen.getByRole('button', { name: 'Notifications' }))
 
     expect(screen.getByText('Aucune notification en attente.')).toBeInTheDocument()
+  })
+
+  it('affiche un badge bleu quand seule une alerte "rappel" est en attente', async () => {
+    globalThis.fetch = mockFetch(
+      notificationsFixture({
+        alertes_maintenance_count: 1,
+        alertes_maintenance: [
+          {
+            id: 1,
+            niveau: 'rappel',
+            message: "Le ticket MNT-0001 arrive à échéance demain et l'agent n'a pas encore commencé.",
+            ticket_maintenance_id: 1,
+            appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' },
+          },
+        ],
+      }),
+    ) as typeof fetch
+
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+
+    const badge = await screen.findByTestId('notification-badge')
+    expect(badge).toHaveTextContent('1')
+    expect(badge).toHaveClass('bg-blue-600')
+  })
+
+  it('affiche un badge orange quand une alerte "urgente" est en attente (sans problème signalé)', async () => {
+    globalThis.fetch = mockFetch(
+      notificationsFixture({
+        alertes_maintenance_count: 1,
+        alertes_maintenance: [
+          {
+            id: 1,
+            niveau: 'urgente',
+            message: "Le ticket MNT-0001 est en retard, contactez l'agent Karim B.",
+            ticket_maintenance_id: 1,
+            appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' },
+          },
+        ],
+      }),
+    ) as typeof fetch
+
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+
+    const badge = await screen.findByTestId('notification-badge')
+    expect(badge).toHaveClass('bg-orange-500')
+  })
+
+  it('affiche un badge rouge quand une alerte "critique" est en attente, même sans problème signalé', async () => {
+    globalThis.fetch = mockFetch(
+      notificationsFixture({
+        alertes_maintenance_count: 1,
+        alertes_maintenance: [
+          {
+            id: 1,
+            niveau: 'critique',
+            message: 'Un séjour arrive bientôt dans un appartement dont le ticket de maintenance est toujours ouvert.',
+            ticket_maintenance_id: 1,
+            appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' },
+          },
+        ],
+      }),
+    ) as typeof fetch
+
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+
+    const badge = await screen.findByTestId('notification-badge')
+    expect(badge).toHaveClass('bg-red-600')
+  })
+
+  it('affiche les alertes de maintenance dans le panneau avec un badge de niveau par ligne', async () => {
+    const user = userEvent.setup()
+    const onNavigateToTicketsMaintenance = vi.fn()
+    globalThis.fetch = mockFetch(
+      notificationsFixture({
+        alertes_maintenance_count: 2,
+        alertes_maintenance: [
+          {
+            id: 1,
+            niveau: 'critique',
+            message: 'Alerte critique.',
+            ticket_maintenance_id: 1,
+            appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' },
+          },
+          {
+            id: 2,
+            niveau: 'rappel',
+            message: 'Alerte rappel.',
+            ticket_maintenance_id: 2,
+            appartement: { id: 2, nom: 'Zenith', adresse: '5 avenue de la Paix' },
+          },
+        ],
+      }),
+    ) as typeof fetch
+
+    render(
+      <NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={onNavigateToTicketsMaintenance} />,
+    )
+
+    await screen.findByTestId('notification-badge')
+    await user.click(screen.getByRole('button', { name: 'Notifications' }))
+
+    expect(screen.getByText('Alertes de maintenance')).toBeInTheDocument()
+    expect(screen.getByText('Critique')).toBeInTheDocument()
+    expect(screen.getByText('Rappel')).toBeInTheDocument()
+    expect(screen.getByText('Alerte critique.')).toBeInTheDocument()
+    expect(screen.getByText('Alerte rappel.')).toBeInTheDocument()
+
+    await user.click(screen.getByText('Alerte critique.'))
+    expect(onNavigateToTicketsMaintenance).toHaveBeenCalledTimes(1)
   })
 
   it('referme le panneau au clic en dehors', async () => {

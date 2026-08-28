@@ -11,9 +11,12 @@ export type TicketMaintenanceUrgence = 'basse' | 'normale' | 'haute'
 export type TicketMaintenanceStatut =
   | 'ouvert'
   | 'assigne'
+  | 'en_cours'
   | 'resolu_en_attente_validation'
   | 'resolu'
   | 'a_refaire'
+
+export type MaintenanceAlerteNiveau = 'info' | 'rappel' | 'urgente' | 'critique'
 
 export interface ChecklistModeleItem {
   id: number
@@ -121,6 +124,8 @@ export interface TicketMaintenance {
   appartement_id: number
   mission_origine_id: number | null
   agent_id: number | null
+  date_limite_intervention: string | null
+  est_en_retard: boolean
   description: string | null
   description_manager: string | null
   description_manager_audio_url: string | null
@@ -154,6 +159,8 @@ export interface MonTicketMaintenance {
   reference: string
   statut: TicketMaintenanceStatut
   urgence: TicketMaintenanceUrgence
+  date_limite_intervention: string | null
+  est_en_retard: boolean
   description_manager: string | null
   description_manager_audio_url: string | null
   photo_url: string | null
@@ -260,11 +267,21 @@ export interface NotificationProblemeSignale {
   appartement: { id: number; nom: string; adresse: string } | null
 }
 
+export interface AlerteMaintenance {
+  id: number
+  niveau: MaintenanceAlerteNiveau
+  message: string
+  ticket_maintenance_id: number
+  appartement: { id: number; nom: string; adresse: string } | null
+}
+
 export interface NotificationsData {
   problemes_signales_count: number
   menages_a_valider_count: number
+  alertes_maintenance_count: number
   problemes_signales: NotificationProblemeSignale[]
   menages_a_valider: DashboardMenageAValider[]
+  alertes_maintenance: AlerteMaintenance[]
 }
 
 export interface DashboardData {

@@ -11,6 +11,8 @@ function ticketFixture(overrides: Partial<TicketMaintenance> = {}): TicketMainte
     appartement_id: 1,
     mission_origine_id: 1,
     agent_id: 5,
+    date_limite_intervention: null,
+    est_en_retard: false,
     description: 'Le robinet fuit.',
     description_manager: 'Changer le joint.',
     description_manager_audio_url: null,
@@ -115,5 +117,35 @@ describe('HistoriqueTicketsSection', () => {
     render(<HistoriqueTicketsSection />)
 
     expect(await screen.findByText(/aucun ticket\./i)).toBeInTheDocument()
+  })
+
+  it('affiche le statut "En cours"', async () => {
+    globalThis.fetch = mockFetch([ticketFixture({ statut: 'en_cours' })]) as typeof fetch
+
+    render(<HistoriqueTicketsSection />)
+
+    expect(await screen.findByText('En cours')).toBeInTheDocument()
+  })
+
+  it("affiche la date limite d'intervention une fois dépliée", async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = mockFetch([ticketFixture({ date_limite_intervention: '2026-09-01' })]) as typeof fetch
+
+    render(<HistoriqueTicketsSection />)
+
+    await user.click(await screen.findByText('Le robinet fuit.'))
+
+    expect(screen.getByText(/01\/09\/2026/)).toBeInTheDocument()
+  })
+
+  it('affiche un badge "En retard" à la place du badge d\'urgence', async () => {
+    globalThis.fetch = mockFetch([
+      ticketFixture({ statut: 'assigne', date_limite_intervention: '2026-08-01', est_en_retard: true }),
+    ]) as typeof fetch
+
+    render(<HistoriqueTicketsSection />)
+
+    expect(await screen.findByText('En retard')).toBeInTheDocument()
+    expect(screen.queryByText('Urgence Normale')).not.toBeInTheDocument()
   })
 })

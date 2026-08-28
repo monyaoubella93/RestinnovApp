@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MaintenanceAlerte;
 use App\Models\MissionMenage;
 use App\Models\TicketMaintenance;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +23,7 @@ class NotificationController extends Controller
             ->whereIn('statut', [
                 TicketMaintenance::STATUT_OUVERT,
                 TicketMaintenance::STATUT_ASSIGNE,
+                TicketMaintenance::STATUT_EN_COURS,
                 TicketMaintenance::STATUT_A_REFAIRE,
             ])
             ->with('appartement:id,nom,adresse')
@@ -43,11 +45,33 @@ class NotificationController extends Controller
                 'appartement' => $mission->sejour?->appartement,
             ]);
 
+        // Persisted (unlike the two lists above, which are live-computed):
+        // "l'agent a commencé" is a one-off event a live query can't
+        // express, and the daily retard job needs somewhere to record
+        // "already alerted today". Both naturally drop out of this feed
+        // once their ticket reaches "resolu", same as problemes_signales
+        // above -- no separate mark-as-read step.
+        $alertesMaintenance = MaintenanceAlerte::query()
+            ->whereHas('ticketMaintenance', fn ($q) => $q->where('statut', '!=', TicketMaintenance::STATUT_RESOLU))
+            ->with('ticketMaintenance:id,appartement_id', 'ticketMaintenance.appartement:id,nom,adresse')
+            ->latest()
+            ->latest('id')
+            ->get()
+            ->map(fn (MaintenanceAlerte $alerte) => [
+                'id' => $alerte->id,
+                'niveau' => $alerte->niveau,
+                'message' => $alerte->message,
+                'ticket_maintenance_id' => $alerte->ticket_maintenance_id,
+                'appartement' => $alerte->ticketMaintenance?->appartement,
+            ]);
+
         return response()->json([
             'problemes_signales_count' => $problemesSignales->count(),
             'menages_a_valider_count' => $menagesAValider->count(),
+            'alertes_maintenance_count' => $alertesMaintenance->count(),
             'problemes_signales' => $problemesSignales,
             'menages_a_valider' => $menagesAValider,
+            'alertes_maintenance' => $alertesMaintenance,
         ]);
     }
 }

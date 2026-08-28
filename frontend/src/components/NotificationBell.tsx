@@ -1,8 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
 import { fetchNotifications } from '../api'
-import type { NotificationsData } from '../types'
+import type { MaintenanceAlerteNiveau, NotificationsData } from '../types'
 
 const POLL_INTERVAL_MS = 30000
+
+// Single source of truth for the 3 alert severity levels shown in the bell
+// (a 4th "info" level exists on the model but is not produced by the
+// scheduled job today) -- rappel stays neutral/blue like the rest of the
+// bell's normal notifications, urgente is orange, critique is red.
+const ALERTE_NIVEAU_LABELS: Record<MaintenanceAlerteNiveau, string> = {
+  info: 'Info',
+  rappel: 'Rappel',
+  urgente: 'Urgente',
+  critique: 'Critique',
+}
+
+const ALERTE_NIVEAU_STYLES: Record<MaintenanceAlerteNiveau, string> = {
+  info: 'bg-blue-100 text-blue-800',
+  rappel: 'bg-blue-100 text-blue-800',
+  urgente: 'bg-orange-100 text-orange-800',
+  critique: 'bg-red-100 text-red-800',
+}
 
 interface NotificationBellProps {
   onNavigateToSejour: (sejourId: number) => void
@@ -44,16 +62,26 @@ export function NotificationBell({ onNavigateToSejour, onNavigateToTicketsMainte
 
   const menagesCount = data?.menages_a_valider_count ?? 0
   const problemesCount = data?.problemes_signales_count ?? 0
-  const totalCount = menagesCount + problemesCount
+  const alertes = data?.alertes_maintenance ?? []
+  const alertesCount = data?.alertes_maintenance_count ?? 0
+  const critiqueCount = alertes.filter((a) => a.niveau === 'critique').length
+  const urgenteCount = alertes.filter((a) => a.niveau === 'urgente').length
+  const totalCount = menagesCount + problemesCount + alertesCount
 
-  // A problème signalé is always the more urgent category -- it wins the
-  // badge color even when ménages à valider are also pending.
+  // A problème signalé (or a critique alert -- an incoming guest, the most
+  // urgent kind) is always the most urgent category -- it wins the badge
+  // color. Then urgente alerts (orange), then ménages à valider (purple),
+  // then any remaining rappel/info alert (blue).
   const badgeStyle =
-    problemesCount > 0
+    problemesCount > 0 || critiqueCount > 0
       ? 'bg-red-600 text-white'
-      : menagesCount > 0
-        ? 'bg-purple-600 text-white'
-        : null
+      : urgenteCount > 0
+        ? 'bg-orange-500 text-white'
+        : menagesCount > 0
+          ? 'bg-purple-600 text-white'
+          : alertesCount > 0
+            ? 'bg-blue-600 text-white'
+            : null
 
   const handleToggle = () => {
     if (!open) refresh()
@@ -142,6 +170,38 @@ export function NotificationBell({ onNavigateToSejour, onNavigateToTicketsMainte
                           {probleme.appartement
                             ? `${probleme.appartement.nom} — ${probleme.appartement.adresse}`
                             : 'Appartement supprimé'}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {alertesCount > 0 && (
+                <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                    Alertes de maintenance
+                    <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-800">
+                      {alertesCount}
+                    </span>
+                  </h3>
+                  <ul className="mt-2 divide-y divide-gray-200">
+                    {alertes.map((alerte) => (
+                      <li key={alerte.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpen(false)
+                            onNavigateToTicketsMaintenance()
+                          }}
+                          className="w-full rounded-md px-1 py-2 text-left text-sm text-gray-900 hover:bg-gray-100"
+                        >
+                          <span
+                            className={`mr-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${ALERTE_NIVEAU_STYLES[alerte.niveau]}`}
+                          >
+                            {ALERTE_NIVEAU_LABELS[alerte.niveau]}
+                          </span>
+                          {alerte.message}
                         </button>
                       </li>
                     ))}

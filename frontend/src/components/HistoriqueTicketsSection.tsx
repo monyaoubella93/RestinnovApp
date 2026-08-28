@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { fetchTicketsMaintenance, resolveStorageUrl } from '../api'
 import type { TicketMaintenance, TicketMaintenanceStatut } from '../types'
-import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
+import { EN_RETARD_STYLE, formatDateLimite, URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 
 const STATUT_LABELS: Record<TicketMaintenanceStatut, string> = {
   ouvert: 'Ouvert',
   assigne: 'Assigné',
+  en_cours: 'En cours',
   resolu_en_attente_validation: 'Résolu — en attente de validation',
   a_refaire: 'À refaire',
   resolu: 'Résolu',
@@ -14,6 +15,7 @@ const STATUT_LABELS: Record<TicketMaintenanceStatut, string> = {
 const STATUT_STYLES: Record<TicketMaintenanceStatut, string> = {
   ouvert: 'bg-amber-100 text-amber-800',
   assigne: 'bg-indigo-100 text-indigo-800',
+  en_cours: 'bg-sky-100 text-sky-800',
   resolu_en_attente_validation: 'bg-purple-100 text-purple-800',
   a_refaire: 'bg-red-100 text-red-800',
   resolu: 'bg-green-100 text-green-800',
@@ -43,8 +45,12 @@ function HistoriqueTicketCard({ ticket }: { ticket: TicketMaintenance }) {
           <p className="text-xs text-gray-400">{formatDate(ticket.created_at)}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${URGENCE_STYLES[ticket.urgence]}`}>
-            Urgence {URGENCE_LABELS[ticket.urgence]}
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              ticket.est_en_retard ? EN_RETARD_STYLE : URGENCE_STYLES[ticket.urgence]
+            }`}
+          >
+            {ticket.est_en_retard ? 'En retard' : `Urgence ${URGENCE_LABELS[ticket.urgence]}`}
           </span>
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUT_STYLES[ticket.statut]}`}>
             {STATUT_LABELS[ticket.statut]}
@@ -54,6 +60,13 @@ function HistoriqueTicketCard({ ticket }: { ticket: TicketMaintenance }) {
 
       {expanded && (
         <div className="space-y-3 border-t border-gray-100 p-4 pt-3">
+          {ticket.date_limite_intervention && (
+            <p className="text-sm text-gray-700">
+              <span className="font-medium">Date limite d'intervention : </span>
+              {formatDateLimite(ticket.date_limite_intervention)}
+            </p>
+          )}
+
           {ticket.agent && (
             <p className="text-sm text-gray-700">
               <span className="font-medium">Agent assigné : </span>
@@ -148,6 +161,7 @@ export function HistoriqueTicketsSection() {
           <option value="">Tous</option>
           <option value="ouvert">Ouvert</option>
           <option value="assigne">Assigné</option>
+          <option value="en_cours">En cours</option>
           <option value="resolu_en_attente_validation">Résolu — en attente de validation</option>
           <option value="a_refaire">À refaire</option>
           <option value="resolu">Résolu</option>
