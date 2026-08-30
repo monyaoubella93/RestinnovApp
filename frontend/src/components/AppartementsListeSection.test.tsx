@@ -41,9 +41,11 @@ function mockFetchAppartements(
   all: Appartement[],
   historique: Record<number, HistoriqueMission[]> = {},
   details: Record<number, AppartementDetail> = {},
+  deleteBlockedMessage: Record<number, string> = {},
 ) {
-  return vi.fn(async (input: RequestInfo | URL) => {
+  return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input))
+    const method = init?.method ?? 'GET'
 
     const historiqueMatch = url.pathname.match(/^\/api\/appartements\/(\d+)\/historique$/)
     if (historiqueMatch) {
@@ -52,6 +54,13 @@ function mockFetchAppartements(
     }
 
     const detailMatch = url.pathname.match(/^\/api\/appartements\/(\d+)$/)
+    if (detailMatch && method === 'DELETE') {
+      const id = Number(detailMatch[1])
+      if (deleteBlockedMessage[id]) {
+        return new Response(JSON.stringify({ message: deleteBlockedMessage[id] }), { status: 422 })
+      }
+      return new Response(null, { status: 204 })
+    }
     if (detailMatch) {
       const id = Number(detailMatch[1])
       const appartement = all.find((a) => a.id === id)
@@ -440,6 +449,63 @@ describe('AppartementsListeSection', () => {
       await user.click(screen.getByRole('button', { name: 'Historique ménage' }))
 
       expect(await screen.findByText(/aucune mission de ménage/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('suppression d\'un appartement', () => {
+    it('demande confirmation avant de supprimer, puis retire la ligne et affiche un succès', async () => {
+      globalThis.fetch = mockFetchAppartements([appartementFixture()]) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /supprimer l'appartement loft bastille/i }))
+
+      expect(
+        screen.getByText('Êtes-vous sûr de vouloir supprimer Loft Bastille ? Cette action est irréversible.'),
+      ).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Confirmer la suppression' }))
+
+      expect(await screen.findByText('Appartement supprimé avec succès.')).toBeInTheDocument()
+      expect(screen.queryByText('Loft Bastille')).not.toBeInTheDocument()
+      expect(await screen.findByText('0 appartements trouvés')).toBeInTheDocument()
+    })
+
+    it('annuler la confirmation ne supprime rien', async () => {
+      const fetchMock = mockFetchAppartements([appartementFixture()])
+      globalThis.fetch = fetchMock as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /supprimer l'appartement loft bastille/i }))
+      await user.click(screen.getByRole('button', { name: 'Annuler' }))
+
+      expect(screen.queryByText(/Cette action est irréversible/)).not.toBeInTheDocument()
+      expect(screen.getByText('Loft Bastille')).toBeInTheDocument()
+      expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/appartements/1'), expect.objectContaining({ method: 'DELETE' }))
+    })
+
+    it('affiche le message de blocage du backend et garde la ligne quand la suppression est refusée', async () => {
+      globalThis.fetch = mockFetchAppartements([appartementFixture()], {}, {}, {
+        1: 'Impossible de supprimer : cet appartement a des séjours actifs ou à venir.',
+      }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /supprimer l'appartement loft bastille/i }))
+      await user.click(screen.getByRole('button', { name: 'Confirmer la suppression' }))
+
+      expect(
+        await screen.findByText('Impossible de supprimer : cet appartement a des séjours actifs ou à venir.'),
+      ).toBeInTheDocument()
+      expect(screen.getByText('Loft Bastille')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Confirmer la suppression' })).toBeInTheDocument()
     })
   })
 })

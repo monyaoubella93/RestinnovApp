@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HasFriendlyUploadMessages;
 use App\Models\Appartement;
+use App\Models\AuditLog;
 use App\Models\ChargeAppartement;
 use App\Models\MissionMenage;
 use App\Models\Sejour;
@@ -267,6 +268,57 @@ class AppartementController extends Controller
         }
 
         return response()->json($appartement->fresh()->load(['checklistModeles', 'agentHabituel', 'proprietaire', 'chargesActives']));
+    }
+
+    /**
+     * Manager-only soft delete (never a real DELETE, see Appartement's
+     * SoftDeletes trait): blocked while the appartement still has a séjour
+     * that hasn't concluded (a_venir/en_cours -- termine/annule don't
+     * count) or a maintenance ticket that isn't fully resolved, since
+     * deleting it out from under either would orphan work still in
+     * progress. The action is recorded to audit_logs (who/when/what) --
+     * the route itself is already manager-only via the role:manager
+     * middleware group it sits in, this isn't a second authorization
+     * layer, just where the log entry captures who did it.
+     */
+    public function destroy(Request $request, Appartement $appartement): JsonResponse
+    {
+        $aUnSejourActifOuAVenir = $appartement->sejours()
+            ->whereIn('statut', [Sejour::STATUT_A_VENIR, Sejour::STATUT_EN_COURS])
+            ->exists();
+
+        if ($aUnSejourActifOuAVenir) {
+            return response()->json([
+                'message' => 'Impossible de supprimer : cet appartement a des séjours actifs ou à venir.',
+            ], 422);
+        }
+
+        $aUnTicketNonResolu = $appartement->ticketsMaintenance()
+            ->whereIn('statut', [
+                TicketMaintenance::STATUT_OUVERT,
+                TicketMaintenance::STATUT_ASSIGNE,
+                TicketMaintenance::STATUT_RESOLU_EN_ATTENTE_VALIDATION,
+                TicketMaintenance::STATUT_A_REFAIRE,
+            ])
+            ->exists();
+
+        if ($aUnTicketNonResolu) {
+            return response()->json([
+                'message' => 'Impossible de supprimer : cet appartement a un ticket de maintenance non résolu.',
+            ], 422);
+        }
+
+        $cible = "Appartement #{$appartement->id} ({$appartement->nom})";
+
+        $appartement->delete();
+
+        AuditLog::create([
+            'utilisateur_id' => $request->user()->id,
+            'action' => 'appartement.supprime',
+            'cible' => $cible,
+        ]);
+
+        return response()->json(null, 204);
     }
 
     /**

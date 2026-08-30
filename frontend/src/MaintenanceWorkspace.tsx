@@ -88,9 +88,7 @@ export function MaintenanceWorkspace() {
         aria-label={t('maintenance.workspaceNavLabel')}
       >
         <div className="flex items-center px-1 pb-5">
-          <span className="flex h-[38px] w-fit shrink-0 items-center justify-center rounded-field bg-white px-2">
-            <img src="/logo.png" alt={t('common.brand')} className="h-[26px] w-auto object-contain" />
-          </span>
+          <img src="/logo.png" alt={t('common.brand')} className="h-[38px] w-auto object-contain" />
         </div>
 
         <div className="flex flex-col gap-1">

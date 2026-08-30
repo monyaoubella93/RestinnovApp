@@ -36,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/appartements', [AppartementController::class, 'store']);
         Route::get('/appartements/{appartement}', [AppartementController::class, 'show']);
         Route::patch('/appartements/{appartement}', [AppartementController::class, 'update']);
+        Route::delete('/appartements/{appartement}', [AppartementController::class, 'destroy']);
         Route::get('/appartements/{appartement}/historique', [AppartementController::class, 'historique']);
         Route::get('/appartements/{appartement}/releve', [AppartementController::class, 'releve']);
         Route::get('/appartements/{appartement}/releve/pdf', [AppartementController::class, 'relevePdf']);
