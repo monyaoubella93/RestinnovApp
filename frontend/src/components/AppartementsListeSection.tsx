@@ -11,7 +11,7 @@ interface AppartementsListeSectionProps {
   onNavigateToCreer: () => void
   onEditAppartement: (appartement: Appartement) => void
   onNavigateToCreerSejour?: () => void
-  onNavigateToReleves?: () => void
+  onNavigateToTicket?: (ticketId: number) => void
   initialAppartement?: Appartement | null
 }
 
@@ -90,7 +90,7 @@ export function AppartementsListeSection({
   onNavigateToCreer,
   onEditAppartement,
   onNavigateToCreerSejour,
-  onNavigateToReleves,
+  onNavigateToTicket,
   initialAppartement,
 }: AppartementsListeSectionProps) {
   const [search, setSearch] = useState('')
@@ -362,16 +362,7 @@ export function AppartementsListeSection({
               </section>
 
               <section className="mt-4 border-t border-border-default pt-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h4 className="text-sm font-bold text-ink">Résumé financier (mois en cours)</h4>
-                  <button
-                    type="button"
-                    onClick={() => onNavigateToReleves?.()}
-                    className="text-sm font-semibold text-brand-light hover:text-brand"
-                  >
-                    Voir le relevé complet →
-                  </button>
-                </div>
+                <h4 className="text-sm font-bold text-ink">Résumé financier (mois en cours)</h4>
                 <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div className="rounded-field border border-border-default p-3">
                     <p className="text-xs font-semibold text-ink-tertiary">Revenus</p>
@@ -454,13 +445,20 @@ export function AppartementsListeSection({
                   {detail.tickets_maintenance.length > 0 ? (
                     <ul className="mt-2 space-y-1 text-sm">
                       {detail.tickets_maintenance.map((ticket) => (
-                        <li key={ticket.id} className="flex flex-wrap items-center justify-between gap-2 rounded-field bg-table-header-bg px-3 py-2">
-                          <span className="text-ink">
-                            {ticket.reference} <span className="text-ink-tertiary">— {ticket.description || 'Aucune description.'}</span>
-                          </span>
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TICKET_STATUT_STYLES[ticket.statut]}`}>
-                            {TICKET_STATUT_LABELS[ticket.statut]}
-                          </span>
+                        <li key={ticket.id}>
+                          <button
+                            type="button"
+                            aria-label={`Voir le détail du ticket ${ticket.reference}`}
+                            onClick={() => onNavigateToTicket?.(ticket.id)}
+                            className="flex w-full flex-wrap items-center justify-between gap-2 rounded-field bg-table-header-bg px-3 py-2 text-left hover:bg-border-light"
+                          >
+                            <span className="text-ink">
+                              {ticket.reference} <span className="text-ink-tertiary">— {ticket.description || 'Aucune description.'}</span>
+                            </span>
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TICKET_STATUT_STYLES[ticket.statut]}`}>
+                              {TICKET_STATUT_LABELS[ticket.statut]}
+                            </span>
+                          </button>
                         </li>
                       ))}
                     </ul>

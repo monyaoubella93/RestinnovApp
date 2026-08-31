@@ -191,7 +191,11 @@ async function expandTicket(user: ReturnType<typeof userEvent.setup>, descriptio
   await user.click(await screen.findByText(description))
 }
 
-function renderSection(tickets: TicketMaintenance[], agents: Agent[] = [], props: { initialStatutFilter?: TicketMaintenance['statut'] | '' } = {}) {
+function renderSection(
+  tickets: TicketMaintenance[],
+  agents: Agent[] = [],
+  props: { initialStatutFilter?: TicketMaintenance['statut'] | ''; initialTicketId?: number | null } = {},
+) {
   globalThis.fetch = mockFetch(tickets, agents) as typeof fetch
   return render(<TicketsMaintenanceSection appartements={APPARTEMENTS} {...props} />)
 }
@@ -573,6 +577,30 @@ describe('TicketsMaintenanceSection', () => {
     await screen.findByText('Ticket en attente')
     expect(screen.queryByText('Ticket ouvert')).not.toBeInTheDocument()
     expect(screen.getByLabelText(/^statut$/i)).toHaveValue('resolu_en_attente_validation')
+  })
+
+  it('ouvre directement le détail complet du ticket ciblé (ex. depuis l\'historique de maintenance d\'un appartement)', async () => {
+    renderSection(
+      [
+        ticketFixture({ id: 1, statut: 'resolu', description: 'Autre ticket', photo_apres: null }),
+        ticketFixture({
+          id: 2,
+          statut: 'resolu',
+          description: 'Chauffe-eau réparé',
+          photo_apres: 'tickets-maintenance/apres.jpg',
+          cout_reparation: '80.00',
+        }),
+      ],
+      [],
+      { initialTicketId: 2 },
+    )
+
+    await screen.findByText('Chauffe-eau réparé')
+
+    // The targeted ticket's full detail (photo/coût) is already visible --
+    // no extra click needed -- while the other ticket stays collapsed.
+    expect(screen.getByAltText('Photo après réparation')).toBeInTheDocument()
+    expect(screen.getByText('Coût : 80.00 MAD')).toBeInTheDocument()
   })
 
   // --- Vue "Groupé par appartement" ---

@@ -167,6 +167,7 @@ function App() {
   const [pendingAppartementDetail, setPendingAppartementDetail] = useState<Appartement | null>(null)
   const [pendingStatutFilter, setPendingStatutFilter] = useState<SejourStatut | ''>('')
   const [pendingTicketStatutFilter, setPendingTicketStatutFilter] = useState<TicketMaintenanceStatut | ''>('')
+  const [pendingTicketId, setPendingTicketId] = useState<number | null>(null)
   const { user, logout } = useAuth()
 
   usePwaIdentity('manager')
@@ -178,6 +179,7 @@ function App() {
     setPendingAppartementDetail(null)
     setPendingStatutFilter('')
     setPendingTicketStatutFilter('')
+    setPendingTicketId(null)
   }
 
   const handleNavigateToSejourDetail = (sejourId: number) => {
@@ -198,6 +200,11 @@ function App() {
   const handleNavigateToTicketsMaintenance = (statut?: TicketMaintenanceStatut) => {
     navigateTo('maintenance-tickets')
     if (statut) setPendingTicketStatutFilter(statut)
+  }
+
+  const handleNavigateToTicketDetail = (ticketId: number) => {
+    navigateTo('maintenance-tickets')
+    setPendingTicketId(ticketId)
   }
 
   const loadData = async () => {
@@ -729,7 +736,7 @@ function App() {
                 setEditingSejour(null)
                 navigateTo('sejour-creer')
               }}
-              onNavigateToReleves={() => navigateTo('dashboard')}
+              onNavigateToTicket={handleNavigateToTicketDetail}
               initialAppartement={pendingAppartementDetail}
             />
           )}
@@ -763,7 +770,11 @@ function App() {
             <TicketsMaintenanceSection appartements={appartements} initialStatutFilter="resolu_en_attente_validation" />
           )}
           {activeTab === 'maintenance-tickets' && (
-            <TicketsMaintenanceSection appartements={appartements} initialStatutFilter={pendingTicketStatutFilter} />
+            <TicketsMaintenanceSection
+              appartements={appartements}
+              initialStatutFilter={pendingTicketStatutFilter}
+              initialTicketId={pendingTicketId}
+            />
           )}
           </div>
         </main>

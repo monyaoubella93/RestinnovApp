@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   assignerTicketMaintenance,
   fetchTicketsMaintenance,
@@ -402,17 +402,19 @@ function TicketMaintenanceCard({
   onAssigner,
   onValider,
   onRefuser,
+  defaultExpanded,
 }: {
   ticket: TicketMaintenance
   agents: Agent[]
   onAssigner: (ticketId: number, values: AssignerValues) => Promise<void>
   onValider: (ticketId: number) => Promise<void>
   onRefuser: (ticketId: number, input: RefuserInput) => Promise<void>
+  defaultExpanded?: boolean
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(defaultExpanded ?? false)
 
   return (
-    <li className="rounded-field border border-border-default">
+    <li id={`ticket-maintenance-${ticket.id}`} className="rounded-field border border-border-default">
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
@@ -571,6 +573,7 @@ function AppartementGroupeCard({
 export interface TicketsMaintenanceSectionProps {
   appartements: Appartement[]
   initialStatutFilter?: TicketMaintenanceStatut | ''
+  initialTicketId?: number | null
 }
 
 /**
@@ -581,7 +584,7 @@ export interface TicketsMaintenanceSectionProps {
  * one action relevant to its current statut (assigner / valider-refuser /
  * nothing to do yet).
  */
-export function TicketsMaintenanceSection({ appartements, initialStatutFilter }: TicketsMaintenanceSectionProps) {
+export function TicketsMaintenanceSection({ appartements, initialStatutFilter, initialTicketId }: TicketsMaintenanceSectionProps) {
   const [vue, setVue] = useState<Vue>('liste')
   const [tickets, setTickets] = useState<TicketMaintenance[]>([])
   const [groupes, setGroupes] = useState<TicketMaintenanceParAppartement[]>([])
@@ -630,6 +633,21 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter }:
     if (initialStatutFilter) setStatutFilter(initialStatutFilter)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialStatutFilter])
+
+  const scrolledToInitialTicket = useRef(false)
+
+  // Scrolls the targeted ticket into view once it's actually present in the
+  // loaded list -- e.g. coming from an appartement's Maintenance history,
+  // where the ticket may otherwise be buried far down a long list.
+  useEffect(() => {
+    if (!initialTicketId || scrolledToInitialTicket.current) return
+    if (!tickets.some((ticket) => ticket.id === initialTicketId)) return
+
+    // scrollIntoView is missing in the jsdom test environment -- guard it
+    // rather than skip the ref lookup, so this stays a pure UX nicety.
+    document.getElementById(`ticket-maintenance-${initialTicketId}`)?.scrollIntoView?.({ block: 'start' })
+    scrolledToInitialTicket.current = true
+  }, [tickets, initialTicketId])
 
   const handleAssigner = async (ticketId: number, values: AssignerValues) => {
     await assignerTicketMaintenance(ticketId, {
@@ -817,6 +835,7 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter }:
               onAssigner={handleAssigner}
               onValider={handleValider}
               onRefuser={handleRefuser}
+              defaultExpanded={ticket.id === initialTicketId}
             />
           ))}
         </ul>
