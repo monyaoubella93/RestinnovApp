@@ -6,9 +6,9 @@ import i18n from '../i18n'
 import type { MissionMenage, ProduitCatalogue, ProduitCatalogueUtilise } from '../types'
 
 const catalogue: ProduitCatalogue[] = [
-  { id: 1, nom: 'Javel', prix: '12.50', photo_url: null, actif: true },
-  { id: 2, nom: 'Sac poubelle', prix: '7.50', photo_url: 'produits-catalogue/sac.jpg', actif: true },
-  { id: 3, nom: 'Ancien produit', prix: '99.00', photo_url: null, actif: false },
+  { id: 1, nom: 'Javel', nom_ar: null, prix: '12.50', photo_url: null, actif: true },
+  { id: 2, nom: 'Sac poubelle', nom_ar: null, prix: '7.50', photo_url: 'produits-catalogue/sac.jpg', actif: true },
+  { id: 3, nom: 'Ancien produit', nom_ar: null, prix: '99.00', photo_url: null, actif: false },
 ]
 
 function produitUtilise(base: ProduitCatalogue, pivot: ProduitCatalogueUtilise['pivot']): ProduitCatalogueUtilise {
@@ -58,17 +58,35 @@ describe('FraisMenageSection', () => {
     expect(screen.queryByText(/Ancien produit/)).not.toBeInTheDocument()
   })
 
-  it("le nom d'un produit du catalogue (donnée définie par le Manager en français) reste en français même quand l'agent a choisi l'arabe comme langue d'interface", async () => {
+  it("le nom d'un produit sans traduction arabe reste en français même quand l'agent a choisi l'arabe comme langue d'interface", async () => {
     await i18n.changeLanguage('ar')
 
     renderSection()
 
-    // The catalogue product names are reference data set by the Manager --
-    // they must never be auto-translated, unlike the surrounding interface
-    // chrome (which does switch to Arabic).
+    // No nom_ar was set by the Manager for these products -- falls back to
+    // the French name rather than showing nothing.
     expect(screen.getByText('Javel')).toBeInTheDocument()
     expect(screen.getByText('Sac poubelle')).toBeInTheDocument()
-    expect(screen.queryByText(/جافيل|صابون|كيس/)).not.toBeInTheDocument()
+  })
+
+  it("affiche le nom arabe du produit quand renseigné et que l'agent a choisi l'arabe", async () => {
+    await i18n.changeLanguage('ar')
+
+    renderSection({
+      catalogue: [{ id: 1, nom: 'Javel', nom_ar: 'جافيل', prix: '12.50', photo_url: null, actif: true }],
+    })
+
+    expect(screen.getByText('جافيل')).toBeInTheDocument()
+    expect(screen.queryByText('Javel')).not.toBeInTheDocument()
+  })
+
+  it("garde le nom français d'un produit traduit quand l'agent a choisi le français", () => {
+    renderSection({
+      catalogue: [{ id: 1, nom: 'Javel', nom_ar: 'جافيل', prix: '12.50', photo_url: null, actif: true }],
+    })
+
+    expect(screen.getByText('Javel')).toBeInTheDocument()
+    expect(screen.queryByText('جافيل')).not.toBeInTheDocument()
   })
 
   it('affiche la photo de référence du produit quand présente', () => {

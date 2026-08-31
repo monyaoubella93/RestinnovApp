@@ -67,6 +67,7 @@ class SejourCheckoutService
             foreach ($checklistModele->items as $item) {
                 $mission->checklistItems()->create([
                     'libelle' => $item->libelle,
+                    'libelle_ar' => $item->libelle_ar,
                     'checklist_modele_nom' => $checklistModele->nom,
                     'photo_reference_url' => $item->photo_url,
                     'ordre' => $ordre++,

@@ -4,7 +4,7 @@ import type { ChecklistModele } from '../types'
 
 interface ChecklistModeleItemsEditorProps {
   checklistModele: ChecklistModele
-  onAddItem: (checklistModeleId: number, libelle: string, photo?: File | null) => Promise<void>
+  onAddItem: (checklistModeleId: number, libelle: string, libelleAr?: string | null, photo?: File | null) => Promise<void>
   onDeplacerItem: (itemId: number, direction: 'haut' | 'bas') => Promise<void>
   onDeleteItem: (itemId: number) => Promise<void>
 }
@@ -16,6 +16,7 @@ export function ChecklistModeleItemsEditor({
   onDeleteItem,
 }: ChecklistModeleItemsEditorProps) {
   const [libelle, setLibelle] = useState('')
+  const [libelleAr, setLibelleAr] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -28,8 +29,9 @@ export function ChecklistModeleItemsEditor({
     setError(null)
     setAdding(true)
     try {
-      await onAddItem(checklistModele.id, libelle.trim(), photo)
+      await onAddItem(checklistModele.id, libelle.trim(), libelleAr.trim() || null, photo)
       setLibelle('')
+      setLibelleAr('')
       setPhoto(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
     } catch (err) {
@@ -60,7 +62,10 @@ export function ChecklistModeleItemsEditor({
                     className="h-8 w-8 shrink-0 rounded object-cover"
                   />
                 )}
-                <span className="truncate text-ink-secondary">{item.libelle}</span>
+                <span className="truncate text-ink-secondary">
+                  {item.libelle}
+                  {item.libelle_ar && <span className="font-arabic text-ink-tertiary"> · {item.libelle_ar}</span>}
+                </span>
               </span>
               <div className="flex shrink-0 items-center gap-1">
                 <button
@@ -99,13 +104,36 @@ export function ChecklistModeleItemsEditor({
 
       <div className="mt-2 flex flex-wrap items-end gap-2">
         <div className="min-w-0 flex-1">
+          <label
+            htmlFor={`nouvel_item_libelle_${checklistModele.id}`}
+            className="block text-xs font-semibold text-ink-secondary"
+          >
+            Nom (français)
+          </label>
           <input
+            id={`nouvel_item_libelle_${checklistModele.id}`}
             type="text"
             value={libelle}
             onChange={(e) => setLibelle(e.target.value)}
             placeholder="ex. Passer l'aspirateur"
-            aria-label={`Nouvel item pour ${checklistModele.nom}`}
-            className="block w-full rounded-field border border-border-default px-3 py-1.5 text-sm text-ink focus:border-brand-light focus:outline-none"
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-1.5 text-sm text-ink focus:border-brand-light focus:outline-none"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <label
+            htmlFor={`nouvel_item_libelle_ar_${checklistModele.id}`}
+            className="block text-xs font-semibold text-ink-secondary"
+          >
+            Nom (arabe) — optionnel
+          </label>
+          <input
+            id={`nouvel_item_libelle_ar_${checklistModele.id}`}
+            type="text"
+            dir="rtl"
+            value={libelleAr}
+            onChange={(e) => setLibelleAr(e.target.value)}
+            placeholder="مثال: تنظيف الأرضية"
+            className="font-arabic mt-1 block w-full rounded-field border border-border-default px-3 py-1.5 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
         <div>

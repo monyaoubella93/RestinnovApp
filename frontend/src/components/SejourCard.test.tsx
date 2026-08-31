@@ -154,7 +154,7 @@ describe('SejourCard', () => {
           vue: true,
           produits: [],
           checklist_items: [
-            { id: 1, mission_menage_id: 10, libelle: 'Changer les draps', coche: true, photo_url: null, photo_reference_url: null, ordre: 0 },
+            { id: 1, mission_menage_id: 10, libelle: 'Changer les draps', libelle_ar: null, coche: true, photo_url: null, photo_reference_url: null, ordre: 0 },
           ],
           produits_signales: [
             {
@@ -276,8 +276,8 @@ describe('SejourCard', () => {
   it('n\'expose aucune saisie photo/prix produit au Manager : lecture seule uniquement', async () => {
     const user = userEvent.setup()
     const catalogue = [
-      { id: 1, nom: 'Javel', prix: 12, photo_url: null, actif: true },
-      { id: 2, nom: 'Éponges', prix: 8, photo_url: null, actif: true },
+      { id: 1, nom: 'Javel', nom_ar: null, prix: 12, photo_url: null, actif: true },
+      { id: 2, nom: 'Éponges', nom_ar: null, prix: 8, photo_url: null, actif: true },
     ]
 
     renderCard(
@@ -293,7 +293,7 @@ describe('SejourCard', () => {
           produits: [
             {
               id: 1,
-              nom: 'Javel',
+              nom: 'Javel', nom_ar: null,
               prix: 12,
               photo_url: null,
               actif: true,

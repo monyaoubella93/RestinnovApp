@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type UpdateProduitUtiliseInput, resolveStorageUrl } from '../api'
 import type { MissionMenage, ProduitCatalogue } from '../types'
+import { resolveLocalizedLabel } from '../utils/localization'
 import { friendlyUploadErrorMessage } from '../utils/uploadError'
 
 interface FraisMenageSectionProps {
@@ -36,7 +37,7 @@ export function FraisMenageSection({
   onSignalerProduit,
   readOnly = false,
 }: FraisMenageSectionProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [forfait, setForfait] = useState(String(missionMenage.frais_forfait))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -217,6 +218,7 @@ export function FraisMenageSection({
               const utilise = produitsUtilises.find((p) => p.id === produit.id)
               const busy = savingProduitId === produit.id
               const produitError = produitErrors[produit.id]
+              const nom = resolveLocalizedLabel(produit.nom, produit.nom_ar, i18n.language)
 
               return (
                 <div key={produit.id} className="rounded-field border border-border-default px-3 py-2 text-sm">
@@ -224,11 +226,11 @@ export function FraisMenageSection({
                     {produit.photo_url && (
                       <img
                         src={resolveStorageUrl(produit.photo_url)}
-                        alt={t('menage.frais.photoOf', { nom: produit.nom })}
+                        alt={t('menage.frais.photoOf', { nom })}
                         className="h-6 w-6 shrink-0 rounded object-cover"
                       />
                     )}
-                    <span className="flex-1 text-ink">{produit.nom}</span>
+                    <span className="flex-1 text-ink">{nom}</span>
 
                     {utilise ? (
                       utilise.pivot.type_utilisation === 'stock_existant' ? (
@@ -246,7 +248,7 @@ export function FraisMenageSection({
                           {utilise.pivot.photo_url && (
                             <img
                               src={resolveStorageUrl(utilise.pivot.photo_url)}
-                              alt={t('menage.frais.photoPreuveAlt', { nom: produit.nom })}
+                              alt={t('menage.frais.photoPreuveAlt', { nom })}
                               className="h-5 w-5 rounded object-cover"
                             />
                           )}

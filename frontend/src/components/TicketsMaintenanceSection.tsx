@@ -444,7 +444,8 @@ function TicketMaintenanceCard({
           {ticket.mission_origine?.sejour && (
             <p className="text-xs text-ink-tertiary">
               Signalé pendant le séjour de {ticket.mission_origine.sejour.nom_voyageur} (
-              {ticket.mission_origine.sejour.reference})
+              {ticket.mission_origine.sejour.reference}) · du {formatDate(ticket.mission_origine.sejour.date_arrivee)} au{' '}
+              {formatDate(ticket.mission_origine.sejour.date_depart)}
               {ticket.mission_origine.agent?.nom && ` · par ${ticket.mission_origine.agent.nom}`}
             </p>
           )}

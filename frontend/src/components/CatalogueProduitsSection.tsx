@@ -4,11 +4,12 @@ import type { ProduitCatalogue } from '../types'
 
 interface CatalogueProduitsSectionProps {
   catalogue: ProduitCatalogue[]
-  onCreate: (input: { nom: string; prix: number; photo?: File | null }) => Promise<void>
+  onCreate: (input: { nom: string; nom_ar?: string | null; prix: number; photo?: File | null }) => Promise<void>
 }
 
 export function CatalogueProduitsSection({ catalogue, onCreate }: CatalogueProduitsSectionProps) {
   const [nom, setNom] = useState('')
+  const [nomAr, setNomAr] = useState('')
   const [prix, setPrix] = useState('0')
   const [photo, setPhoto] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -24,8 +25,9 @@ export function CatalogueProduitsSection({ catalogue, onCreate }: CatalogueProdu
 
     setSubmitting(true)
     try {
-      await onCreate({ nom, prix: Number(prix) || 0, photo })
+      await onCreate({ nom, nom_ar: nomAr.trim() || null, prix: Number(prix) || 0, photo })
       setNom('')
+      setNomAr('')
       setPrix('0')
       setPhoto(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -51,7 +53,9 @@ export function CatalogueProduitsSection({ catalogue, onCreate }: CatalogueProdu
                   className="h-8 w-8 rounded object-cover"
                 />
               )}
-              {produit.nom} — {Number(produit.prix).toFixed(2)} MAD
+              {produit.nom}
+              {produit.nom_ar && <span className="font-arabic text-ink-tertiary"> · {produit.nom_ar}</span>} —{' '}
+              {Number(produit.prix).toFixed(2)} MAD
             </span>
             <span
               className={`rounded-badge px-2 py-0.5 text-xs font-bold ${
@@ -67,7 +71,7 @@ export function CatalogueProduitsSection({ catalogue, onCreate }: CatalogueProdu
       <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-border-light pt-4">
         <div className="min-w-0 flex-1">
           <label htmlFor="nouveau_produit_nom" className="block text-sm font-semibold text-ink-secondary">
-            Nom du produit
+            Nom (français)
           </label>
           <input
             id="nouveau_produit_nom"
@@ -75,6 +79,19 @@ export function CatalogueProduitsSection({ catalogue, onCreate }: CatalogueProdu
             value={nom}
             onChange={(e) => setNom(e.target.value)}
             className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <label htmlFor="nouveau_produit_nom_ar" className="block text-sm font-semibold text-ink-secondary">
+            Nom (arabe) — optionnel
+          </label>
+          <input
+            id="nouveau_produit_nom_ar"
+            type="text"
+            dir="rtl"
+            value={nomAr}
+            onChange={(e) => setNomAr(e.target.value)}
+            className="font-arabic mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
           />
         </div>
         <div className="w-28">
