@@ -31,7 +31,7 @@ interface NouvelAppartementFormProps {
   onSubmit: (input: NewAppartementInput) => Promise<void>
   onCreateProprietaire: (input: NewProprietaireInput) => Promise<Proprietaire>
   onCreateChecklistModele: (nom: string) => Promise<ChecklistModele>
-  onAddChecklistModeleItem: (checklistModeleId: number, libelle: string, photo?: File | null) => Promise<void>
+  onAddChecklistModeleItem: (checklistModeleId: number, libelle: string, libelleAr?: string | null, photo?: File | null) => Promise<void>
   onDeplacerChecklistModeleItem: (itemId: number, direction: 'haut' | 'bas') => Promise<void>
   onDeleteChecklistModeleItem: (itemId: number) => Promise<void>
   onCancel?: () => void

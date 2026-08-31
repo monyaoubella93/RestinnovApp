@@ -180,6 +180,7 @@ export interface UpdateUtilisateurInput {
 
 export interface NewProduitCatalogueInput {
   nom: string
+  nom_ar?: string | null
   prix: number
   photo?: File | null
 }
@@ -495,10 +496,12 @@ export async function createChecklistModele(nom: string): Promise<ChecklistModel
 export async function createChecklistModeleItem(
   checklistModeleId: number,
   libelle: string,
+  libelleAr?: string | null,
   photo?: File | null,
 ): Promise<ChecklistModeleItem> {
   const formData = new FormData()
   formData.append('libelle', libelle)
+  if (libelleAr) formData.append('libelle_ar', libelleAr)
   if (photo) formData.append('photo', photo)
 
   const response = await fetch(`${API_BASE_URL}/api/checklist-modeles/${checklistModeleId}/items`, {
@@ -695,6 +698,7 @@ export async function fetchProduitsCatalogue(): Promise<ProduitCatalogue[]> {
 export async function createProduitCatalogue(input: NewProduitCatalogueInput): Promise<ProduitCatalogue> {
   const formData = new FormData()
   formData.append('nom', input.nom)
+  if (input.nom_ar) formData.append('nom_ar', input.nom_ar)
   formData.append('prix', String(input.prix))
   if (input.photo) formData.append('photo', input.photo)
 

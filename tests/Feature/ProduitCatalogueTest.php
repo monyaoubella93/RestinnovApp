@@ -83,6 +83,33 @@ class ProduitCatalogueTest extends TestCase
         $response->assertJsonPath('photo_url', null);
     }
 
+    public function test_it_stores_an_optional_arabic_nom_with_the_product(): void
+    {
+        $response = $this->postJson('/api/produits-catalogue', [
+            'nom' => 'Éponge magique',
+            'nom_ar' => 'إسفنجة سحرية',
+            'prix' => 15,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('nom_ar', 'إسفنجة سحرية');
+        $this->assertDatabaseHas('produits_menage_catalogue', [
+            'nom' => 'Éponge magique',
+            'nom_ar' => 'إسفنجة سحرية',
+        ]);
+    }
+
+    public function test_it_creates_a_catalogue_product_without_an_arabic_nom(): void
+    {
+        $response = $this->postJson('/api/produits-catalogue', [
+            'nom' => 'Éponge magique',
+            'prix' => 15,
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('nom_ar', null);
+    }
+
     public function test_nom_and_prix_are_required(): void
     {
         $response = $this->postJson('/api/produits-catalogue', []);

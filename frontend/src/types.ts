@@ -19,6 +19,7 @@ export interface ChecklistModeleItem {
   id: number
   checklist_modele_id: number
   libelle: string
+  libelle_ar: string | null
   photo_url: string | null
   ordre: number
 }
@@ -33,6 +34,7 @@ export interface ChecklistItem {
   id: number
   mission_menage_id: number
   libelle: string
+  libelle_ar: string | null
   checklist_modele_nom?: string | null
   coche: boolean
   photo_url: string | null
@@ -111,6 +113,7 @@ export interface Agent {
 export interface ProduitCatalogue {
   id: number
   nom: string
+  nom_ar: string | null
   prix: string | number
   photo_url: string | null
   actif: boolean

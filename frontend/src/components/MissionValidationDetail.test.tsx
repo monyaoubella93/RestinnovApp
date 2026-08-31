@@ -25,7 +25,7 @@ describe('MissionValidationDetail', () => {
     render(
       <MissionValidationDetail
         mission={missionFixture({
-          checklist_items: [{ id: 1, mission_menage_id: 10, libelle: 'Changer les draps', coche: true, photo_url: null, photo_reference_url: null, ordre: 0 }],
+          checklist_items: [{ id: 1, mission_menage_id: 10, libelle: 'Changer les draps', libelle_ar: null, coche: true, photo_url: null, photo_reference_url: null, ordre: 0 }],
         })}
       />,
     )
@@ -44,8 +44,8 @@ describe('MissionValidationDetail', () => {
       <MissionValidationDetail
         mission={missionFixture({
           checklist_items: [
-            { id: 1, mission_menage_id: 10, libelle: 'Changer les draps', coche: true, photo_url: null, photo_reference_url: null, ordre: 0 },
-            { id: 2, mission_menage_id: 10, libelle: 'Passer l\'aspirateur', coche: false, photo_url: null, photo_reference_url: null, ordre: 1 },
+            { id: 1, mission_menage_id: 10, libelle: 'Changer les draps', libelle_ar: null, coche: true, photo_url: null, photo_reference_url: null, ordre: 0 },
+            { id: 2, mission_menage_id: 10, libelle: 'Passer l\'aspirateur', libelle_ar: null, coche: false, photo_url: null, photo_reference_url: null, ordre: 1 },
           ],
         })}
       />,
@@ -66,7 +66,7 @@ describe('MissionValidationDetail', () => {
             {
               id: 1,
               mission_menage_id: 10,
-              libelle: 'Changer les draps',
+              libelle: 'Changer les draps', libelle_ar: null,
               coche: true,
               photo_url: 'checklist-items/preuve.jpg',
               photo_reference_url: null,
@@ -300,7 +300,7 @@ describe('MissionValidationDetail', () => {
             {
               id: 1,
               mission_menage_id: 10,
-              libelle: 'Changer les draps',
+              libelle: 'Changer les draps', libelle_ar: null,
               coche: true,
               photo_url: 'checklist-items/preuve.jpg',
               photo_reference_url: null,
@@ -321,8 +321,8 @@ describe('MissionValidationDetail', () => {
   it('distingue un produit "stock existant" (badge gris, pas de prix) d\'un produit "racheté" (photo + prix réel)', async () => {
     const user = userEvent.setup()
     const catalogue = [
-      { id: 1, nom: 'Javel', prix: '3.00', photo_url: null, actif: true },
-      { id: 2, nom: 'Sac poubelle', prix: '2.00', photo_url: null, actif: true },
+      { id: 1, nom: 'Javel', nom_ar: null, prix: '3.00', photo_url: null, actif: true },
+      { id: 2, nom: 'Sac poubelle', nom_ar: null, prix: '2.00', photo_url: null, actif: true },
     ]
     render(
       <MissionValidationDetail
@@ -330,7 +330,7 @@ describe('MissionValidationDetail', () => {
           produits: [
             {
               id: 1,
-              nom: 'Javel',
+              nom: 'Javel', nom_ar: null,
               prix: '3.00',
               photo_url: null,
               actif: true,
@@ -338,7 +338,7 @@ describe('MissionValidationDetail', () => {
             },
             {
               id: 2,
-              nom: 'Sac poubelle',
+              nom: 'Sac poubelle', nom_ar: null,
               prix: '2.00',
               photo_url: null,
               actif: true,
@@ -375,9 +375,9 @@ describe('MissionValidationDetail', () => {
   it('affiche "En attente de la femme de ménage" pour un produit du catalogue que l\'agent n\'a pas encore traité', async () => {
     const user = userEvent.setup()
     const catalogue = [
-      { id: 1, nom: 'Javel', prix: '3.00', photo_url: null, actif: true },
-      { id: 2, nom: 'Sac poubelle', prix: '2.00', photo_url: null, actif: true },
-      { id: 3, nom: 'Produit inactif', prix: '5.00', photo_url: null, actif: false },
+      { id: 1, nom: 'Javel', nom_ar: null, prix: '3.00', photo_url: null, actif: true },
+      { id: 2, nom: 'Sac poubelle', nom_ar: null, prix: '2.00', photo_url: null, actif: true },
+      { id: 3, nom: 'Produit inactif', nom_ar: null, prix: '5.00', photo_url: null, actif: false },
     ]
     render(
       <MissionValidationDetail
@@ -385,7 +385,7 @@ describe('MissionValidationDetail', () => {
           produits: [
             {
               id: 1,
-              nom: 'Javel',
+              nom: 'Javel', nom_ar: null,
               prix: '3.00',
               photo_url: null,
               actif: true,
@@ -410,14 +410,14 @@ describe('MissionValidationDetail', () => {
 
   it('ne propose aucun contrôle de saisie sur les produits utilisés (lecture seule stricte côté Manager)', async () => {
     const user = userEvent.setup()
-    const catalogue = [{ id: 1, nom: 'Javel', prix: '3.00', photo_url: null, actif: true }]
+    const catalogue = [{ id: 1, nom: 'Javel', nom_ar: null, prix: '3.00', photo_url: null, actif: true }]
     render(
       <MissionValidationDetail
         mission={missionFixture({
           produits: [
             {
               id: 1,
-              nom: 'Javel',
+              nom: 'Javel', nom_ar: null,
               prix: '3.00',
               photo_url: null,
               actif: true,

@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MissionDetailAgent } from './MissionDetailAgent'
+import i18n from '../i18n'
 import type { ChecklistItem, MissionMenage } from '../types'
 
 const appartement = {
@@ -18,6 +19,7 @@ function checklistItem(overrides: Partial<ChecklistItem> = {}): ChecklistItem {
     id: 1,
     mission_menage_id: 10,
     libelle: 'Passer l\'aspirateur',
+    libelle_ar: null,
     coche: false,
     photo_url: null,
     photo_reference_url: null,
@@ -125,6 +127,10 @@ describe('MissionDetailAgent', () => {
     vi.restoreAllMocks()
   })
 
+  afterEach(() => {
+    void i18n.changeLanguage('fr')
+  })
+
   it("ouvre la mission au montage (marque vue, passe a_faire à en_cours)", async () => {
     const fetchMock = mockFetch(missionFixture())
     globalThis.fetch = fetchMock as typeof fetch
@@ -167,6 +173,42 @@ describe('MissionDetailAgent', () => {
 
     expect(await screen.findByText("Passer l'aspirateur")).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: "Passer l'aspirateur" })).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it("affiche le libellé arabe d'un item quand l'agent a choisi l'arabe et qu'il est renseigné", async () => {
+    await i18n.changeLanguage('ar')
+    globalThis.fetch = mockFetch(
+      missionFixture({
+        checklist_items: [checklistItem({ libelle: 'Passer l\'aspirateur', libelle_ar: 'تنظيف الأرضية' })],
+      }),
+    ) as typeof fetch
+
+    render(<MissionDetailAgent missionId={10} catalogue={[]} onBack={vi.fn()} onMissionTerminee={vi.fn()} />)
+
+    expect(await screen.findByText('تنظيف الأرضية')).toBeInTheDocument()
+    expect(screen.queryByText("Passer l'aspirateur")).not.toBeInTheDocument()
+  })
+
+  it("retombe sur le libellé français quand l'agent a choisi l'arabe mais qu'aucune traduction n'est renseignée", async () => {
+    await i18n.changeLanguage('ar')
+    globalThis.fetch = mockFetch(missionFixture()) as typeof fetch
+
+    render(<MissionDetailAgent missionId={10} catalogue={[]} onBack={vi.fn()} onMissionTerminee={vi.fn()} />)
+
+    expect(await screen.findByText("Passer l'aspirateur")).toBeInTheDocument()
+  })
+
+  it("garde le libellé français d'un item traduit quand l'agent a choisi le français", async () => {
+    globalThis.fetch = mockFetch(
+      missionFixture({
+        checklist_items: [checklistItem({ libelle: 'Passer l\'aspirateur', libelle_ar: 'تنظيف الأرضية' })],
+      }),
+    ) as typeof fetch
+
+    render(<MissionDetailAgent missionId={10} catalogue={[]} onBack={vi.fn()} onMissionTerminee={vi.fn()} />)
+
+    expect(await screen.findByText("Passer l'aspirateur")).toBeInTheDocument()
+    expect(screen.queryByText('تنظيف الأرضية')).not.toBeInTheDocument()
   })
 
   it('affiche la photo de référence d\'un item de checklist quand présente', async () => {

@@ -259,6 +259,15 @@ describe('TicketsMaintenanceSection', () => {
     expect(screen.queryByLabelText(/^agent de maintenance$/i)).not.toBeInTheDocument()
   })
 
+  it('affiche les dates du séjour lié une fois la carte dépliée', async () => {
+    const user = userEvent.setup()
+    renderSection([ticketFixture()])
+
+    await expandTicket(user, 'Le robinet fuit.')
+
+    expect(screen.getByText(/du 01\/08\/2026 au 05\/08\/2026/)).toBeInTheDocument()
+  })
+
   it('affiche un message quand aucun ticket n\'est présent', async () => {
     renderSection([])
 

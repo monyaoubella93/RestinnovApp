@@ -21,6 +21,7 @@ class ChecklistModeleItemController extends Controller
     {
         $validated = $request->validate([
             'libelle' => ['required', 'string', 'max:255'],
+            'libelle_ar' => ['nullable', 'string', 'max:255'],
             'photo' => ['sometimes', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
         ], $this->uploadValidationMessages());
 
@@ -28,6 +29,7 @@ class ChecklistModeleItemController extends Controller
 
         $item = $checklistModele->items()->create([
             'libelle' => $validated['libelle'],
+            'libelle_ar' => $validated['libelle_ar'] ?? null,
             'photo_url' => $request->hasFile('photo') ? $request->file('photo')->store('checklist-modele-items', 'public') : null,
             'ordre' => $nextOrdre,
         ]);

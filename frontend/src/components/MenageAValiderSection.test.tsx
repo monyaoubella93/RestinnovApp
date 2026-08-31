@@ -5,8 +5,8 @@ import { MenageAValiderSection } from './MenageAValiderSection'
 import type { MissionMenage, ProduitCatalogue } from '../types'
 
 const CATALOGUE: ProduitCatalogue[] = [
-  { id: 1, nom: 'Javel', prix: 12, photo_url: null, actif: true },
-  { id: 2, nom: 'Éponges', prix: 8, photo_url: null, actif: true },
+  { id: 1, nom: 'Javel', nom_ar: null, prix: 12, photo_url: null, actif: true },
+  { id: 2, nom: 'Éponges', nom_ar: null, prix: 8, photo_url: null, actif: true },
 ]
 
 function missionFixture(overrides: Partial<MissionMenage> = {}): MissionMenage {
@@ -79,6 +79,7 @@ describe('MenageAValiderSection', () => {
         {
           id: 1,
           nom: 'Javel',
+          nom_ar: null,
           prix: 12,
           photo_url: null,
           actif: true,

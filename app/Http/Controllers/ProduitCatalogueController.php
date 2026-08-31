@@ -28,6 +28,7 @@ class ProduitCatalogueController extends Controller
     {
         $validated = $request->validate([
             'nom' => ['required', 'string', 'max:255'],
+            'nom_ar' => ['nullable', 'string', 'max:255'],
             'prix' => ['required', 'numeric', 'min:0'],
             'photo' => ['sometimes', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'actif' => ['sometimes', 'boolean'],
@@ -35,6 +36,7 @@ class ProduitCatalogueController extends Controller
 
         $produit = ProduitMenageCatalogue::create([
             'nom' => $validated['nom'],
+            'nom_ar' => $validated['nom_ar'] ?? null,
             'prix' => $validated['prix'],
             'photo_url' => $request->hasFile('photo') ? $request->file('photo')->store('produits-catalogue', 'public') : null,
             'actif' => $validated['actif'] ?? true,

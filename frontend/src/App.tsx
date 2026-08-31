@@ -352,8 +352,13 @@ function App() {
     return modele
   }
 
-  const handleAddChecklistModeleItem = async (checklistModeleId: number, libelle: string, photo?: File | null) => {
-    const item = await createChecklistModeleItem(checklistModeleId, libelle, photo)
+  const handleAddChecklistModeleItem = async (
+    checklistModeleId: number,
+    libelle: string,
+    libelleAr?: string | null,
+    photo?: File | null,
+  ) => {
+    const item = await createChecklistModeleItem(checklistModeleId, libelle, libelleAr, photo)
     setChecklistModeles((current) =>
       current.map((m) => (m.id === checklistModeleId ? { ...m, items: [...(m.items ?? []), item] } : m)),
     )

@@ -60,6 +60,35 @@ class ChecklistModeleItemTest extends TestCase
         $response->assertJsonPath('photo_url', null);
     }
 
+    public function test_it_stores_an_optional_arabic_libelle_with_the_item(): void
+    {
+        $checklistModele = ChecklistModele::create(['nom' => 'Standard']);
+
+        $response = $this->postJson("/api/checklist-modeles/{$checklistModele->id}/items", [
+            'libelle' => 'Passer l\'aspirateur',
+            'libelle_ar' => 'تنظيف الأرضية بالمكنسة الكهربائية',
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('libelle_ar', 'تنظيف الأرضية بالمكنسة الكهربائية');
+        $this->assertDatabaseHas('checklist_modele_items', [
+            'checklist_modele_id' => $checklistModele->id,
+            'libelle_ar' => 'تنظيف الأرضية بالمكنسة الكهربائية',
+        ]);
+    }
+
+    public function test_it_adds_an_item_without_an_arabic_libelle(): void
+    {
+        $checklistModele = ChecklistModele::create(['nom' => 'Standard']);
+
+        $response = $this->postJson("/api/checklist-modeles/{$checklistModele->id}/items", [
+            'libelle' => 'Item 1',
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('libelle_ar', null);
+    }
+
     public function test_libelle_is_required_to_add_an_item(): void
     {
         $checklistModele = ChecklistModele::create(['nom' => 'Standard']);

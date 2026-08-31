@@ -21,6 +21,7 @@ import {
 } from '../api'
 import type { ChecklistItem, MissionMenage, ProduitCatalogue } from '../types'
 import { checklistIcon } from '../utils/checklistIcons'
+import { resolveLocalizedLabel } from '../utils/localization'
 import { playConfirmSound } from '../utils/sound'
 import { FraisMenageSection } from './FraisMenageSection'
 import { PhotoPreuveSection } from './PhotoPreuveSection'
@@ -70,8 +71,9 @@ function ChecklistItemRow({
   onToggle: (item: ChecklistItem) => void
   onPhoto: (item: ChecklistItem, file: File) => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const libelle = resolveLocalizedLabel(item.libelle, item.libelle_ar, i18n.language)
 
   return (
     <li className="flex items-center gap-3 rounded-card-agent-lg border-2 border-border-default bg-surface p-4">
@@ -79,7 +81,7 @@ function ChecklistItemRow({
         type="button"
         role="checkbox"
         aria-checked={item.coche}
-        aria-label={item.libelle}
+        aria-label={libelle}
         onClick={() => onToggle(item)}
         className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border-4 text-2xl font-bold ${
           item.coche
@@ -95,20 +97,20 @@ function ChecklistItemRow({
       </span>
 
       <span className={`flex-1 text-base ${item.coche ? 'text-ink-disabled line-through' : 'text-ink'}`}>
-        {item.libelle}
+        {libelle}
       </span>
 
       {item.photo_reference_url && (
         <img
           src={resolveStorageUrl(item.photo_reference_url)}
-          alt={t('menage.detail.photoReferenceFor', { libelle: item.libelle })}
+          alt={t('menage.detail.photoReferenceFor', { libelle })}
           className="h-14 w-14 shrink-0 rounded-lg object-cover"
         />
       )}
 
       <button
         type="button"
-        aria-label={t('menage.detail.addPhotoFor', { libelle: item.libelle })}
+        aria-label={t('menage.detail.addPhotoFor', { libelle })}
         onClick={() => fileInputRef.current?.click()}
         className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border-2 text-2xl ${
           item.photo_url
@@ -124,7 +126,7 @@ function ChecklistItemRow({
         accept="image/jpeg,image/png"
         capture="environment"
         className="hidden"
-        aria-label={t('menage.detail.photoFor', { libelle: item.libelle })}
+        aria-label={t('menage.detail.photoFor', { libelle })}
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file) onPhoto(item, file)
