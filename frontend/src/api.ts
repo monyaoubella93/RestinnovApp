@@ -42,6 +42,18 @@ export function resolveStorageUrl(path: string): string {
   return `${API_BASE_URL}/storage/${path}`
 }
 
+/**
+ * `new URL()` throws ("Invalid URL") when given a relative string with no
+ * base. API_BASE_URL is "" in production on purpose (see Dockerfile.prod --
+ * relative paths so the same build works behind any domain), so building a
+ * URL object for query-string helpers needs an explicit base. Passing one
+ * is a no-op when API_BASE_URL is already absolute (a base is ignored once
+ * the first argument parses as absolute).
+ */
+function buildApiUrl(path: string): URL {
+  return new URL(`${API_BASE_URL}${path}`, window.location.origin)
+}
+
 export function getStoredToken(): string | null {
   return localStorage.getItem(TOKEN_STORAGE_KEY)
 }
@@ -353,7 +365,7 @@ export interface FetchAppartementsListeParams {
 export async function fetchAppartementsListe(
   params: FetchAppartementsListeParams = {},
 ): Promise<PaginatedResponse<Appartement>> {
-  const url = new URL(`${API_BASE_URL}/api/appartements`)
+  const url = buildApiUrl('/api/appartements')
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== '') {
       url.searchParams.set(key, String(value))
@@ -548,7 +560,7 @@ export interface FetchUtilisateursParams {
 }
 
 export async function fetchUtilisateurs(params: FetchUtilisateursParams = {}): Promise<Agent[]> {
-  const url = new URL(`${API_BASE_URL}/api/utilisateurs`)
+  const url = buildApiUrl('/api/utilisateurs')
   if (params.role) url.searchParams.set('role', params.role)
   if (params.search) url.searchParams.set('search', params.search)
   if (params.inclure_inactifs) url.searchParams.set('inclure_inactifs', '1')
@@ -625,7 +637,7 @@ export interface FetchSejoursParams {
 }
 
 export async function fetchSejours(params: FetchSejoursParams = {}): Promise<PaginatedResponse<Sejour>> {
-  const url = new URL(`${API_BASE_URL}/api/sejours`)
+  const url = buildApiUrl('/api/sejours')
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== '') {
       url.searchParams.set(key, String(value))
@@ -884,7 +896,7 @@ export async function ajouterPhotosPreuveMission(
 }
 
 export async function fetchProduitsSignales(statut?: string): Promise<ProduitMenageSignale[]> {
-  const url = new URL(`${API_BASE_URL}/api/produits-signales`)
+  const url = buildApiUrl('/api/produits-signales')
   if (statut) url.searchParams.set('statut', statut)
 
   const response = await fetch(url, {
@@ -945,7 +957,7 @@ export interface FetchTicketsMaintenanceParams {
 export async function fetchTicketsMaintenance(
   params: FetchTicketsMaintenanceParams = {},
 ): Promise<TicketMaintenance[]> {
-  const url = new URL(`${API_BASE_URL}/api/tickets-maintenance`)
+  const url = buildApiUrl('/api/tickets-maintenance')
   if (params.statut) url.searchParams.set('statut', params.statut)
   if (params.appartementId) url.searchParams.set('appartement_id', String(params.appartementId))
   if (params.dateDebut) url.searchParams.set('date_debut', params.dateDebut)
@@ -962,7 +974,7 @@ export async function fetchTicketsMaintenance(
 export async function fetchTicketsMaintenanceParAppartement(
   params: FetchTicketsMaintenanceParams = {},
 ): Promise<TicketMaintenanceParAppartement[]> {
-  const url = new URL(`${API_BASE_URL}/api/tickets-maintenance/par-appartement`)
+  const url = buildApiUrl('/api/tickets-maintenance/par-appartement')
   if (params.statut) url.searchParams.set('statut', params.statut)
   if (params.appartementId) url.searchParams.set('appartement_id', String(params.appartementId))
   if (params.dateDebut) url.searchParams.set('date_debut', params.dateDebut)
@@ -1014,7 +1026,7 @@ export interface FetchMesTicketsMaintenanceHistoriqueParams {
 export async function fetchMesTicketsMaintenanceHistorique(
   params: FetchMesTicketsMaintenanceHistoriqueParams = {},
 ): Promise<HistoriqueTicketAgent[]> {
-  const url = new URL(`${API_BASE_URL}/api/tickets-maintenance/mes-tickets/historique`)
+  const url = buildApiUrl('/api/tickets-maintenance/mes-tickets/historique')
   if (params.appartementId) url.searchParams.set('appartement_id', String(params.appartementId))
   if (params.dateDebut) url.searchParams.set('date_debut', params.dateDebut)
   if (params.dateFin) url.searchParams.set('date_fin', params.dateFin)
@@ -1128,7 +1140,7 @@ export async function fetchDashboard(): Promise<DashboardData> {
 }
 
 export async function fetchCalendrier(params: { mois: string; appartementId?: number }): Promise<CalendrierData> {
-  const url = new URL(`${API_BASE_URL}/api/calendrier`)
+  const url = buildApiUrl('/api/calendrier')
   url.searchParams.set('mois', params.mois)
   if (params.appartementId) url.searchParams.set('appartement_id', String(params.appartementId))
 
@@ -1172,7 +1184,7 @@ export interface FetchHistoriqueMenageParams {
 export async function fetchHistoriqueMenage(
   params: FetchHistoriqueMenageParams = {},
 ): Promise<HistoriqueMissionManager[]> {
-  const url = new URL(`${API_BASE_URL}/api/mission-menages/historique`)
+  const url = buildApiUrl('/api/mission-menages/historique')
   if (params.appartementId) url.searchParams.set('appartement_id', String(params.appartementId))
   if (params.dateDebut) url.searchParams.set('date_debut', params.dateDebut)
   if (params.dateFin) url.searchParams.set('date_fin', params.dateFin)
