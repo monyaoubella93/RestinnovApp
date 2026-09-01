@@ -193,7 +193,6 @@ export function TicketDetailAgent({ ticket, onBack, onResolu, onCommence }: Tick
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png"
-              capture="environment"
               className="hidden"
               aria-label="Photo de la réparation"
               onChange={(e) => handlePhotoChange(e.target.files?.[0])}
