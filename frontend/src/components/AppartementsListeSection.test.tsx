@@ -173,6 +173,30 @@ describe('AppartementsListeSection', () => {
     expect(screen.getByText('05/03/2026')).toBeInTheDocument()
   })
 
+  it('affiche une ligne sans photo (placeholder) à côté d\'une ligne avec photo, sans casser le tableau', async () => {
+    globalThis.fetch = mockFetchAppartements([
+      appartementFixture({ id: 1, nom: 'Loft Bastille', photo_principale: null }),
+      appartementFixture({ id: 2, nom: 'Zenith', photo_principale: 'appartements/zenith.jpg' }),
+    ]) as typeof fetch
+
+    render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+    expect(await screen.findByText('2 appartements trouvés')).toBeInTheDocument()
+
+    const rows = screen.getAllByRole('row').slice(1)
+    expect(rows).toHaveLength(2)
+
+    const rowSansPhoto = rows.find((r) => within(r).queryByText('Loft Bastille'))!
+    expect(within(rowSansPhoto).queryByRole('img')).not.toBeInTheDocument()
+    expect(within(rowSansPhoto).getByText('—')).toBeInTheDocument()
+
+    const rowAvecPhoto = rows.find((r) => within(r).queryByText('Zenith'))!
+    expect(within(rowAvecPhoto).getByRole('img', { name: 'Zenith' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('appartements/zenith.jpg'),
+    )
+  })
+
   it('filtre par recherche sur le nom ou l\'adresse', async () => {
     globalThis.fetch = mockFetchAppartements([
       appartementFixture({ id: 1, nom: 'Loft Bastille', adresse: 'Rue de Paris' }),
