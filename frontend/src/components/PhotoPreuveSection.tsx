@@ -124,7 +124,6 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png"
-          capture="environment"
           multiple
           className="hidden"
           aria-label="Photos de preuve de travail"

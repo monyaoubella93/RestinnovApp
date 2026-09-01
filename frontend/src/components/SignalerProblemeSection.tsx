@@ -165,7 +165,6 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png"
-            capture="environment"
             className="hidden"
             aria-label="Photo du problème"
             onChange={(e) => handlePhotoChange(e.target.files?.[0])}

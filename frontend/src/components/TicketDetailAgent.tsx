@@ -154,7 +154,6 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png"
-              capture="environment"
               className="hidden"
               aria-label="Photo de la réparation"
               onChange={(e) => handlePhotoChange(e.target.files?.[0])}
