@@ -28,6 +28,7 @@ class Appartement extends Model
     public const MODE_GESTION_SOUS_LOCATION = 'sous_location';
 
     protected $fillable = [
+        'code_externe',
         'nom',
         'adresse',
         'statut',
