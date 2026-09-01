@@ -460,6 +460,13 @@ export interface ReleveChargeDetail {
   montant_mensuel: number
 }
 
+export interface ReleveComparaisonMoisPrecedent {
+  mois: string
+  resultat_net: number
+  /** Null when the previous month's resultat_net is (essentially) zero -- a percentage change from zero is undefined. */
+  variation_pct: number | null
+}
+
 export interface Releve {
   appartement: {
     id: number
@@ -483,6 +490,16 @@ export interface Releve {
   frais_menage_detail: ReleveFraisMenageDetail[]
   frais_maintenance_detail: ReleveFraisMaintenanceDetail[]
   charges_detail: ReleveChargeDetail[]
+  /** True once this month's PDF has been downloaded at least once -- informational only, never blocks further edits. */
+  verrouille: boolean
+  verrouille_le: string | null
+  comparaison_mois_precedent: ReleveComparaisonMoisPrecedent
+}
+
+export interface ReleveAnnuelMois {
+  mois: string
+  revenus_bruts: number
+  resultat_net: number
 }
 
 export interface HistoriqueChecklistItem {

@@ -41,6 +41,9 @@ function releveFixture(overrides: Partial<Releve> = {}): Releve {
     frais_menage_detail: [],
     frais_maintenance_detail: [],
     charges_detail: [],
+    verrouille: false,
+    verrouille_le: null,
+    comparaison_mois_precedent: { mois: '2026-07', resultat_net: 850, variation_pct: 0 },
     ...overrides,
   }
 }
@@ -97,6 +100,24 @@ describe('RelevesProprietairesSection', () => {
     expect(within(table).getByText('1000.00 MAD')).toBeInTheDocument()
     expect(within(table).getByText('150.00 MAD')).toBeInTheDocument() // 100 menage + 50 maintenance
     expect(within(table).getByText('680.00 MAD')).toBeInTheDocument()
+  })
+
+  it('affiche un badge cadenas pour un mois déjà verrouillé', async () => {
+    globalThis.fetch = mockFetch([appartementFixture()], { 1: releveFixture({ verrouille: true }) }) as typeof fetch
+
+    render(<RelevesProprietairesSection />)
+
+    expect(await screen.findByText('Loft Bastille')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /mois déjà facturé au propriétaire/i })).toBeInTheDocument()
+  })
+
+  it("n'affiche aucun badge cadenas pour un mois non verrouillé", async () => {
+    globalThis.fetch = mockFetch([appartementFixture()], { 1: releveFixture({ verrouille: false }) }) as typeof fetch
+
+    render(<RelevesProprietairesSection />)
+
+    expect(await screen.findByText('Loft Bastille')).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /mois déjà facturé au propriétaire/i })).not.toBeInTheDocument()
   })
 
   it('inclut les charges à la charge de RestInnov dans la colonne Frais', async () => {

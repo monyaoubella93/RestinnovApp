@@ -124,7 +124,6 @@ function ChecklistItemRow({
         ref={fileInputRef}
         type="file"
         accept="image/jpeg,image/png"
-        capture="environment"
         className="hidden"
         aria-label={t('menage.detail.photoFor', { libelle })}
         onChange={(e) => {

@@ -175,7 +175,6 @@ function MessageAgentSection({ ticket }: { ticket: MonTicketMaintenance }) {
                 ref={fileInputRef}
                 type="file"
                 accept="image/jpeg,image/png"
-                capture="environment"
                 multiple
                 className="hidden"
                 aria-label={t('maintenance.detail.message.photoAlt')}
@@ -470,7 +469,6 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png"
-              capture="environment"
               multiple
               className="hidden"
               aria-label={t('maintenance.detail.photoReparation')}

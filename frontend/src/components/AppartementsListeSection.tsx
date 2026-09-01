@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
-import { deleteAppartement, downloadRelevePdf, fetchAppartementDetail, fetchAppartementsListe, resolveStorageUrl } from '../api'
-import type { AppartementDetail, Appartement } from '../types'
+import {
+  deleteAppartement,
+  downloadRelevePdf,
+  fetchAppartementDetail,
+  fetchAppartementsListe,
+  fetchReleve,
+  fetchReleveAnnuel,
+  resolveStorageUrl,
+} from '../api'
+import type { AppartementDetail, Appartement, Releve, ReleveAnnuelMois } from '../types'
 import { AppartementHistoriqueSection } from './AppartementHistoriqueSection'
 import { ConfirmModal } from './ConfirmModal'
 import { MODE_GESTION_LABELS, MODE_GESTION_STYLES } from './RelevesProprietairesSection'
@@ -22,6 +30,17 @@ function currentMonth(): string {
 
 function formatMontant(value: number | undefined): string {
   return `${(value ?? 0).toFixed(2)} MAD`
+}
+
+/** "2026-08" -> "août 26", for the annual summary table's compact month headers. */
+function formatMoisLabel(mois: string): string {
+  const [year, month] = mois.split('-').map(Number)
+  return new Date(year, month - 1, 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
+}
+
+function formatDateHeure(value: string | null | undefined): string {
+  if (!value) return ''
+  return new Date(value).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 const PER_PAGE = 10
@@ -131,6 +150,18 @@ export function AppartementsListeSection({
   const [downloadingPdf, setDownloadingPdf] = useState(false)
   const [pdfError, setPdfError] = useState<string | null>(null)
 
+  // The full monthly relevé (revenus/frais/résultat, verrouillage,
+  // comparaison avec le mois précédent) for the month picked in the
+  // "Résumé financier" section -- independent of detail.resume_financier,
+  // which only ever reflects the current month.
+  const [releveMois, setReleveMois] = useState(currentMonth())
+  const [releve, setReleve] = useState<Releve | null>(null)
+  const [releveLoading, setReleveLoading] = useState(false)
+  const [releveError, setReleveError] = useState<string | null>(null)
+
+  const [releveAnnuel, setReleveAnnuel] = useState<ReleveAnnuelMois[] | null>(null)
+  const [releveAnnuelError, setReleveAnnuelError] = useState<string | null>(null)
+
   useEffect(() => {
     if (!initialAppartement) return
     setExtraAppartements((current) =>
@@ -164,12 +195,52 @@ export function AppartementsListeSection({
     }
   }, [selectedAppartementId])
 
+  useEffect(() => {
+    if (!selectedAppartementId) {
+      setReleve(null)
+      setReleveAnnuel(null)
+      return
+    }
+
+    let cancelled = false
+    setReleveLoading(true)
+    setReleveError(null)
+    fetchReleve(selectedAppartementId, releveMois)
+      .then((data) => {
+        if (!cancelled) setReleve(data)
+      })
+      .catch((err) => {
+        if (!cancelled) setReleveError(err instanceof Error ? err.message : 'Impossible de charger le relevé.')
+      })
+      .finally(() => {
+        if (!cancelled) setReleveLoading(false)
+      })
+
+    setReleveAnnuelError(null)
+    fetchReleveAnnuel(selectedAppartementId, releveMois)
+      .then((data) => {
+        if (!cancelled) setReleveAnnuel(data)
+      })
+      .catch((err) => {
+        if (!cancelled) setReleveAnnuelError(err instanceof Error ? err.message : "Impossible de charger la vue annuelle.")
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedAppartementId, releveMois])
+
   const handleDownloadPdf = async () => {
     if (!selectedAppartementId) return
     setPdfError(null)
     setDownloadingPdf(true)
     try {
-      await downloadRelevePdf(selectedAppartementId, currentMonth())
+      await downloadRelevePdf(selectedAppartementId, releveMois)
+      // Downloading the PDF verrouille's the month server-side -- refetch so
+      // the warning banner appears immediately, without waiting for the
+      // agent to change the month and come back.
+      const updated = await fetchReleve(selectedAppartementId, releveMois)
+      setReleve(updated)
     } catch (err) {
       setPdfError(err instanceof Error ? err.message : 'Impossible de télécharger le PDF.')
     } finally {
@@ -290,7 +361,7 @@ export function AppartementsListeSection({
                 disabled={downloadingPdf}
                 className="rounded-field border border-border-default px-3 py-1.5 text-sm font-semibold text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
               >
-                {downloadingPdf ? 'Téléchargement...' : 'Télécharger le relevé PDF du mois'}
+                {downloadingPdf ? 'Téléchargement...' : 'Télécharger le relevé PDF'}
               </button>
             </div>
           </div>
@@ -362,27 +433,117 @@ export function AppartementsListeSection({
               </section>
 
               <section className="mt-4 border-t border-border-default pt-4">
-                <h4 className="text-sm font-bold text-ink">Résumé financier (mois en cours)</h4>
-                <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div className="rounded-field border border-border-default p-3">
-                    <p className="text-xs font-semibold text-ink-tertiary">Revenus</p>
-                    <p className="mt-1 font-mono text-sm font-bold text-ink">{formatMontant(detail.resume_financier.revenus_bruts)}</p>
-                  </div>
-                  <div className="rounded-field border border-border-default p-3">
-                    <p className="text-xs font-semibold text-ink-tertiary">Frais ménage</p>
-                    <p className="mt-1 font-mono text-sm font-bold text-ink">{formatMontant(detail.resume_financier.frais_menage_total)}</p>
-                  </div>
-                  <div className="rounded-field border border-border-default p-3">
-                    <p className="text-xs font-semibold text-ink-tertiary">Frais maintenance</p>
-                    <p className="mt-1 font-mono text-sm font-bold text-ink">
-                      {formatMontant(detail.resume_financier.frais_maintenance_total)}
-                    </p>
-                  </div>
-                  <div className="rounded-field border border-border-default border-l-[3px] border-l-success p-3">
-                    <p className="text-xs font-semibold text-ink-tertiary">Résultat net</p>
-                    <p className="mt-1 font-mono text-sm font-bold text-success-text">{formatMontant(detail.resume_financier.resultat_net)}</p>
-                  </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="text-sm font-bold text-ink">Résumé financier</h4>
+                  <label className="flex items-center gap-2 text-sm text-ink-secondary">
+                    Mois
+                    <input
+                      type="month"
+                      value={releveMois}
+                      onChange={(e) => setReleveMois(e.target.value)}
+                      className="rounded-field border border-border-default px-2 py-1 text-sm text-ink"
+                      aria-label="Mois du résumé financier"
+                    />
+                  </label>
                 </div>
+
+                {releveLoading && <p className="mt-2 text-sm text-ink-tertiary">Chargement du relevé...</p>}
+                {releveError && <p className="mt-2 text-sm text-danger">{releveError}</p>}
+
+                {releve && (
+                  <>
+                    {releve.verrouille && (
+                      <p
+                        role="status"
+                        className="mt-3 flex items-start gap-2 rounded-field border border-warning-border bg-warning-bg px-3 py-2 text-sm font-medium text-warning-text"
+                      >
+                        <span aria-hidden="true">🔒</span>
+                        <span>
+                          Ce mois a déjà été facturé au propriétaire
+                          {releve.verrouille_le && ` (le ${formatDateHeure(releve.verrouille_le)})`}, toute modification devra
+                          être régénérée.
+                        </span>
+                      </p>
+                    )}
+
+                    {releve.charges_detail.length === 0 && (
+                      <p
+                        role="status"
+                        className="mt-3 flex items-start gap-2 rounded-field border border-warning-border bg-warning-bg px-3 py-2 text-sm font-medium text-warning-text"
+                      >
+                        <span aria-hidden="true">⚠️</span>
+                        <span>Aucune charge n'a été saisie pour ce mois -- vérifiez avant de générer le relevé.</span>
+                      </p>
+                    )}
+
+                    <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div className="rounded-field border border-border-default p-3">
+                        <p className="text-xs font-semibold text-ink-tertiary">Revenus</p>
+                        <p className="mt-1 font-mono text-sm font-bold text-ink">{formatMontant(releve.revenus_bruts)}</p>
+                      </div>
+                      <div className="rounded-field border border-border-default p-3">
+                        <p className="text-xs font-semibold text-ink-tertiary">Frais ménage</p>
+                        <p className="mt-1 font-mono text-sm font-bold text-ink">{formatMontant(releve.frais_menage_total)}</p>
+                      </div>
+                      <div className="rounded-field border border-border-default p-3">
+                        <p className="text-xs font-semibold text-ink-tertiary">Frais maintenance</p>
+                        <p className="mt-1 font-mono text-sm font-bold text-ink">{formatMontant(releve.frais_maintenance_total)}</p>
+                      </div>
+                      <div className="rounded-field border border-border-default border-l-[3px] border-l-success p-3">
+                        <p className="text-xs font-semibold text-ink-tertiary">Résultat net</p>
+                        <p className="mt-1 font-mono text-sm font-bold text-success-text">{formatMontant(releve.resultat_net)}</p>
+                        {releve.comparaison_mois_precedent.variation_pct !== null && (
+                          <p
+                            className={`mt-1 text-xs font-semibold ${
+                              releve.comparaison_mois_precedent.variation_pct > 0
+                                ? 'text-success-text'
+                                : releve.comparaison_mois_precedent.variation_pct < 0
+                                  ? 'text-danger'
+                                  : 'text-ink-tertiary'
+                            }`}
+                          >
+                            {releve.comparaison_mois_precedent.variation_pct > 0 ? '+' : ''}
+                            {releve.comparaison_mois_precedent.variation_pct}% par rapport au mois dernier
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </section>
+
+              <section className="mt-4 border-t border-border-default pt-4">
+                <h4 className="text-sm font-bold text-ink">Vue annuelle</h4>
+                {releveAnnuelError && <p className="mt-2 text-sm text-danger">{releveAnnuelError}</p>}
+                {releveAnnuel && (
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="w-full min-w-[720px] border-collapse text-sm">
+                      <thead>
+                        <tr>
+                          {releveAnnuel.map((moisData) => (
+                            <th key={moisData.mois} className="border-b border-border-default px-2 py-1 text-center font-semibold text-ink-tertiary">
+                              {formatMoisLabel(moisData.mois)}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          {releveAnnuel.map((moisData) => (
+                            <td
+                              key={moisData.mois}
+                              className={`px-2 py-2 text-center font-mono font-bold ${
+                                moisData.resultat_net > 0 ? 'text-success-text' : moisData.resultat_net < 0 ? 'text-danger' : 'text-ink-tertiary'
+                              }`}
+                            >
+                              {formatMontant(moisData.resultat_net)}
+                            </td>
+                          ))}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </section>
             </>
           )}
