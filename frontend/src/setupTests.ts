@@ -30,3 +30,21 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
   writable: true,
 })
+
+// jsdom has no matchMedia implementation. Every query defaults to "not
+// matching" -- e.g. AgentWorkspace/MaintenanceWorkspace's mobile-layout
+// check ends up false, so tests keep seeing the desktop layout exactly as
+// before unless a test explicitly overrides window.matchMedia to exercise
+// the mobile branch.
+if (!window.matchMedia) {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }))
+}

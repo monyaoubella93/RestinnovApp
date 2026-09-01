@@ -230,7 +230,7 @@ export function FraisMenageSection({
                         className="h-6 w-6 shrink-0 rounded object-cover"
                       />
                     )}
-                    <span className="flex-1 text-ink">{nom}</span>
+                    <span className="min-w-0 flex-1 truncate text-ink">{nom}</span>
 
                     {utilise ? (
                       utilise.pivot.type_utilisation === 'stock_existant' ? (

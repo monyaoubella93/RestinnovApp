@@ -151,4 +151,43 @@ describe('MaintenanceWorkspace', () => {
     expect(container.firstElementChild).toHaveAttribute('dir', 'rtl')
     expect(localStorage.getItem('app_language')).toBe('ar')
   })
+
+  describe('en portrait mobile (largeur <= 767px)', () => {
+    function mockMobileViewport() {
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })) as typeof window.matchMedia
+    }
+
+    it('affiche une barre d\'onglets en bas d\'écran (pas la barre latérale) et une déconnexion accessible dans l\'en-tête', async () => {
+      mockMobileViewport()
+      globalThis.fetch = mockFetch([ticketFixture({ id: 1, statut: 'assigne' })]) as typeof fetch
+      renderWithAuth()
+
+      await screen.findByRole('heading', { name: 'Mes tickets' })
+
+      expect(screen.getByRole('tab', { name: /mes tickets.*1/i })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /validés/i })).toBeInTheDocument()
+      expect(screen.queryByText('Agent maintenance')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Déconnexion' })).toBeInTheDocument()
+    })
+
+    it('permet de changer d\'onglet depuis la barre du bas', async () => {
+      const user = userEvent.setup()
+      mockMobileViewport()
+      renderWithAuth()
+
+      await screen.findByRole('heading', { name: 'Mes tickets' })
+      await user.click(screen.getByRole('tab', { name: /validés/i }))
+
+      expect(await screen.findByRole('heading', { name: 'Validés' })).toBeInTheDocument()
+    })
+  })
 })

@@ -96,7 +96,7 @@ function ChecklistItemRow({
         {checklistIcon(item.libelle)}
       </span>
 
-      <span className={`flex-1 text-base ${item.coche ? 'text-ink-disabled line-through' : 'text-ink'}`}>
+      <span className={`min-w-0 flex-1 text-base ${item.coche ? 'text-ink-disabled line-through' : 'text-ink'}`}>
         {libelle}
       </span>
 
