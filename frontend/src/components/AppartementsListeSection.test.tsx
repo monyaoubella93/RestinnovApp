@@ -2,7 +2,46 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppartementsListeSection } from './AppartementsListeSection'
-import type { Appartement, AppartementDetail, HistoriqueMission } from '../types'
+import type { Appartement, AppartementDetail, HistoriqueMission, Releve, ReleveAnnuelMois } from '../types'
+
+function releveFixture(overrides: Partial<Releve> = {}): Releve {
+  return {
+    appartement: {
+      id: 1,
+      nom: 'Loft Bastille',
+      adresse: '12 rue de la Roquette',
+      mode_gestion: 'mandat',
+      taux_commission: 20,
+      loyer_fixe_mensuel: null,
+      proprietaire: null,
+    },
+    mois: '2026-08',
+    revenus_bruts: 1000,
+    frais_menage_total: 100,
+    frais_maintenance_total: 50,
+    charges_restinnov_total: 0,
+    charges_proprietaire_total: 0,
+    resultat_net: 850,
+    montant_proprietaire: 680,
+    commission_restinnov: 170,
+    sejours: [],
+    frais_menage_detail: [],
+    frais_maintenance_detail: [],
+    charges_detail: [{ id: 1, nom_service: 'WiFi', montant: 149, frequence: 'mensuel', a_charge_de: 'restinnov', montant_mensuel: 149 }],
+    verrouille: false,
+    verrouille_le: null,
+    comparaison_mois_precedent: { mois: '2026-07', resultat_net: 800, variation_pct: 6.25 },
+    ...overrides,
+  }
+}
+
+function releveAnnuelFixture(): ReleveAnnuelMois[] {
+  return Array.from({ length: 12 }, (_, i) => ({
+    mois: `2026-${String(i + 1).padStart(2, '0')}`,
+    revenus_bruts: 0,
+    resultat_net: 0,
+  }))
+}
 
 function appartementFixture(overrides: Partial<Appartement> = {}): Appartement {
   return {
@@ -42,6 +81,7 @@ function mockFetchAppartements(
   historique: Record<number, HistoriqueMission[]> = {},
   details: Record<number, AppartementDetail> = {},
   deleteBlockedMessage: Record<number, string> = {},
+  releves: Record<number, Releve> = {},
 ) {
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input))
@@ -51,6 +91,22 @@ function mockFetchAppartements(
     if (historiqueMatch) {
       const id = Number(historiqueMatch[1])
       return new Response(JSON.stringify(historique[id] ?? []), { status: 200 })
+    }
+
+    const pdfMatch = url.pathname.match(/^\/api\/appartements\/(\d+)\/releve\/pdf$/)
+    if (pdfMatch) {
+      return new Response('%PDF-1.4 fake', { status: 200, headers: { 'Content-Type': 'application/pdf' } })
+    }
+
+    const releveAnnuelMatch = url.pathname.match(/^\/api\/appartements\/(\d+)\/releve-annuel$/)
+    if (releveAnnuelMatch) {
+      return new Response(JSON.stringify(releveAnnuelFixture()), { status: 200 })
+    }
+
+    const releveMatch = url.pathname.match(/^\/api\/appartements\/(\d+)\/releve$/)
+    if (releveMatch) {
+      const id = Number(releveMatch[1])
+      return new Response(JSON.stringify(releves[id] ?? releveFixture()), { status: 200 })
     }
 
     const detailMatch = url.pathname.match(/^\/api\/appartements\/(\d+)$/)
@@ -300,7 +356,7 @@ describe('AppartementsListeSection', () => {
       expect(screen.getByText('149.00 MAD')).toBeInTheDocument()
       expect(screen.getByText('À la charge de RestInnov')).toBeInTheDocument()
 
-      expect(screen.getByText('Résumé financier (mois en cours)')).toBeInTheDocument()
+      expect(screen.getByText('Résumé financier')).toBeInTheDocument()
       expect(screen.getByText('1000.00 MAD')).toBeInTheDocument()
       expect(screen.getByText('850.00 MAD')).toBeInTheDocument()
     })
@@ -377,7 +433,7 @@ describe('AppartementsListeSection', () => {
 
       await screen.findByText('1 appartements trouvés')
       await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
-      await screen.findByText('Résumé financier (mois en cours)')
+      await screen.findByText('Résumé financier')
 
       await user.click(screen.getByRole('button', { name: 'Créer un séjour' }))
       expect(onNavigateToCreerSejour).toHaveBeenCalledTimes(1)
@@ -385,10 +441,138 @@ describe('AppartementsListeSection', () => {
       await user.click(screen.getByRole('button', { name: "Modifier l'appartement" }))
       expect(onEditAppartement).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }))
 
-      await user.click(screen.getByRole('button', { name: /télécharger le relevé pdf du mois/i }))
+      await user.click(screen.getByRole('button', { name: /télécharger le relevé pdf/i }))
       await waitFor(() =>
         expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/appartements/1/releve/pdf?mois='), expect.anything()),
       )
+    })
+
+    it('affiche la comparaison avec le mois précédent quand le résultat progresse', async () => {
+      const appartement = appartementFixture()
+      const releve = releveFixture({ comparaison_mois_precedent: { mois: '2026-07', resultat_net: 800, variation_pct: 12 } })
+      globalThis.fetch = mockFetchAppartements([appartement], {}, {}, {}, { 1: releve }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      expect(await screen.findByText('+12% par rapport au mois dernier')).toBeInTheDocument()
+    })
+
+    it('affiche la comparaison en négatif quand le résultat recule', async () => {
+      const appartement = appartementFixture()
+      const releve = releveFixture({ comparaison_mois_precedent: { mois: '2026-07', resultat_net: 1000, variation_pct: -15 } })
+      globalThis.fetch = mockFetchAppartements([appartement], {}, {}, {}, { 1: releve }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      expect(await screen.findByText('-15% par rapport au mois dernier')).toBeInTheDocument()
+    })
+
+    it('ne montre aucune comparaison quand le mois précédent est indéfini', async () => {
+      const appartement = appartementFixture()
+      const releve = releveFixture({ comparaison_mois_precedent: { mois: '2026-07', resultat_net: 0, variation_pct: null } })
+      globalThis.fetch = mockFetchAppartements([appartement], {}, {}, {}, { 1: releve }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      await screen.findByText('Résumé financier')
+      expect(screen.queryByText(/par rapport au mois dernier/i)).not.toBeInTheDocument()
+    })
+
+    it("avertit quand aucune charge n'a été saisie pour le mois affiché", async () => {
+      const appartement = appartementFixture()
+      const releve = releveFixture({ charges_detail: [] })
+      globalThis.fetch = mockFetchAppartements([appartement], {}, {}, {}, { 1: releve }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      expect(await screen.findByText(/aucune charge n'a été saisie pour ce mois/i)).toBeInTheDocument()
+    })
+
+    it("n'avertit pas quand des charges existent pour le mois affiché", async () => {
+      const appartement = appartementFixture()
+      globalThis.fetch = mockFetchAppartements([appartement], {}, {}, {}, { 1: releveFixture() }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      await screen.findByText('Résumé financier')
+      expect(screen.queryByText(/aucune charge n'a été saisie pour ce mois/i)).not.toBeInTheDocument()
+    })
+
+    it('affiche un avertissement quand le mois est déjà verrouillé, sans bloquer le téléchargement', async () => {
+      const appartement = appartementFixture()
+      const releve = releveFixture({ verrouille: true, verrouille_le: '2026-08-15T10:00:00Z' })
+      globalThis.fetch = mockFetchAppartements([appartement], {}, {}, {}, { 1: releve }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      expect(await screen.findByText(/déjà été facturé au propriétaire/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /télécharger le relevé pdf/i })).not.toBeDisabled()
+    })
+
+    it('change de mois recharge le résumé financier et la vue annuelle pour le nouveau mois', async () => {
+      const appartement = appartementFixture()
+      const fetchMock = mockFetchAppartements([appartement])
+      globalThis.fetch = fetchMock as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+      await screen.findByText('Résumé financier')
+
+      const moisInput = screen.getByLabelText(/mois du résumé financier/i)
+      await user.clear(moisInput)
+      await user.type(moisInput, '2026-09')
+
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/appartements/1/releve?mois=2026-09'), expect.anything()),
+      )
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(
+          expect.stringContaining('/api/appartements/1/releve-annuel?mois=2026-09'),
+          expect.anything(),
+        ),
+      )
+    })
+
+    it("affiche un tableau de 12 mois pour la vue annuelle", async () => {
+      const appartement = appartementFixture()
+      globalThis.fetch = mockFetchAppartements([appartement]) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      await screen.findByText('Vue annuelle')
+      const table = screen.getByRole('table')
+      expect(within(table).getAllByRole('columnheader')).toHaveLength(12)
     })
 
     it('ne propose plus de lien vers le relevé complet dans le résumé financier', async () => {
@@ -400,7 +584,7 @@ describe('AppartementsListeSection', () => {
       await screen.findByText('1 appartements trouvés')
       await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
 
-      await screen.findByText('Résumé financier (mois en cours)')
+      await screen.findByText('Résumé financier')
       expect(screen.queryByRole('button', { name: /voir le relevé complet/i })).not.toBeInTheDocument()
       expect(screen.queryByText(/voir le relevé complet/i)).not.toBeInTheDocument()
     })

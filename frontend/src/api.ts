@@ -25,6 +25,7 @@ import type {
   ProduitMenageSignale,
   Proprietaire,
   Releve,
+  ReleveAnnuelMois,
   Sejour,
   SejourStatut,
   TicketMaintenance,
@@ -1197,6 +1198,16 @@ export async function fetchMissionsAValider(): Promise<MissionMenage[]> {
 
 export async function fetchReleve(appartementId: number, mois: string): Promise<Releve> {
   const response = await fetch(`${API_BASE_URL}/api/appartements/${appartementId}/releve?mois=${mois}`, {
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
+/** The trailing 12 months (mois included) of gross revenue / net result, oldest first, for the annual summary table. */
+export async function fetchReleveAnnuel(appartementId: number, mois?: string): Promise<ReleveAnnuelMois[]> {
+  const query = mois ? `?mois=${mois}` : ''
+  const response = await fetch(`${API_BASE_URL}/api/appartements/${appartementId}/releve-annuel${query}`, {
     headers: authHeaders(),
   })
 

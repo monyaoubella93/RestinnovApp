@@ -8,6 +8,7 @@ use App\Models\FraisMaintenance;
 use App\Models\MissionMenage;
 use App\Models\ProduitMenageCatalogue;
 use App\Models\Proprietaire;
+use App\Models\ReleveVerrouillage;
 use App\Models\Sejour;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -398,6 +399,198 @@ class AppartementReleveTest extends TestCase
         $this->actingAsMenage();
 
         $response = $this->get("/api/appartements/{$appartement->id}/releve/pdf?mois=2026-08");
+
+        $response->assertStatus(403);
+    }
+
+    public function test_a_month_is_not_verrouille_before_any_pdf_was_generated(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2026-08");
+
+        $response->assertOk();
+        $response->assertJsonPath('verrouille', false);
+        $response->assertJsonPath('verrouille_le', null);
+    }
+
+    public function test_downloading_the_pdf_verrouille_the_month(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);
+
+        $this->get("/api/appartements/{$appartement->id}/releve/pdf?mois=2026-08")->assertOk();
+
+        $this->assertDatabaseHas('releve_verrouillages', [
+            'appartement_id' => $appartement->id,
+            'mois' => '2026-08',
+        ]);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2026-08");
+        $response->assertJsonPath('verrouille', true);
+        $this->assertNotNull($response->json('verrouille_le'));
+    }
+
+    public function test_a_verrouille_month_does_not_block_regenerating_the_pdf_or_editing_data(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);
+
+        $this->get("/api/appartements/{$appartement->id}/releve/pdf?mois=2026-08")->assertOk();
+
+        // Regenerating the same month's PDF, and editing its underlying data
+        // (here: adding a charge), must both still succeed -- verrouillage is
+        // an informational warning, never a hard block.
+        $second = $this->get("/api/appartements/{$appartement->id}/releve/pdf?mois=2026-08");
+        $second->assertOk();
+
+        $chargeResponse = $this->postJson("/api/appartements/{$appartement->id}/charges", [
+            'nom_service' => 'WiFi',
+            'montant' => 100,
+            'frequence' => 'mensuel',
+            'a_charge_de' => 'restinnov',
+        ]);
+        $chargeResponse->assertCreated();
+
+        // Only one lock row exists per (appartement, mois), no matter how
+        // many times the PDF is regenerated.
+        $this->assertDatabaseCount('releve_verrouillages', 1);
+    }
+
+    public function test_regenerating_the_pdf_does_not_reset_verrouille_le(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);
+
+        $this->get("/api/appartements/{$appartement->id}/releve/pdf?mois=2026-08")->assertOk();
+        $firstLock = ReleveVerrouillage::where('appartement_id', $appartement->id)->where('mois', '2026-08')->first();
+
+        $this->get("/api/appartements/{$appartement->id}/releve/pdf?mois=2026-08")->assertOk();
+        $secondLock = ReleveVerrouillage::where('appartement_id', $appartement->id)->where('mois', '2026-08')->first();
+
+        $this->assertSame($firstLock->id, $secondLock->id);
+        $this->assertSame($firstLock->created_at->toIso8601String(), $secondLock->created_at->toIso8601String());
+    }
+
+    public function test_verrouillage_is_scoped_to_its_own_month(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);
+
+        $this->get("/api/appartements/{$appartement->id}/releve/pdf?mois=2026-08")->assertOk();
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2026-09");
+        $response->assertJsonPath('verrouille', false);
+    }
+
+    public function test_comparaison_mois_precedent_computes_the_variation_percentage(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible', 'mode_gestion' => 'mandat', 'taux_commission' => 0]);
+
+        Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-07-05',
+            'date_depart' => '2026-07-10',
+            'nom_voyageur' => 'Juillet',
+            'statut' => 'termine',
+            'montant_mad' => 1000,
+        ]);
+        Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-08-05',
+            'date_depart' => '2026-08-10',
+            'nom_voyageur' => 'Août',
+            'statut' => 'termine',
+            'montant_mad' => 1120,
+        ]);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2026-08");
+
+        $response->assertOk();
+        $response->assertJsonPath('comparaison_mois_precedent.mois', '2026-07');
+        $response->assertJsonPath('comparaison_mois_precedent.resultat_net', 1000);
+        $response->assertJsonPath('comparaison_mois_precedent.variation_pct', 12);
+    }
+
+    public function test_comparaison_mois_precedent_variation_pct_is_null_when_previous_month_result_is_zero(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);
+
+        Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-08-05',
+            'date_depart' => '2026-08-10',
+            'nom_voyageur' => 'Août',
+            'statut' => 'termine',
+            'montant_mad' => 500,
+        ]);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2026-08");
+
+        $response->assertOk();
+        $response->assertJsonPath('comparaison_mois_precedent.mois', '2026-07');
+        $response->assertJsonPath('comparaison_mois_precedent.resultat_net', 0);
+        $response->assertJsonPath('comparaison_mois_precedent.variation_pct', null);
+    }
+
+    public function test_comparaison_mois_precedent_handles_january_crossing_into_the_previous_year(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2026-01");
+
+        $response->assertOk();
+        $response->assertJsonPath('comparaison_mois_precedent.mois', '2025-12');
+    }
+
+    public function test_releve_annuel_returns_the_last_twelve_months_ending_on_the_requested_month(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible', 'mode_gestion' => 'mandat', 'taux_commission' => 0]);
+
+        Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-03-05',
+            'date_depart' => '2026-03-10',
+            'nom_voyageur' => 'Mars',
+            'statut' => 'termine',
+            'montant_mad' => 900,
+        ]);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve-annuel?mois=2026-08");
+
+        $response->assertOk();
+        $response->assertJsonCount(12);
+        $response->assertJsonPath('0.mois', '2025-09');
+        $response->assertJsonPath('11.mois', '2026-08');
+        $response->assertJsonPath('6.mois', '2026-03');
+        $response->assertJsonPath('6.revenus_bruts', 900);
+        $response->assertJsonPath('6.resultat_net', 900);
+        $response->assertJsonPath('0.revenus_bruts', 0);
+    }
+
+    public function test_releve_annuel_defaults_mois_to_the_current_month(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve-annuel");
+
+        $response->assertOk();
+        $response->assertJsonCount(12);
+        $response->assertJsonPath('11.mois', now()->format('Y-m'));
+    }
+
+    public function test_releve_annuel_mois_must_be_in_y_m_format_when_provided(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve-annuel?mois=2026-08-01");
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('mois');
+    }
+
+    public function test_releve_annuel_is_forbidden_for_a_menage_account(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);
+        $this->actingAsMenage();
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve-annuel?mois=2026-08");
 
         $response->assertStatus(403);
     }

@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/appartements/{appartement}', [AppartementController::class, 'destroy']);
         Route::get('/appartements/{appartement}/historique', [AppartementController::class, 'historique']);
         Route::get('/appartements/{appartement}/releve', [AppartementController::class, 'releve']);
+        Route::get('/appartements/{appartement}/releve-annuel', [AppartementController::class, 'releveAnnuel']);
         Route::get('/appartements/{appartement}/releve/pdf', [AppartementController::class, 'relevePdf']);
         Route::post('/appartements/{appartement}/charges', [ChargeAppartementController::class, 'store']);
         Route::patch('/charges-appartement/{chargeAppartement}', [ChargeAppartementController::class, 'update']);

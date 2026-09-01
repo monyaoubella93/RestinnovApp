@@ -92,6 +92,11 @@ export function RelevesProprietairesSection() {
     setDownloadingId(appartementId)
     try {
       await downloadRelevePdf(appartementId, mois)
+      // Downloading verrouille's the month server-side -- refetch so the
+      // 🔒 badge appears immediately, without waiting for the mois filter
+      // to change and come back.
+      const updated = await fetchReleve(appartementId, mois)
+      setReleves((current) => ({ ...current, [appartementId]: updated }))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de télécharger le PDF.')
     } finally {
@@ -107,6 +112,10 @@ export function RelevesProprietairesSection() {
         // eslint-disable-next-line no-await-in-loop -- sequential to avoid opening dozens of downloads at once
         await downloadRelevePdf(appartement.id, mois)
       }
+      const entries = await Promise.all(
+        appartements.map(async (appartement) => [appartement.id, await fetchReleve(appartement.id, mois)] as const),
+      )
+      setReleves(Object.fromEntries(entries))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de télécharger tous les PDF.')
     } finally {
@@ -193,7 +202,19 @@ export function RelevesProprietairesSection() {
 
                 return (
                   <tr key={appartement.id}>
-                    <td className="py-2 pr-4 pl-2 font-semibold text-ink">{appartement.nom}</td>
+                    <td className="py-2 pr-4 pl-2 font-semibold text-ink">
+                      {appartement.nom}
+                      {releve?.verrouille && (
+                        <span
+                          role="img"
+                          aria-label="Mois déjà facturé au propriétaire"
+                          title="Mois déjà facturé au propriétaire"
+                          className="ml-1.5"
+                        >
+                          🔒
+                        </span>
+                      )}
+                    </td>
                     <td className="py-2 pr-4 text-ink-secondary">{appartement.proprietaire?.nom ?? 'Aucun'}</td>
                     <td className="py-2 pr-4">
                       {modeGestion && (
