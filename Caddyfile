@@ -4,12 +4,39 @@
 # nginx itself is never exposed to the internet directly (see
 # docker-compose.prod.yml).
 #
-# Replace ton-domaine.com with your real domain before deploying. It must
-# already have a DNS A (and/or AAAA) record pointing at this server's public
-# IP, and ports 80/443 must be reachable from the internet -- Caddy uses
-# port 80 for the ACME HTTP-01 challenge (and to redirect plain HTTP to
-# HTTPS) and port 443 to serve the certificate it obtains.
+# Replace ton-domaine.com with your real domain before deploying (see
+# README-DEPLOY.md). It must already have a DNS A (and/or AAAA) record
+# pointing at this server's public IP -- until then this block keeps
+# retrying certificate issuance in the background (with backoff) and
+# logging the failure; it does not crash Caddy or affect the block below.
 
 ton-domaine.com {
+	reverse_proxy nginx:80
+}
+
+# --- Accès HTTP temporaire via l'IP du serveur --------------------------
+# En attendant que le DNS du domaine ci-dessus pointe vers ce serveur, ce
+# bloc permet de tester le déploiement via http://<IP-du-serveur>:8080.
+#
+# Un site sans nom d'hôte (juste ":8080") n'est jamais concerné par la
+# gestion automatique de HTTPS de Caddy : il n'y a pas de nom de domaine
+# pour lequel obtenir un certificat, donc Caddy le sert directement en
+# clair, sans redirection -- rien d'autre à faire ni à désactiver ici.
+#
+# Ne PAS ajouter "auto_https off" dans ce bloc : c'est une option GLOBALE
+# (valide uniquement tout en haut du Caddyfile, dans son propre bloc
+# d'options sans adresse), invalide à l'intérieur d'un bloc de site.
+# Utilisée ici, Caddy refuse de démarrer ("unrecognized directive:
+# auto_https") -- et comme le Caddyfile entier échoue à charger, TOUT
+# s'arrête, y compris le bloc du domaine ci-dessus.
+#
+# Le port 8080 doit aussi être publié dans docker-compose.prod.yml (voir
+# le service "caddy") -- sans ça, rien n'écoute côté hôte sur ce port et
+# la connexion est refusée quel que soit le contenu de ce Caddyfile.
+#
+# À SUPPRIMER une fois le DNS du domaine vérifié et le certificat HTTPS
+# obtenu avec succès (voir les logs : "logger":"tls.obtain" ne doit plus
+# afficher d'erreur pour ce domaine).
+:8080 {
 	reverse_proxy nginx:80
 }

@@ -5,10 +5,11 @@
 #   - No separate "frontend" service: the React app is built into static
 #     files at image-build time and served by nginx (see
 #     docker/nginx/Dockerfile.prod), not run as a live Vite dev server.
-#   - "caddy" is the only service exposed to the internet (ports 80/443),
-#     terminating HTTPS automatically via Let's Encrypt and reverse-proxying
-#     everything to "nginx" over the internal Docker network. "nginx" and
-#     "db" have no published host ports at all.
+#   - "caddy" is the only service exposed to the internet (ports 80/443,
+#     plus a temporary 8080 -- see the Caddyfile), terminating HTTPS
+#     automatically via Let's Encrypt and reverse-proxying everything to
+#     "nginx" over the internal Docker network. "nginx" and "db" have no
+#     published host ports at all.
 #   - "app"/"scheduler" read every setting from the project's real ".env"
 #     file (bind-mounted in, same as dev) -- see .env.production.example
 #     for what that file needs to contain before running this stack.
@@ -85,6 +86,11 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      # Accès HTTP temporaire via l'IP du serveur, en attendant que le DNS
+      # du domaine soit pointé ici -- voir le bloc ":8080" du Caddyfile. À
+      # retirer une fois le DNS vérifié et le certificat HTTPS obtenu avec
+      # succès.
+      - "8080:8080"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
