@@ -20,6 +20,9 @@
 /public/storage
 /storage/*.key
 /storage/pail
+# Source data for one-off historical imports (real guest names, passport
+# numbers, contact info) -- must never be committed.
+/storage/app/imports/
 /vendor
 _ide_helper.php
 Homestead.json

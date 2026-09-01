@@ -16,6 +16,8 @@ class Voyageur extends Model
     protected $fillable = [
         'sejour_id',
         'nom',
+        'date_naissance',
+        'nationalite',
         'numero_passeport',
         'telephone',
         'est_principal',
@@ -24,6 +26,7 @@ class Voyageur extends Model
 
     protected $casts = [
         'est_principal' => 'boolean',
+        'date_naissance' => 'date:Y-m-d',
     ];
 
     public function sejour(): BelongsTo

@@ -30,6 +30,8 @@ class Sejour extends Model
         'statut',
         'plateforme_origine',
         'montant_mad',
+        'sejour_ref_externe',
+        'notes',
     ];
 
     protected $casts = [
