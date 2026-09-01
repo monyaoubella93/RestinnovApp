@@ -10,6 +10,8 @@ const produitsSignales: ProduitMenageSignale[] = [
     mission_menage_id: 1,
     photo_url: 'produits-signales/photo1.jpg',
     note: 'Trouvé sous l\'évier',
+    prix: null,
+    photo_ticket_url: null,
     statut: 'en_attente',
     produit_catalogue_id: null,
   },

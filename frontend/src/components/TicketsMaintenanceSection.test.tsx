@@ -191,7 +191,11 @@ async function expandTicket(user: ReturnType<typeof userEvent.setup>, descriptio
   await user.click(await screen.findByText(description))
 }
 
-function renderSection(tickets: TicketMaintenance[], agents: Agent[] = [], props: { initialStatutFilter?: TicketMaintenance['statut'] | '' } = {}) {
+function renderSection(
+  tickets: TicketMaintenance[],
+  agents: Agent[] = [],
+  props: { initialStatutFilter?: TicketMaintenance['statut'] | ''; initialTicketId?: number | null } = {},
+) {
   globalThis.fetch = mockFetch(tickets, agents) as typeof fetch
   return render(<TicketsMaintenanceSection appartements={APPARTEMENTS} {...props} />)
 }
@@ -253,6 +257,15 @@ describe('TicketsMaintenanceSection', () => {
 
     await expandTicket(user, 'Le robinet fuit.')
     expect(screen.queryByLabelText(/^agent de maintenance$/i)).not.toBeInTheDocument()
+  })
+
+  it('affiche les dates du séjour lié une fois la carte dépliée', async () => {
+    const user = userEvent.setup()
+    renderSection([ticketFixture()])
+
+    await expandTicket(user, 'Le robinet fuit.')
+
+    expect(screen.getByText(/du 01\/08\/2026 au 05\/08\/2026/)).toBeInTheDocument()
   })
 
   it('affiche un message quand aucun ticket n\'est présent', async () => {
@@ -353,6 +366,64 @@ describe('TicketsMaintenanceSection', () => {
     expect(screen.getByText('La fuite persiste.')).toBeInTheDocument()
     expect(screen.queryByLabelText(/^agent de maintenance$/i)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^valider$/i })).not.toBeInTheDocument()
+  })
+
+  it('affiche les messages intermédiaires de l\'agent, par ordre chronologique', async () => {
+    const user = userEvent.setup()
+    const ticket = ticketFixture({
+      statut: 'assigne',
+      agent_id: 5,
+      agent: agentFixture(),
+      messages_agent: [
+        { id: 1, photo_url: null, audio_url: null, note: 'Je dois commander une pièce.', created_at: '2026-08-11T09:00:00Z' },
+        { id: 2, photo_url: 'tickets-maintenance/message-photo.jpg', audio_url: null, note: null, created_at: '2026-08-11T10:00:00Z' },
+      ],
+    })
+    renderSection([ticket])
+
+    await expandTicket(user, 'Le robinet fuit.')
+
+    expect(screen.getByText("Messages de l'agent")).toBeInTheDocument()
+    expect(screen.getByText('Je dois commander une pièce.')).toBeInTheDocument()
+    expect(screen.getByAltText("Photo du message de l'agent")).toHaveAttribute(
+      'src',
+      expect.stringContaining('tickets-maintenance/message-photo.jpg'),
+    )
+  })
+
+  it('affiche les photos supplémentaires du signalement en plus de la photo principale', async () => {
+    const user = userEvent.setup()
+    const ticket = ticketFixture({
+      photo_url: 'tickets-maintenance/photo.jpg',
+      photos_signalement: [
+        { id: 1, photo_url: 'tickets-maintenance/photo-2.jpg' },
+        { id: 2, photo_url: 'tickets-maintenance/photo-3.jpg' },
+      ],
+    })
+    renderSection([ticket])
+
+    await expandTicket(user, 'Le robinet fuit.')
+
+    const images = screen.getAllByAltText(/photo du problème signalé/i)
+    expect(images).toHaveLength(3)
+  })
+
+  it('affiche les photos supplémentaires de la résolution en plus de la photo après réparation', async () => {
+    const user = userEvent.setup()
+    const ticket = ticketFixture({
+      statut: 'resolu',
+      agent_id: 5,
+      agent: agentFixture(),
+      photo_apres: 'tickets-maintenance/apres.jpg',
+      photos_resolution: [{ id: 1, photo_url: 'tickets-maintenance/apres-2.jpg' }],
+      cout_reparation: '45.50',
+    })
+    renderSection([ticket])
+
+    await expandTicket(user, 'Le robinet fuit.')
+
+    const images = screen.getAllByAltText(/photo après réparation/i)
+    expect(images).toHaveLength(2)
   })
 
   it('affiche un ticket résolu en lecture seule avec la photo après réparation et le coût', async () => {
@@ -515,6 +586,30 @@ describe('TicketsMaintenanceSection', () => {
     await screen.findByText('Ticket en attente')
     expect(screen.queryByText('Ticket ouvert')).not.toBeInTheDocument()
     expect(screen.getByLabelText(/^statut$/i)).toHaveValue('resolu_en_attente_validation')
+  })
+
+  it('ouvre directement le détail complet du ticket ciblé (ex. depuis l\'historique de maintenance d\'un appartement)', async () => {
+    renderSection(
+      [
+        ticketFixture({ id: 1, statut: 'resolu', description: 'Autre ticket', photo_apres: null }),
+        ticketFixture({
+          id: 2,
+          statut: 'resolu',
+          description: 'Chauffe-eau réparé',
+          photo_apres: 'tickets-maintenance/apres.jpg',
+          cout_reparation: '80.00',
+        }),
+      ],
+      [],
+      { initialTicketId: 2 },
+    )
+
+    await screen.findByText('Chauffe-eau réparé')
+
+    // The targeted ticket's full detail (photo/coût) is already visible --
+    // no extra click needed -- while the other ticket stays collapsed.
+    expect(screen.getByAltText('Photo après réparation')).toBeInTheDocument()
+    expect(screen.getByText('Coût : 80.00 MAD')).toBeInTheDocument()
   })
 
   // --- Vue "Groupé par appartement" ---

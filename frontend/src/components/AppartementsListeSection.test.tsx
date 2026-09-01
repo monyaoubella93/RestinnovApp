@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppartementsListeSection } from './AppartementsListeSection'
-import type { Appartement, HistoriqueMission } from '../types'
+import type { Appartement, AppartementDetail, HistoriqueMission } from '../types'
 
 function appartementFixture(overrides: Partial<Appartement> = {}): Appartement {
   return {
@@ -20,15 +20,52 @@ function appartementFixture(overrides: Partial<Appartement> = {}): Appartement {
   }
 }
 
+function appartementDetailFixture(overrides: Partial<AppartementDetail> = {}, appartementOverrides: Partial<Appartement> = {}): AppartementDetail {
+  return {
+    appartement: appartementFixture(appartementOverrides),
+    resume_financier: {
+      mois: '2026-08',
+      revenus_bruts: 1000,
+      frais_menage_total: 100,
+      frais_maintenance_total: 50,
+      resultat_net: 850,
+    },
+    tickets_maintenance: [],
+    tickets_maintenance_recurrent: false,
+    ...overrides,
+  }
+}
+
 /** Fakes the backend's filter/sort/pagination behaviour over an in-memory list of appartements. */
-function mockFetchAppartements(all: Appartement[], historique: Record<number, HistoriqueMission[]> = {}) {
-  return vi.fn(async (input: RequestInfo | URL) => {
+function mockFetchAppartements(
+  all: Appartement[],
+  historique: Record<number, HistoriqueMission[]> = {},
+  details: Record<number, AppartementDetail> = {},
+  deleteBlockedMessage: Record<number, string> = {},
+) {
+  return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input))
+    const method = init?.method ?? 'GET'
 
     const historiqueMatch = url.pathname.match(/^\/api\/appartements\/(\d+)\/historique$/)
     if (historiqueMatch) {
       const id = Number(historiqueMatch[1])
       return new Response(JSON.stringify(historique[id] ?? []), { status: 200 })
+    }
+
+    const detailMatch = url.pathname.match(/^\/api\/appartements\/(\d+)$/)
+    if (detailMatch && method === 'DELETE') {
+      const id = Number(detailMatch[1])
+      if (deleteBlockedMessage[id]) {
+        return new Response(JSON.stringify({ message: deleteBlockedMessage[id] }), { status: 422 })
+      }
+      return new Response(null, { status: 204 })
+    }
+    if (detailMatch) {
+      const id = Number(detailMatch[1])
+      const appartement = all.find((a) => a.id === id)
+      const detail = details[id] ?? appartementDetailFixture({}, appartement ?? {})
+      return new Response(JSON.stringify(detail), { status: 200 })
     }
 
     let result = [...all]
@@ -231,6 +268,188 @@ describe('AppartementsListeSection', () => {
     expect(await screen.findByText('1 appartements trouvés')).toBeInTheDocument()
   })
 
+  describe('sections du détail enrichi', () => {
+    it('affiche le propriétaire, les charges actives et le résumé financier du mois en cours', async () => {
+      const appartement = appartementFixture()
+      const detail = appartementDetailFixture(
+        {
+          appartement: {
+            ...appartement,
+            proprietaire: { id: 9, nom: 'Karim Alaoui', telephone: '0600000000', email: null, adresse: null },
+            mode_gestion: 'mandat',
+            taux_commission: 20,
+            charges_actives: [
+              { id: 1, nom_service: 'WiFi', montant: 149, frequence: 'mensuel', a_charge_de: 'restinnov', date_debut: '2026-01-01', date_fin: null },
+            ],
+          },
+        },
+      )
+      globalThis.fetch = mockFetchAppartements([appartement], {}, { 1: detail }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      expect(await screen.findByText('Karim Alaoui')).toBeInTheDocument()
+      expect(screen.getByText('0600000000')).toBeInTheDocument()
+      expect(screen.getByText('MANDAT')).toBeInTheDocument()
+
+      expect(screen.getByText('WiFi', { exact: false })).toBeInTheDocument()
+      expect(screen.getByText('149.00 MAD')).toBeInTheDocument()
+      expect(screen.getByText('À la charge de RestInnov')).toBeInTheDocument()
+
+      expect(screen.getByText('Résumé financier (mois en cours)')).toBeInTheDocument()
+      expect(screen.getByText('1000.00 MAD')).toBeInTheDocument()
+      expect(screen.getByText('850.00 MAD')).toBeInTheDocument()
+    })
+
+    it('affiche un message quand aucun propriétaire ou aucune charge n\'est renseigné', async () => {
+      globalThis.fetch = mockFetchAppartements([appartementFixture()]) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      expect(await screen.findByText('Aucun propriétaire renseigné.')).toBeInTheDocument()
+      expect(screen.getByText('Aucune charge active.')).toBeInTheDocument()
+    })
+
+    it('liste les tickets de maintenance liés avec leur statut et le badge "Récurrent"', async () => {
+      const appartement = appartementFixture()
+      const detail = appartementDetailFixture({
+        tickets_maintenance: [
+          {
+            id: 1,
+            reference: 'MNT-0001',
+            appartement_id: 1,
+            mission_origine_id: null,
+            agent_id: null,
+            description: 'Robinet qui fuit.',
+            description_manager: null,
+            description_manager_audio_url: null,
+            photo_url: null,
+            photo_transferee: false,
+            audio_url: null,
+            photo_apres: null,
+            cout_reparation: null,
+            note_resolution: null,
+            urgence: 'normale',
+            statut: 'ouvert',
+            created_at: '2026-08-01T00:00:00Z',
+          },
+        ],
+        tickets_maintenance_recurrent: true,
+      })
+      globalThis.fetch = mockFetchAppartements([appartement], {}, { 1: detail }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      expect(await screen.findByText('MNT-0001', { exact: false })).toBeInTheDocument()
+      expect(screen.getByText('Ouvert')).toBeInTheDocument()
+      expect(screen.getByTestId('recurrent-badge-1')).toBeInTheDocument()
+    })
+
+    it('les boutons d\'action rapide déclenchent la navigation et le téléchargement du PDF', async () => {
+      const fetchMock = mockFetchAppartements([appartementFixture()])
+      globalThis.fetch = fetchMock as typeof fetch
+      const onNavigateToCreerSejour = vi.fn()
+      const onEditAppartement = vi.fn()
+      const user = userEvent.setup()
+
+      URL.createObjectURL = vi.fn().mockReturnValue('blob:fake-url')
+      URL.revokeObjectURL = vi.fn()
+
+      render(
+        <AppartementsListeSection
+          onNavigateToCreer={vi.fn()}
+          onEditAppartement={onEditAppartement}
+          onNavigateToCreerSejour={onNavigateToCreerSejour}
+        />,
+      )
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+      await screen.findByText('Résumé financier (mois en cours)')
+
+      await user.click(screen.getByRole('button', { name: 'Créer un séjour' }))
+      expect(onNavigateToCreerSejour).toHaveBeenCalledTimes(1)
+
+      await user.click(screen.getByRole('button', { name: "Modifier l'appartement" }))
+      expect(onEditAppartement).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }))
+
+      await user.click(screen.getByRole('button', { name: /télécharger le relevé pdf du mois/i }))
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/appartements/1/releve/pdf?mois='), expect.anything()),
+      )
+    })
+
+    it('ne propose plus de lien vers le relevé complet dans le résumé financier', async () => {
+      globalThis.fetch = mockFetchAppartements([appartementFixture()]) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      await screen.findByText('Résumé financier (mois en cours)')
+      expect(screen.queryByRole('button', { name: /voir le relevé complet/i })).not.toBeInTheDocument()
+      expect(screen.queryByText(/voir le relevé complet/i)).not.toBeInTheDocument()
+    })
+
+    it('un clic sur un ticket de maintenance déclenche la navigation vers son détail', async () => {
+      const appartement = appartementFixture()
+      const detail = appartementDetailFixture({
+        tickets_maintenance: [
+          {
+            id: 42,
+            reference: 'MNT-0042',
+            appartement_id: 1,
+            mission_origine_id: null,
+            agent_id: null,
+            description: 'Chauffe-eau en panne.',
+            description_manager: null,
+            description_manager_audio_url: null,
+            photo_url: null,
+            photo_transferee: false,
+            audio_url: null,
+            photo_apres: null,
+            cout_reparation: null,
+            note_resolution: null,
+            urgence: 'haute',
+            statut: 'resolu',
+            created_at: '2026-07-01T00:00:00Z',
+          },
+        ],
+      })
+      globalThis.fetch = mockFetchAppartements([appartement], {}, { 1: detail }) as typeof fetch
+      const onNavigateToTicket = vi.fn()
+      const user = userEvent.setup()
+
+      render(
+        <AppartementsListeSection
+          onNavigateToCreer={vi.fn()}
+          onEditAppartement={vi.fn()}
+          onNavigateToTicket={onNavigateToTicket}
+        />,
+      )
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      await user.click(await screen.findByRole('button', { name: 'Voir le détail du ticket MNT-0042' }))
+      expect(onNavigateToTicket).toHaveBeenCalledWith(42)
+    })
+  })
+
   describe('onglet "Historique ménage"', () => {
     const mission: HistoriqueMission = {
       id: 5,
@@ -244,7 +463,7 @@ describe('AppartementsListeSection', () => {
       },
       checklist_modeles_utilises: ['Standard'],
       checklist_items: [{ libelle: "Passer l'aspirateur", checklist_modele_nom: 'Standard', coche: true, photo_url: null, photo_reference_url: null }],
-      produits: [{ nom: 'Javel', prix: 12.5, photo_url: null }],
+      produits: [{ nom: 'Javel', prix: 12.5, photo_url: null, type_utilisation: 'rachete', photo_preuve_url: null, prix_paye: 12.5 }],
       frais_forfait: 50,
       frais_produits_total: 12.5,
       frais_total: 62.5,
@@ -283,6 +502,63 @@ describe('AppartementsListeSection', () => {
       await user.click(screen.getByRole('button', { name: 'Historique ménage' }))
 
       expect(await screen.findByText(/aucune mission de ménage/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('suppression d\'un appartement', () => {
+    it('demande confirmation avant de supprimer, puis retire la ligne et affiche un succès', async () => {
+      globalThis.fetch = mockFetchAppartements([appartementFixture()]) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /supprimer l'appartement loft bastille/i }))
+
+      expect(
+        screen.getByText('Êtes-vous sûr de vouloir supprimer Loft Bastille ? Cette action est irréversible.'),
+      ).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Confirmer la suppression' }))
+
+      expect(await screen.findByText('Appartement supprimé avec succès.')).toBeInTheDocument()
+      expect(screen.queryByText('Loft Bastille')).not.toBeInTheDocument()
+      expect(await screen.findByText('0 appartements trouvés')).toBeInTheDocument()
+    })
+
+    it('annuler la confirmation ne supprime rien', async () => {
+      const fetchMock = mockFetchAppartements([appartementFixture()])
+      globalThis.fetch = fetchMock as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /supprimer l'appartement loft bastille/i }))
+      await user.click(screen.getByRole('button', { name: 'Annuler' }))
+
+      expect(screen.queryByText(/Cette action est irréversible/)).not.toBeInTheDocument()
+      expect(screen.getByText('Loft Bastille')).toBeInTheDocument()
+      expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/appartements/1'), expect.objectContaining({ method: 'DELETE' }))
+    })
+
+    it('affiche le message de blocage du backend et garde la ligne quand la suppression est refusée', async () => {
+      globalThis.fetch = mockFetchAppartements([appartementFixture()], {}, {}, {
+        1: 'Impossible de supprimer : cet appartement a des séjours actifs ou à venir.',
+      }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /supprimer l'appartement loft bastille/i }))
+      await user.click(screen.getByRole('button', { name: 'Confirmer la suppression' }))
+
+      expect(
+        await screen.findByText('Impossible de supprimer : cet appartement a des séjours actifs ou à venir.'),
+      ).toBeInTheDocument()
+      expect(screen.getByText('Loft Bastille')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Confirmer la suppression' })).toBeInTheDocument()
     })
   })
 })

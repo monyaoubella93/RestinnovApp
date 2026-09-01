@@ -1,7 +1,28 @@
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react'
-import type { NewAppartementInput, NewProprietaireInput } from '../api'
-import type { Agent, Appartement, ChecklistModele, ModeGestion, Proprietaire } from '../types'
+import type { NewAppartementInput, NewChargeInput, NewProprietaireInput } from '../api'
+import type { AChargeDe, Agent, Appartement, ChecklistModele, FrequenceCharge, ModeGestion, Proprietaire } from '../types'
 import { ChecklistModeleItemsEditor } from './ChecklistModeleItemsEditor'
+
+const SERVICES_PREDEFINIS = ['WiFi', 'Netflix', 'IPTV', 'Électricité', 'Eau', 'Assurance']
+
+interface ChargeFormRow {
+  localId: string
+  id?: number
+  nomService: string
+  montant: string
+  frequence: FrequenceCharge
+  aChargeDe: AChargeDe
+}
+
+function nouvelleChargeVide(nomService: string): ChargeFormRow {
+  return {
+    localId: `${nomService}-${Math.random().toString(36).slice(2)}`,
+    nomService,
+    montant: '',
+    frequence: 'mensuel',
+    aChargeDe: 'restinnov',
+  }
+}
 
 interface NouvelAppartementFormProps {
   checklistModeles: ChecklistModele[]
@@ -10,7 +31,7 @@ interface NouvelAppartementFormProps {
   onSubmit: (input: NewAppartementInput) => Promise<void>
   onCreateProprietaire: (input: NewProprietaireInput) => Promise<Proprietaire>
   onCreateChecklistModele: (nom: string) => Promise<ChecklistModele>
-  onAddChecklistModeleItem: (checklistModeleId: number, libelle: string, photo?: File | null) => Promise<void>
+  onAddChecklistModeleItem: (checklistModeleId: number, libelle: string, libelleAr?: string | null, photo?: File | null) => Promise<void>
   onDeplacerChecklistModeleItem: (itemId: number, direction: 'haut' | 'bas') => Promise<void>
   onDeleteChecklistModeleItem: (itemId: number) => Promise<void>
   onCancel?: () => void
@@ -49,10 +70,14 @@ export function NouvelAppartementForm({
   const [newProprietaireNom, setNewProprietaireNom] = useState('')
   const [newProprietaireTelephone, setNewProprietaireTelephone] = useState('')
   const [newProprietaireEmail, setNewProprietaireEmail] = useState('')
+  const [newProprietaireAdresse, setNewProprietaireAdresse] = useState('')
   const [creatingProprietaire, setCreatingProprietaire] = useState(false)
   const [modeGestion, setModeGestion] = useState<ModeGestion>('mandat')
   const [tauxCommission, setTauxCommission] = useState('')
   const [loyerFixeMensuel, setLoyerFixeMensuel] = useState('')
+  const [charges, setCharges] = useState<ChargeFormRow[]>([])
+  const [showCustomChargeInput, setShowCustomChargeInput] = useState(false)
+  const [customChargeNom, setCustomChargeNom] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -71,9 +96,13 @@ export function NouvelAppartementForm({
     setNewProprietaireNom('')
     setNewProprietaireTelephone('')
     setNewProprietaireEmail('')
+    setNewProprietaireAdresse('')
     setModeGestion('mandat')
     setTauxCommission('')
     setLoyerFixeMensuel('')
+    setCharges([])
+    setShowCustomChargeInput(false)
+    setCustomChargeNom('')
     setError(null)
   }
 
@@ -91,6 +120,16 @@ export function NouvelAppartementForm({
       )
       setLoyerFixeMensuel(
         appartementToEdit.loyer_fixe_mensuel != null ? String(appartementToEdit.loyer_fixe_mensuel) : '',
+      )
+      setCharges(
+        (appartementToEdit.charges_actives ?? []).map((charge) => ({
+          localId: String(charge.id),
+          id: charge.id,
+          nomService: charge.nom_service,
+          montant: String(charge.montant),
+          frequence: charge.frequence,
+          aChargeDe: charge.a_charge_de,
+        })),
       )
       setError(null)
     } else {
@@ -121,6 +160,29 @@ export function NouvelAppartementForm({
     )
   }
 
+  const toggleServicePredefini = (nomService: string) => {
+    setCharges((current) =>
+      current.some((c) => c.nomService === nomService)
+        ? current.filter((c) => c.nomService !== nomService)
+        : [...current, nouvelleChargeVide(nomService)],
+    )
+  }
+
+  const updateCharge = (localId: string, changes: Partial<ChargeFormRow>) => {
+    setCharges((current) => current.map((c) => (c.localId === localId ? { ...c, ...changes } : c)))
+  }
+
+  const removeCharge = (localId: string) => {
+    setCharges((current) => current.filter((c) => c.localId !== localId))
+  }
+
+  const handleAddCustomCharge = () => {
+    if (!customChargeNom.trim()) return
+    setCharges((current) => [...current, nouvelleChargeVide(customChargeNom.trim())])
+    setCustomChargeNom('')
+    setShowCustomChargeInput(false)
+  }
+
   const handleCreateChecklistModele = async () => {
     if (!newChecklistNom.trim()) return
     setCreatingChecklist(true)
@@ -144,12 +206,14 @@ export function NouvelAppartementForm({
         nom: newProprietaireNom.trim(),
         telephone: newProprietaireTelephone.trim() || null,
         email: newProprietaireEmail.trim() || null,
+        adresse: newProprietaireAdresse.trim() || null,
       })
       setProprietaireId(String(created.id))
       setShowNewProprietaireInput(false)
       setNewProprietaireNom('')
       setNewProprietaireTelephone('')
       setNewProprietaireEmail('')
+      setNewProprietaireAdresse('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de créer ce propriétaire.')
     } finally {
@@ -166,6 +230,20 @@ export function NouvelAppartementForm({
       return
     }
 
+    const chargesInvalides = charges.some((c) => c.montant.trim() === '' || Number.isNaN(Number(c.montant)))
+    if (chargesInvalides) {
+      setError('Veuillez indiquer un montant pour chaque service coché.')
+      return
+    }
+
+    const chargesPayload: NewChargeInput[] = charges.map((c) => ({
+      id: c.id,
+      nom_service: c.nomService,
+      montant: Number(c.montant),
+      frequence: c.frequence,
+      a_charge_de: c.aChargeDe,
+    }))
+
     setSubmitting(true)
     try {
       await onSubmit({
@@ -178,6 +256,7 @@ export function NouvelAppartementForm({
         mode_gestion: modeGestion,
         taux_commission: modeGestion === 'mandat' && tauxCommission ? Number(tauxCommission) : null,
         loyer_fixe_mensuel: modeGestion === 'sous_location' && loyerFixeMensuel ? Number(loyerFixeMensuel) : null,
+        charges: chargesPayload,
       })
       resetForm()
     } catch (err) {
@@ -375,6 +454,13 @@ export function NouvelAppartementForm({
               placeholder="Email (optionnel)"
               className="block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
             />
+            <input
+              type="text"
+              value={newProprietaireAdresse}
+              onChange={(e) => setNewProprietaireAdresse(e.target.value)}
+              placeholder="Adresse (optionnel)"
+              className="block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
+            />
             <div className="flex gap-2">
               <button
                 type="button"
@@ -462,6 +548,119 @@ export function NouvelAppartementForm({
               className="mt-1 block w-32 rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
+        )}
+      </div>
+
+      <div>
+        <span className="block text-sm font-semibold text-ink-secondary">Charges et services</span>
+        <p className="mt-1 text-xs text-ink-tertiary">
+          Cochez les services récurrents de cet appartement (WiFi, Netflix, ...) et indiquez qui les paie.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-3">
+          {SERVICES_PREDEFINIS.map((service) => (
+            <label key={service} className="flex items-center gap-1.5 text-sm text-ink-secondary">
+              <input
+                type="checkbox"
+                checked={charges.some((c) => c.nomService === service)}
+                onChange={() => toggleServicePredefini(service)}
+                className="h-4 w-4 rounded border-border-default accent-brand"
+              />
+              {service}
+            </label>
+          ))}
+        </div>
+
+        {charges.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {charges.map((charge) => (
+              <div
+                key={charge.localId}
+                className="grid grid-cols-1 items-center gap-2 rounded-field border border-border-default p-3 sm:grid-cols-[1fr_auto_auto_auto_auto]"
+              >
+                <span className="text-sm font-semibold text-ink">{charge.nomService}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={charge.montant}
+                  onChange={(e) => updateCharge(charge.localId, { montant: e.target.value })}
+                  placeholder="Montant (MAD)"
+                  aria-label={`Montant pour ${charge.nomService}`}
+                  className="w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none sm:w-32"
+                />
+                <select
+                  value={charge.frequence}
+                  onChange={(e) => updateCharge(charge.localId, { frequence: e.target.value as FrequenceCharge })}
+                  aria-label={`Fréquence pour ${charge.nomService}`}
+                  className="rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
+                >
+                  <option value="mensuel">Mensuel</option>
+                  <option value="annuel">Annuel</option>
+                </select>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    aria-pressed={charge.aChargeDe === 'restinnov'}
+                    onClick={() => updateCharge(charge.localId, { aChargeDe: 'restinnov' })}
+                    className={`rounded-md px-2 py-1.5 text-xs font-medium ${
+                      charge.aChargeDe === 'restinnov'
+                        ? 'bg-brand text-white'
+                        : 'bg-table-header-bg text-ink-secondary hover:bg-border-light'
+                    }`}
+                  >
+                    À la charge de RestInnov
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={charge.aChargeDe === 'proprietaire'}
+                    onClick={() => updateCharge(charge.localId, { aChargeDe: 'proprietaire' })}
+                    className={`rounded-md px-2 py-1.5 text-xs font-medium ${
+                      charge.aChargeDe === 'proprietaire'
+                        ? 'bg-brand text-white'
+                        : 'bg-table-header-bg text-ink-secondary hover:bg-border-light'
+                    }`}
+                  >
+                    À la charge du propriétaire
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Retirer ${charge.nomService}`}
+                  onClick={() => removeCharge(charge.localId)}
+                  className="justify-self-end text-ink-tertiary hover:text-danger"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {showCustomChargeInput ? (
+          <div className="mt-2 flex gap-2">
+            <input
+              type="text"
+              value={customChargeNom}
+              onChange={(e) => setCustomChargeNom(e.target.value)}
+              placeholder="Nom du service"
+              className="block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleAddCustomCharge}
+              className="shrink-0 rounded-field bg-brand px-3 py-2 text-sm font-bold text-white hover:bg-brand-light"
+            >
+              Ajouter
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowCustomChargeInput(true)}
+            className="mt-2 text-sm font-semibold text-brand-light hover:text-brand"
+          >
+            + Ajouter un autre service
+          </button>
         )}
       </div>
 

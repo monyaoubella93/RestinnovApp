@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ComponentProps } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MesMissionsSection } from './MesMissionsSection'
+import i18n from '../i18n'
 import type { MissionMenage } from '../types'
 
 function missionFixture(overrides: Partial<MissionMenage> = {}): MissionMenage {
@@ -49,6 +50,17 @@ function renderSection(overrides: Partial<ComponentProps<typeof MesMissionsSecti
 describe('MesMissionsSection', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+  })
+
+  afterEach(() => {
+    void i18n.changeLanguage('fr')
+  })
+
+  it('le badge de statut système "En attente de validation" reste en français quand l\'interface est en arabe', async () => {
+    await i18n.changeLanguage('ar')
+    renderSection({ missions: [missionFixture({ statut: 'en_attente_validation' })] })
+
+    expect(screen.getByText('En attente de validation')).toBeInTheDocument()
   })
 
   it('affiche les missions passées en props', () => {

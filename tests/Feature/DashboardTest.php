@@ -73,7 +73,10 @@ class DashboardTest extends TestCase
         ]);
         $produit1 = ProduitMenageCatalogue::create(['nom' => 'Javel', 'prix' => 12.5, 'actif' => true]);
         $produit2 = ProduitMenageCatalogue::create(['nom' => 'Sac poubelle', 'prix' => 7.5, 'actif' => true]);
-        $mission->produits()->attach([$produit1->id, $produit2->id]);
+        $mission->produits()->attach([
+            $produit1->id => ['type_utilisation' => 'rachete', 'prix_paye' => 12.5],
+            $produit2->id => ['type_utilisation' => 'rachete', 'prix_paye' => 7.5],
+        ]);
 
         FraisMaintenance::create(['sejour_id' => $sejour1->id, 'description' => 'Réparation robinet', 'prix' => 250]);
         FraisMaintenance::create(['sejour_id' => $sejour1->id, 'description' => 'Peinture', 'prix' => 100]);

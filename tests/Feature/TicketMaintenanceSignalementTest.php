@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Appartement;
 use App\Models\MissionMenage;
 use App\Models\Sejour;
+use App\Models\TicketMaintenance;
 use App\Models\Utilisateur;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -40,7 +41,7 @@ class TicketMaintenanceSignalementTest extends TestCase
         $photo = UploadedFile::fake()->image('degat.jpg');
 
         $response = $this->post("/api/mission-menages/{$mission->id}/signalements", [
-            'photo' => $photo,
+            'photos' => [$photo],
         ], ['Accept' => 'application/json']);
 
         $response->assertCreated();
@@ -58,6 +59,32 @@ class TicketMaintenanceSignalementTest extends TestCase
             'statut' => 'ouvert',
             'agent_id' => null,
         ]);
+    }
+
+    public function test_it_accepts_several_photos_first_becomes_photo_url_rest_go_to_photos_signalement(): void
+    {
+        Storage::fake('public');
+        $agent = $this->actingAsMenage();
+        $mission = $this->missionMenage($agent);
+
+        $response = $this->post("/api/mission-menages/{$mission->id}/signalements", [
+            'photos' => [
+                UploadedFile::fake()->image('degat-1.jpg'),
+                UploadedFile::fake()->image('degat-2.jpg'),
+                UploadedFile::fake()->image('degat-3.jpg'),
+            ],
+        ], ['Accept' => 'application/json']);
+
+        $response->assertCreated();
+        $this->assertNotNull($response->json('photo_url'));
+        $response->assertJsonCount(2, 'photos_signalement');
+        Storage::disk('public')->assertExists($response->json('photo_url'));
+        foreach ($response->json('photos_signalement') as $photo) {
+            Storage::disk('public')->assertExists($photo['photo_url']);
+        }
+
+        $ticket = TicketMaintenance::first();
+        $this->assertSame(2, $ticket->photosSignalement()->count());
     }
 
     public function test_it_creates_a_ticket_with_an_audio_only(): void
@@ -157,5 +184,67 @@ class TicketMaintenanceSignalementTest extends TestCase
         ]);
 
         $response->assertCreated();
+    }
+
+    public function test_it_accepts_a_photo_up_to_the_10mb_limit(): void
+    {
+        Storage::fake('public');
+        $agent = $this->actingAsMenage();
+        $mission = $this->missionMenage($agent);
+        $photo = UploadedFile::fake()->image('degat.jpg')->size(10240);
+
+        $response = $this->post("/api/mission-menages/{$mission->id}/signalements", [
+            'photos' => [$photo],
+        ], ['Accept' => 'application/json']);
+
+        $response->assertCreated();
+    }
+
+    public function test_it_rejects_a_photo_over_the_10mb_limit_with_a_clear_message(): void
+    {
+        Storage::fake('public');
+        $agent = $this->actingAsMenage();
+        $mission = $this->missionMenage($agent);
+        $photo = UploadedFile::fake()->image('degat.jpg')->size(10241);
+
+        $response = $this->post("/api/mission-menages/{$mission->id}/signalements", [
+            'photos' => [$photo],
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(422);
+        $response->assertJsonFragment(['photos.0' => ['Photo trop lourde, réessayez avec une photo plus légère (10 Mo maximum).']]);
+        $this->assertDatabaseCount('tickets_maintenance', 0);
+    }
+
+    public function test_it_accepts_an_audio_up_to_the_5mb_limit(): void
+    {
+        Storage::fake('public');
+        $agent = $this->actingAsMenage();
+        $mission = $this->missionMenage($agent);
+        $audio = UploadedFile::fake()->create('probleme.mp3', 5120, 'audio/mpeg');
+
+        $response = $this->post("/api/mission-menages/{$mission->id}/signalements", [
+            'audio' => $audio,
+        ], ['Accept' => 'application/json']);
+
+        $response->assertCreated();
+    }
+
+    public function test_it_rejects_an_audio_over_the_5mb_limit_with_a_clear_message(): void
+    {
+        Storage::fake('public');
+        $agent = $this->actingAsMenage();
+        $mission = $this->missionMenage($agent);
+        $audio = UploadedFile::fake()->create('probleme.mp3', 5121, 'audio/mpeg');
+
+        $response = $this->post("/api/mission-menages/{$mission->id}/signalements", [
+            'audio' => $audio,
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(422);
+        $response->assertJsonFragment([
+            'audio' => ['Enregistrement audio trop lourd, recommencez un enregistrement plus court (5 Mo maximum, soit environ 2 minutes).'],
+        ]);
+        $this->assertDatabaseCount('tickets_maintenance', 0);
     }
 }

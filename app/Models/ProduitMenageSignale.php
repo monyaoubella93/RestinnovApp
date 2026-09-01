@@ -20,8 +20,14 @@ class ProduitMenageSignale extends Model
         'mission_menage_id',
         'photo_url',
         'note',
+        'prix',
+        'photo_ticket_url',
         'statut',
         'produit_catalogue_id',
+    ];
+
+    protected $casts = [
+        'prix' => 'decimal:2',
     ];
 
     public function missionMenage(): BelongsTo

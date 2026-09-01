@@ -13,12 +13,14 @@ import type { Agent, Appartement, TicketMaintenance, TicketMaintenanceParApparte
 import { STATUT_VALIDATION_STYLES } from '../utils/statutValidation'
 import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 import { RefuserModal } from './RefuserModal'
+import { useAudioRecorder, MAX_RECORDING_SECONDS } from '../hooks/useAudioRecorder'
+import { RecordingIndicator } from './RecordingIndicator'
+import { friendlyUploadErrorMessage } from '../utils/uploadError'
+import { RecurrentBadge } from './RecurrentBadge'
 
 type Vue = 'liste' | 'groupe'
 
 type ExpressionMode = 'texte' | 'audio'
-
-type RecordingState = 'idle' | 'recording' | 'recorded'
 
 interface AssignerValues {
   agentId: number
@@ -27,7 +29,7 @@ interface AssignerValues {
   photoTransferee: boolean
 }
 
-const STATUT_LABELS: Record<TicketMaintenanceStatut, string> = {
+export const STATUT_LABELS: Record<TicketMaintenanceStatut, string> = {
   ouvert: 'Ouvert',
   assigne: 'Assigné',
   resolu_en_attente_validation: 'Résolu — en attente de validation',
@@ -35,7 +37,7 @@ const STATUT_LABELS: Record<TicketMaintenanceStatut, string> = {
   resolu: 'Résolu',
 }
 
-const STATUT_STYLES: Record<TicketMaintenanceStatut, string> = {
+export const STATUT_STYLES: Record<TicketMaintenanceStatut, string> = {
   ouvert: 'bg-warning-bg text-warning-text',
   assigne: 'bg-brand-pale text-brand',
   resolu_en_attente_validation: STATUT_VALIDATION_STYLES.en_attente,
@@ -59,63 +61,26 @@ function AssignerForm({
   const [agentId, setAgentId] = useState('')
   const [expressionMode, setExpressionMode] = useState<ExpressionMode>('texte')
   const [descriptionManager, setDescriptionManager] = useState('')
-  const [recordingState, setRecordingState] = useState<RecordingState>('idle')
-  const [audioFile, setAudioFile] = useState<File | null>(null)
-  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null)
   const [photoTransferee, setPhotoTransferee] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
-  const streamRef = useRef<MediaStream | null>(null)
-
-  const micSupported =
-    typeof window !== 'undefined' &&
-    typeof window.MediaRecorder !== 'undefined' &&
-    typeof navigator !== 'undefined' &&
-    !!navigator.mediaDevices?.getUserMedia
+  const {
+    recordingState,
+    audioFile,
+    audioPreviewUrl,
+    elapsedSeconds,
+    error: micError,
+    micSupported,
+    startRecording,
+    stopRecording,
+    resetAudio,
+  } = useAudioRecorder({
+    filename: 'instruction-manager.webm',
+    micErrorMessage: "Impossible d'accéder au micro.",
+  })
 
   const hasExpression = descriptionManager.trim() !== '' || audioFile !== null
-
-  const startRecording = async () => {
-    setError(null)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream
-      const recorder = new MediaRecorder(stream)
-      audioChunksRef.current = []
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunksRef.current.push(event.data)
-      }
-      recorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
-        const file = new File([blob], 'instruction-manager.webm', { type: blob.type })
-        setAudioFile(file)
-        setAudioPreviewUrl(URL.createObjectURL(file))
-        streamRef.current?.getTracks().forEach((track) => track.stop())
-        streamRef.current = null
-      }
-
-      mediaRecorderRef.current = recorder
-      recorder.start()
-      setRecordingState('recording')
-    } catch {
-      setError("Impossible d'accéder au micro.")
-    }
-  }
-
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop()
-    setRecordingState('recorded')
-  }
-
-  const resetAudio = () => {
-    setAudioFile(null)
-    setAudioPreviewUrl(null)
-    setRecordingState('idle')
-  }
 
   const handleAssigner = async () => {
     setError(null)
@@ -137,7 +102,12 @@ function AssignerForm({
         photoTransferee,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue.')
+      setError(
+        friendlyUploadErrorMessage(err, {
+          tooLarge: 'Enregistrement audio trop lourd, recommencez un enregistrement plus court.',
+          generic: 'Une erreur est survenue.',
+        }),
+      )
     } finally {
       setSubmitting(false)
     }
@@ -202,7 +172,11 @@ function AssignerForm({
               >
                 ⏹ Arrêter l'enregistrement
               </button>
-            ) : (
+            ) : null}
+            {recordingState === 'recording' && (
+              <RecordingIndicator elapsedSeconds={elapsedSeconds} maxSeconds={MAX_RECORDING_SECONDS} />
+            )}
+            {recordingState === 'recorded' && (
               <div className="flex items-center gap-2">
                 {audioPreviewUrl && (
                   // eslint-disable-next-line jsx-a11y/media-has-caption
@@ -260,8 +234,57 @@ function AssignerForm({
           {submitting ? 'Assignation...' : 'Assigner'}
         </button>
       </div>
-      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
+      {(error || micError) && <p className="mt-1 text-sm text-danger">{error || micError}</p>}
     </>
+  )
+}
+
+function ExtraPhotos({ photos, alt }: { photos?: { id: number; photo_url: string }[]; alt: string }) {
+  if (!photos || photos.length === 0) return null
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {photos.map((photo) => (
+        <img
+          key={photo.id}
+          src={resolveStorageUrl(photo.photo_url)}
+          alt={alt}
+          className="h-24 w-24 rounded object-cover"
+        />
+      ))}
+    </div>
+  )
+}
+
+function MessagesAgentHistorique({ ticket }: { ticket: TicketMaintenance }) {
+  if (!ticket.messages_agent || ticket.messages_agent.length === 0) return null
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-ink-secondary">Messages de l'agent</p>
+      <ul className="mt-1 space-y-2">
+        {ticket.messages_agent.map((message) => (
+          <li key={message.id} className="space-y-1 rounded-field bg-table-header-bg p-2 text-sm text-ink-secondary">
+            <p className="font-mono text-xs text-ink-tertiary">{formatDate(message.created_at)}</p>
+            {message.note && <p>{message.note}</p>}
+            {message.audio_url && (
+              // eslint-disable-next-line jsx-a11y/media-has-caption
+              <audio controls src={resolveStorageUrl(message.audio_url)} className="w-full" />
+            )}
+            <div className="flex flex-wrap gap-2">
+              {message.photo_url && (
+                <img
+                  src={resolveStorageUrl(message.photo_url)}
+                  alt="Photo du message de l'agent"
+                  className="h-24 w-24 rounded object-cover"
+                />
+              )}
+              <ExtraPhotos photos={message.photos_supplementaires} alt="Photo du message de l'agent" />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
@@ -324,13 +347,16 @@ function ValiderRefuserActions({
 
   return (
     <div className="mt-3 space-y-3">
-      {ticket.photo_apres && (
-        <img
-          src={resolveStorageUrl(ticket.photo_apres)}
-          alt="Photo après réparation"
-          className="h-32 w-32 rounded-md object-cover"
-        />
-      )}
+      <div className="flex flex-wrap gap-2">
+        {ticket.photo_apres && (
+          <img
+            src={resolveStorageUrl(ticket.photo_apres)}
+            alt="Photo après réparation"
+            className="h-32 w-32 rounded-md object-cover"
+          />
+        )}
+        <ExtraPhotos photos={ticket.photos_resolution} alt="Photo après réparation" />
+      </div>
       {ticket.cout_reparation != null && (
         <p className="font-mono text-sm font-bold text-ink">Coût : {ticket.cout_reparation} MAD</p>
       )}
@@ -376,17 +402,19 @@ function TicketMaintenanceCard({
   onAssigner,
   onValider,
   onRefuser,
+  defaultExpanded,
 }: {
   ticket: TicketMaintenance
   agents: Agent[]
   onAssigner: (ticketId: number, values: AssignerValues) => Promise<void>
   onValider: (ticketId: number) => Promise<void>
   onRefuser: (ticketId: number, input: RefuserInput) => Promise<void>
+  defaultExpanded?: boolean
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(defaultExpanded ?? false)
 
   return (
-    <li className="rounded-field border border-border-default">
+    <li id={`ticket-maintenance-${ticket.id}`} className="rounded-field border border-border-default">
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
@@ -416,23 +444,29 @@ function TicketMaintenanceCard({
           {ticket.mission_origine?.sejour && (
             <p className="text-xs text-ink-tertiary">
               Signalé pendant le séjour de {ticket.mission_origine.sejour.nom_voyageur} (
-              {ticket.mission_origine.sejour.reference})
+              {ticket.mission_origine.sejour.reference}) · du {formatDate(ticket.mission_origine.sejour.date_arrivee)} au{' '}
+              {formatDate(ticket.mission_origine.sejour.date_depart)}
               {ticket.mission_origine.agent?.nom && ` · par ${ticket.mission_origine.agent.nom}`}
             </p>
           )}
 
-          {ticket.photo_url && (
-            <img
-              src={resolveStorageUrl(ticket.photo_url)}
-              alt="Photo du problème signalé"
-              className="h-32 w-32 rounded-md object-cover"
-            />
-          )}
+          <div className="flex flex-wrap gap-2">
+            {ticket.photo_url && (
+              <img
+                src={resolveStorageUrl(ticket.photo_url)}
+                alt="Photo du problème signalé"
+                className="h-32 w-32 rounded-md object-cover"
+              />
+            )}
+            <ExtraPhotos photos={ticket.photos_signalement} alt="Photo du problème signalé" />
+          </div>
 
           {ticket.audio_url && (
             // eslint-disable-next-line jsx-a11y/media-has-caption
             <audio controls src={resolveStorageUrl(ticket.audio_url)} className="w-full" />
           )}
+
+          <MessagesAgentHistorique ticket={ticket} />
 
           {ticket.statut === 'ouvert' && <AssignerForm ticket={ticket} agents={agents} onAssigner={onAssigner} />}
 
@@ -457,11 +491,14 @@ function TicketMaintenanceCard({
               {ticket.statut === 'resolu' && ticket.photo_apres && (
                 <div>
                   <p className="text-xs font-semibold text-ink-secondary">Photo après réparation</p>
-                  <img
-                    src={resolveStorageUrl(ticket.photo_apres)}
-                    alt="Photo après réparation"
-                    className="mt-1 h-32 w-32 rounded-md object-cover"
-                  />
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    <img
+                      src={resolveStorageUrl(ticket.photo_apres)}
+                      alt="Photo après réparation"
+                      className="h-32 w-32 rounded-md object-cover"
+                    />
+                    <ExtraPhotos photos={ticket.photos_resolution} alt="Photo après réparation" />
+                  </div>
                 </div>
               )}
               {ticket.statut === 'resolu' && ticket.cout_reparation != null && (
@@ -502,14 +539,7 @@ function AppartementGroupeCard({
         <div className="min-w-0">
           <p className="flex items-center gap-2 font-semibold text-ink">
             <span className="truncate">{groupe.appartement?.nom ?? 'Appartement inconnu'}</span>
-            {groupe.recurrent && (
-              <span
-                data-testid={`recurrent-badge-${groupe.appartement?.id}`}
-                className="shrink-0 rounded-badge bg-danger-bg px-2 py-0.5 text-xs font-bold text-danger"
-              >
-                Récurrent
-              </span>
-            )}
+            {groupe.recurrent && <RecurrentBadge appartementId={groupe.appartement?.id} />}
           </p>
           <p className="truncate text-sm text-ink-tertiary">{groupe.appartement?.adresse}</p>
         </div>
@@ -544,6 +574,7 @@ function AppartementGroupeCard({
 export interface TicketsMaintenanceSectionProps {
   appartements: Appartement[]
   initialStatutFilter?: TicketMaintenanceStatut | ''
+  initialTicketId?: number | null
 }
 
 /**
@@ -554,7 +585,7 @@ export interface TicketsMaintenanceSectionProps {
  * one action relevant to its current statut (assigner / valider-refuser /
  * nothing to do yet).
  */
-export function TicketsMaintenanceSection({ appartements, initialStatutFilter }: TicketsMaintenanceSectionProps) {
+export function TicketsMaintenanceSection({ appartements, initialStatutFilter, initialTicketId }: TicketsMaintenanceSectionProps) {
   const [vue, setVue] = useState<Vue>('liste')
   const [tickets, setTickets] = useState<TicketMaintenance[]>([])
   const [groupes, setGroupes] = useState<TicketMaintenanceParAppartement[]>([])
@@ -603,6 +634,21 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter }:
     if (initialStatutFilter) setStatutFilter(initialStatutFilter)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialStatutFilter])
+
+  const scrolledToInitialTicket = useRef(false)
+
+  // Scrolls the targeted ticket into view once it's actually present in the
+  // loaded list -- e.g. coming from an appartement's Maintenance history,
+  // where the ticket may otherwise be buried far down a long list.
+  useEffect(() => {
+    if (!initialTicketId || scrolledToInitialTicket.current) return
+    if (!tickets.some((ticket) => ticket.id === initialTicketId)) return
+
+    // scrollIntoView is missing in the jsdom test environment -- guard it
+    // rather than skip the ref lookup, so this stays a pure UX nicety.
+    document.getElementById(`ticket-maintenance-${initialTicketId}`)?.scrollIntoView?.({ block: 'start' })
+    scrolledToInitialTicket.current = true
+  }, [tickets, initialTicketId])
 
   const handleAssigner = async (ticketId: number, values: AssignerValues) => {
     await assignerTicketMaintenance(ticketId, {
@@ -790,6 +836,7 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter }:
               onAssigner={handleAssigner}
               onValider={handleValider}
               onRefuser={handleRefuser}
+              defaultExpanded={ticket.id === initialTicketId}
             />
           ))}
         </ul>

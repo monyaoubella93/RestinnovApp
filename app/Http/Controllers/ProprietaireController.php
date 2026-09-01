@@ -27,10 +27,30 @@ class ProprietaireController extends Controller
             'nom' => ['required', 'string', 'max:255'],
             'telephone' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
+            'adresse' => ['nullable', 'string', 'max:255'],
         ]);
 
         $proprietaire = Proprietaire::create($validated);
 
         return response()->json($proprietaire, 201);
+    }
+
+    /**
+     * Update an existing proprietaire's contact details -- e.g. filling in
+     * a phone/email/adresse that was left blank at quick-creation time, or
+     * correcting them ahead of generating a relevé/facture.
+     */
+    public function update(Request $request, Proprietaire $proprietaire): JsonResponse
+    {
+        $validated = $request->validate([
+            'nom' => ['required', 'string', 'max:255'],
+            'telephone' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'adresse' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $proprietaire->update($validated);
+
+        return response()->json($proprietaire->fresh());
     }
 }

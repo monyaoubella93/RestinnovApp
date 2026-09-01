@@ -44,7 +44,7 @@ class AppartementHistoriqueTest extends TestCase
         $this->patchJson("/api/sejours/{$sejour1->id}/checkout")->assertOk();
         $mission1 = MissionMenage::where('sejour_id', $sejour1->id)->firstOrFail();
         $mission1->update(['frais_forfait' => 50, 'statut' => MissionMenage::STATUT_CONFORME]);
-        $mission1->produits()->attach($produit->id);
+        $mission1->produits()->attach($produit->id, ['type_utilisation' => 'rachete', 'prix_paye' => 12.5]);
         $mission1->checklistItems()->update(['coche' => true]);
 
         $sejour2 = Sejour::create([

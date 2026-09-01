@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ComponentProps } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MesTicketsSection } from './MesTicketsSection'
+import i18n from '../i18n'
 import type { MonTicketMaintenance } from '../types'
 
 function ticketFixture(overrides: Partial<MonTicketMaintenance> = {}): MonTicketMaintenance {
@@ -16,6 +17,7 @@ function ticketFixture(overrides: Partial<MonTicketMaintenance> = {}): MonTicket
     photo_url: null,
     appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' },
     refus: [],
+    messages_agent: [],
     ...overrides,
   }
 }
@@ -39,6 +41,10 @@ describe('MesTicketsSection', () => {
     vi.restoreAllMocks()
   })
 
+  afterEach(() => {
+    void i18n.changeLanguage('fr')
+  })
+
   it("affiche les tickets passés en props avec appartement, urgence et description", () => {
     renderSection({ tickets: [ticketFixture()] })
 
@@ -46,6 +52,16 @@ describe('MesTicketsSection', () => {
     expect(screen.getByText('12 rue de la Roquette')).toBeInTheDocument()
     expect(screen.getByText('Changer le joint du robinet.')).toBeInTheDocument()
     expect(screen.getByText('Urgence Normale')).toBeInTheDocument()
+  })
+
+  it("le niveau d'urgence (statut système) reste en français même quand l'interface est en arabe", async () => {
+    await i18n.changeLanguage('ar')
+
+    renderSection({ tickets: [ticketFixture({ urgence: 'haute' })] })
+
+    // The surrounding chrome word translates ("الأولوية"), the urgence
+    // level itself ("Haute") never does -- it's fixed system vocabulary.
+    expect(screen.getByText('الأولوية Haute')).toBeInTheDocument()
   })
 
   it('affiche la référence du ticket et le badge rouge "Refusé" pour un ticket a_refaire', () => {

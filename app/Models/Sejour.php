@@ -15,6 +15,7 @@ class Sejour extends Model
     public const STATUT_A_VENIR = 'a_venir';
     public const STATUT_EN_COURS = 'en_cours';
     public const STATUT_TERMINE = 'termine';
+    public const STATUT_ANNULE = 'annule';
 
     public const PLATEFORME_AIRBNB = 'airbnb';
     public const PLATEFORME_DIRECT = 'direct';

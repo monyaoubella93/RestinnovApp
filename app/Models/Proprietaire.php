@@ -14,6 +14,7 @@ class Proprietaire extends Model
         'nom',
         'telephone',
         'email',
+        'adresse',
     ];
 
     public function appartements(): HasMany

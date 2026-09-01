@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { resolveStorageUrl } from '../api'
 import { InstallPromptCard } from '../pwa/InstallPromptCard'
 import type { MissionMenage, ProduitCatalogue } from '../types'
@@ -17,19 +18,6 @@ interface MesMissionsSectionProps {
   onRefresh: () => void
 }
 
-// Only the two statuts that need a clear, distinct callout in this list --
-// a_faire/en_cours are the agent's normal current work and need no badge.
-const STATUT_BADGES: Partial<Record<MissionMenage['statut'], { label: string; style: string }>> = {
-  en_attente_validation: {
-    label: STATUT_VALIDATION_LABELS.en_attente,
-    style: STATUT_VALIDATION_STYLES.en_attente,
-  },
-  non_conforme: {
-    label: STATUT_VALIDATION_LABELS.refuse,
-    style: STATUT_VALIDATION_STYLES.refuse,
-  },
-}
-
 export function MesMissionsSection({
   missions,
   catalogue,
@@ -41,7 +29,21 @@ export function MesMissionsSection({
   emptyIcon,
   onRefresh,
 }: MesMissionsSectionProps) {
+  const { t } = useTranslation()
   const [selectedMissionId, setSelectedMissionId] = useState<number | null>(null)
+
+  // Only the two statuts that need a clear, distinct callout in this list --
+  // a_faire/en_cours are the agent's normal current work and need no badge.
+  const STATUT_BADGES: Partial<Record<MissionMenage['statut'], { label: string; style: string }>> = {
+    en_attente_validation: {
+      label: STATUT_VALIDATION_LABELS.en_attente,
+      style: STATUT_VALIDATION_STYLES.en_attente,
+    },
+    non_conforme: {
+      label: STATUT_VALIDATION_LABELS.refuse,
+      style: STATUT_VALIDATION_STYLES.refuse,
+    },
+  }
 
   if (selectedMissionId != null) {
     return (
@@ -78,7 +80,7 @@ export function MesMissionsSection({
         </div>
       )}
 
-      {loading && <p className="mt-4 text-sm text-ink-tertiary">Chargement...</p>}
+      {loading && <p className="mt-4 text-sm text-ink-tertiary">{t('common.loading')}</p>}
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
       {!loading && !error && missions.length === 0 && (
         <div className="mt-8 flex flex-col items-center gap-3 py-6 text-center">
@@ -101,7 +103,7 @@ export function MesMissionsSection({
               <button
                 type="button"
                 onClick={() => setSelectedMissionId(mission.id)}
-                className="flex min-h-[96px] w-full items-center gap-4 rounded-card-agent-lg border-2 border-border-default bg-surface p-4 text-left hover:border-brand-border hover:shadow-md"
+                className="flex min-h-[96px] w-full items-center gap-4 rounded-card-agent-lg border-2 border-border-default bg-surface p-4 text-start hover:border-brand-border hover:shadow-md"
               >
                 <div className="relative shrink-0">
                   {appartement?.photo_principale ? (
@@ -123,13 +125,15 @@ export function MesMissionsSection({
                     <span
                       data-testid={`mission-nouvelle-badge-${mission.id}`}
                       role="status"
-                      aria-label="Nouvelle mission"
-                      className="absolute -right-1 -top-1 h-5 w-5 rounded-full border-2 border-white bg-warning"
+                      aria-label={t('menage.nouvelleMission')}
+                      className="absolute -end-1 -top-1 h-5 w-5 rounded-full border-2 border-white bg-warning"
                     />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-lg font-bold text-ink">{appartement?.nom ?? `Appartement`}</p>
+                  <p className="truncate text-lg font-bold text-ink">
+                    {appartement?.nom ?? t('common.apartmentFallback')}
+                  </p>
                   <p className="truncate text-sm text-ink-tertiary">{appartement?.adresse}</p>
                   {badge && (
                     <span className={`mt-1 inline-block rounded-badge px-2 py-0.5 text-xs font-bold ${badge.style}`}>

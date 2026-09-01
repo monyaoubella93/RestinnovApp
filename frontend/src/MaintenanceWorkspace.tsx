@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from './auth/AuthContext'
 import { fetchMesTicketsMaintenance } from './api'
 import { HistoriqueTicketsAgentSection } from './components/HistoriqueTicketsAgentSection'
 import { MesTicketsSection } from './components/MesTicketsSection'
+import { LanguageSwitcher } from './i18n/LanguageSwitcher'
 import { SyncStatusPill } from './pwa/SyncStatusPill'
 import { useOfflineSync } from './pwa/useOfflineSync'
 import { usePwaIdentity } from './pwa/usePwaIdentity'
@@ -10,12 +12,12 @@ import type { MonTicketMaintenance } from './types'
 
 type Onglet = 'mes-tickets' | 'en-attente' | 'refuses' | 'valides'
 
-const ONGLETS: { id: Onglet; label: string; icon: string }[] = [
-  { id: 'mes-tickets', label: 'Mes tickets', icon: '🔧' },
-  { id: 'en-attente', label: 'En attente', icon: '⏳' },
-  { id: 'refuses', label: 'Refusés', icon: '⚠️' },
-  { id: 'valides', label: 'Validés', icon: '🗂️' },
-]
+const ONGLET_ICONS: Record<Onglet, string> = {
+  'mes-tickets': '🔧',
+  'en-attente': '⏳',
+  refuses: '⚠️',
+  valides: '🗂️',
+}
 
 function initiales(nom: string): string {
   const parts = nom.trim().split(/\s+/).filter(Boolean)
@@ -27,23 +29,33 @@ function initiales(nom: string): string {
 export function MaintenanceWorkspace() {
   usePwaIdentity('maintenance')
   const offlineSync = useOfflineSync()
+  const { t, i18n } = useTranslation()
+  const isRtl = i18n.language === 'ar'
   const { user, logout } = useAuth()
   const [onglet, setOnglet] = useState<Onglet>('mes-tickets')
   const [tickets, setTickets] = useState<MonTicketMaintenance[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const ONGLETS: { id: Onglet; label: string; icon: string }[] = [
+    { id: 'mes-tickets', label: t('maintenance.nav.mesTickets'), icon: ONGLET_ICONS['mes-tickets'] },
+    { id: 'en-attente', label: t('maintenance.nav.enAttente'), icon: ONGLET_ICONS['en-attente'] },
+    { id: 'refuses', label: t('maintenance.nav.refuses'), icon: ONGLET_ICONS.refuses },
+    { id: 'valides', label: t('maintenance.nav.valides'), icon: ONGLET_ICONS.valides },
+  ]
+
   const chargerTickets = () => {
     setLoading(true)
     setError(null)
     fetchMesTicketsMaintenance()
       .then(setTickets)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Impossible de charger les tickets.'))
+      .catch((err) => setError(err instanceof Error ? err.message : t('maintenance.errorTickets')))
       .finally(() => setLoading(false))
   }
 
   useEffect(() => {
     chargerTickets()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const actifs = tickets.filter((t) => t.statut === 'assigne')
@@ -57,7 +69,7 @@ export function MaintenanceWorkspace() {
     refuses: refuses.length,
   }
 
-  const today = new Date().toLocaleDateString('fr-FR', {
+  const today = new Date().toLocaleDateString(isRtl ? 'ar-MA' : 'fr-FR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -66,20 +78,17 @@ export function MaintenanceWorkspace() {
   const todayCapitalized = today.charAt(0).toUpperCase() + today.slice(1)
 
   return (
-    <div className="flex min-h-screen bg-app-bg font-sans text-ink">
+    <div
+      dir={isRtl ? 'rtl' : 'ltr'}
+      className={`flex min-h-screen bg-app-bg text-ink ${isRtl ? 'font-arabic' : 'font-sans'}`}
+    >
       <nav
         className="flex w-[246px] shrink-0 flex-col bg-marine px-3.5 py-5"
         role="tablist"
-        aria-label="Navigation agent maintenance"
+        aria-label={t('maintenance.workspaceNavLabel')}
       >
-        <div className="flex items-center gap-2.5 px-1 pb-5">
-          <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-field bg-white">
-            <img src="/logo.png" alt="" className="h-[34px] w-[34px] object-contain" />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-[15px] font-bold text-white">Restinnov</p>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-rail-meta">Agent maintenance</p>
-          </div>
+        <div className="flex items-center px-1 pb-5">
+          <img src="/logo.png" alt={t('common.brand')} className="h-[38px] w-auto object-contain" />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -90,7 +99,7 @@ export function MaintenanceWorkspace() {
               role="tab"
               aria-selected={onglet === o.id}
               onClick={() => setOnglet(o.id)}
-              className={`relative flex items-center gap-2.5 rounded-[10px] px-3 py-3 text-left text-[15px] font-semibold ${
+              className={`relative flex items-center gap-2.5 rounded-[10px] px-3 py-3 text-start text-[15px] font-semibold ${
                 onglet === o.id ? 'bg-brand text-white' : 'text-rail-text hover:bg-white/5'
               }`}
             >
@@ -107,8 +116,8 @@ export function MaintenanceWorkspace() {
                 <span
                   data-testid="refuses-dot"
                   role="status"
-                  aria-label="Nouveau refus"
-                  className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-danger"
+                  aria-label={t('maintenance.nouveauRefus')}
+                  className="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-danger"
                 />
               )}
             </button>
@@ -123,22 +132,23 @@ export function MaintenanceWorkspace() {
               </div>
               <div className="min-w-0">
                 <div className="truncate text-[13px] font-semibold text-[#E6EBF4]">{user.nom}</div>
-                <div className="text-[11px] text-rail-meta">Agent maintenance</div>
+                <div className="text-[11px] text-rail-meta">{t('maintenance.agentTitle')}</div>
               </div>
             </div>
           )}
+          <LanguageSwitcher />
           <button
             type="button"
             onClick={() => {
               void logout()
             }}
-            aria-label="Déconnexion"
-            className="flex min-h-12 items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-left text-sm font-semibold text-rail-text hover:bg-white/5"
+            aria-label={t('common.logout')}
+            className="flex min-h-12 items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-start text-sm font-semibold text-rail-text hover:bg-white/5"
           >
             <span aria-hidden="true" className="text-lg">
               🚪
             </span>
-            Déconnexion
+            {t('common.logout')}
           </button>
         </div>
       </nav>
@@ -146,12 +156,9 @@ export function MaintenanceWorkspace() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-[68px] shrink-0 items-center gap-4 border-b border-border-default bg-surface px-6">
           <div>
-            <h1 className="text-xl font-bold tracking-[-0.02em] text-ink">Maintenance</h1>
-            <p dir="rtl" className="font-arabic text-sm text-ink-tertiary">
-              الصيانة
-            </p>
+            <h1 className="text-xl font-bold tracking-[-0.02em] text-ink">{t('maintenance.title')}</h1>
           </div>
-          <div className="border-l border-border-default pl-4 text-[13px] text-ink-tertiary">{todayCapitalized}</div>
+          <div className="border-s border-border-default ps-4 text-[13px] text-ink-tertiary">{todayCapitalized}</div>
           <SyncStatusPill {...offlineSync} />
         </header>
 
@@ -161,9 +168,9 @@ export function MaintenanceWorkspace() {
               tickets={actifs}
               loading={loading}
               error={error}
-              heading="Mes tickets"
+              heading={t('maintenance.heading')}
               emptyIcon="✅"
-              emptyMessage="Aucun ticket pour l'instant."
+              emptyMessage={t('maintenance.emptyMesTickets')}
               onRefresh={chargerTickets}
             />
           )}
@@ -173,7 +180,7 @@ export function MaintenanceWorkspace() {
               loading={loading}
               error={error}
               emptyIcon="⏳"
-              emptyMessage="Aucun ticket en attente de validation."
+              emptyMessage={t('maintenance.emptyEnAttente')}
               onRefresh={chargerTickets}
             />
           )}
@@ -183,7 +190,7 @@ export function MaintenanceWorkspace() {
               loading={loading}
               error={error}
               emptyIcon="🎉"
-              emptyMessage="Aucun ticket refusé."
+              emptyMessage={t('maintenance.emptyRefuses')}
               onRefresh={chargerTickets}
             />
           )}

@@ -1,11 +1,15 @@
 import type {
+  AChargeDe,
   Agent,
   Appartement,
+  AppartementDetail,
+  CalendrierData,
   ChecklistItem,
   ChecklistModele,
   ChecklistModeleItem,
   DashboardData,
   FraisMaintenance,
+  FrequenceCharge,
   HistoriqueMission,
   HistoriqueMissionAgent,
   HistoriqueMissionManager,
@@ -140,12 +144,22 @@ export interface NewAppartementInput {
   mode_gestion?: ModeGestion
   taux_commission?: number | null
   loyer_fixe_mensuel?: number | null
+  charges?: NewChargeInput[]
 }
 
 export interface NewProprietaireInput {
   nom: string
   telephone?: string | null
   email?: string | null
+  adresse?: string | null
+}
+
+export interface NewChargeInput {
+  id?: number
+  nom_service: string
+  montant: number
+  frequence: FrequenceCharge
+  a_charge_de: AChargeDe
 }
 
 export interface NewUtilisateurInput {
@@ -166,18 +180,24 @@ export interface UpdateUtilisateurInput {
 
 export interface NewProduitCatalogueInput {
   nom: string
+  nom_ar?: string | null
   prix: number
   photo?: File | null
 }
 
 export interface UpdateMissionMenageProduitsInput {
   frais_forfait: number
-  produit_ids: number[]
 }
+
+export type UpdateProduitUtiliseInput =
+  | { type_utilisation: 'stock_existant' }
+  | { type_utilisation: 'rachete'; photo: File; prix_paye: number }
 
 export interface SignalerProduitInput {
   photo: File
   note?: string | null
+  prix?: number | null
+  photoTicket?: File | null
 }
 
 export interface AjouterPhotosPreuveInput {
@@ -186,7 +206,7 @@ export interface AjouterPhotosPreuveInput {
 }
 
 export interface SignalerProblemeInput {
-  photo?: File | null
+  photos?: File[]
   audio?: File | null
   description?: string | null
 }
@@ -199,7 +219,7 @@ export interface AssignerTicketMaintenanceInput {
 }
 
 export interface ResoudreTicketMaintenanceInput {
-  photoApres: File
+  photosApres: File[]
   coutReparation: number
   note?: string | null
 }
@@ -215,11 +235,13 @@ export interface NewFraisMaintenanceInput {
 }
 
 export class ApiError extends Error {
+  readonly status: number
   readonly errors?: Record<string, string[]>
 
-  constructor(message: string, errors?: Record<string, string[]>) {
+  constructor(message: string, status: number, errors?: Record<string, string[]>) {
     super(message)
     this.name = 'ApiError'
+    this.status = status
     this.errors = errors
   }
 }
@@ -298,7 +320,13 @@ async function parseJsonOrThrow(response: Response) {
   handleUnauthorized(response)
 
   if (!response.ok) {
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    // A 413 can come from nginx (client_max_body_size) or PHP itself
+    // (post_max_size) before the request ever reaches Laravel -- in both
+    // cases the body isn't JSON, so `data` is null and there is no
+    // `data.message` to fall back on. Give a message that still names the
+    // actual problem instead of the generic fallback.
+    const fallback = response.status === 413 ? 'Le fichier envoyé est trop volumineux.' : 'Une erreur est survenue.'
+    throw new ApiError(data?.message ?? fallback, response.status, data?.errors)
   }
 
   return data
@@ -346,6 +374,26 @@ function appendProprietaireFields(formData: FormData, input: NewAppartementInput
   if (input.loyer_fixe_mensuel != null) formData.append('loyer_fixe_mensuel', String(input.loyer_fixe_mensuel))
 }
 
+/**
+ * A FormData submission can't carry a genuinely empty array (an empty
+ * `charges` produces no field at all), so `sync_charges=1` is what tells
+ * the backend "this is the form's full, current list" -- as opposed to no
+ * `charges` key ever being sent, which the backend correctly reads as
+ * "not touching charges at all".
+ */
+function appendCharges(formData: FormData, input: NewAppartementInput): void {
+  if (!input.charges) return
+
+  formData.append('sync_charges', '1')
+  input.charges.forEach((charge, i) => {
+    if (charge.id != null) formData.append(`charges[${i}][id]`, String(charge.id))
+    formData.append(`charges[${i}][nom_service]`, charge.nom_service)
+    formData.append(`charges[${i}][montant]`, String(charge.montant))
+    formData.append(`charges[${i}][frequence]`, charge.frequence)
+    formData.append(`charges[${i}][a_charge_de]`, charge.a_charge_de)
+  })
+}
+
 export async function updateAppartement(id: number, input: NewAppartementInput): Promise<Appartement> {
   const formData = new FormData()
   formData.append('nom', input.nom)
@@ -354,6 +402,7 @@ export async function updateAppartement(id: number, input: NewAppartementInput):
   input.checklist_modele_ids.forEach((id) => formData.append('checklist_modele_ids[]', String(id)))
   if (input.agent_habituel_id) formData.append('agent_habituel_id', String(input.agent_habituel_id))
   appendProprietaireFields(formData, input)
+  appendCharges(formData, input)
   formData.append('_method', 'PATCH')
 
   const response = await fetch(`${API_BASE_URL}/api/appartements/${id}`, {
@@ -373,6 +422,7 @@ export async function createAppartement(input: NewAppartementInput): Promise<App
   input.checklist_modele_ids.forEach((id) => formData.append('checklist_modele_ids[]', String(id)))
   if (input.agent_habituel_id) formData.append('agent_habituel_id', String(input.agent_habituel_id))
   appendProprietaireFields(formData, input)
+  appendCharges(formData, input)
 
   const response = await fetch(`${API_BASE_URL}/api/appartements`, {
     method: 'POST',
@@ -381,6 +431,20 @@ export async function createAppartement(input: NewAppartementInput): Promise<App
   })
 
   return parseJsonOrThrow(response)
+}
+
+export async function deleteAppartement(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/appartements/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+
+  handleUnauthorized(response)
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
+  }
 }
 
 export async function fetchProprietaires(): Promise<Proprietaire[]> {
@@ -394,6 +458,16 @@ export async function fetchProprietaires(): Promise<Proprietaire[]> {
 export async function createProprietaire(input: NewProprietaireInput): Promise<Proprietaire> {
   const response = await fetch(`${API_BASE_URL}/api/proprietaires`, {
     method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(input),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
+export async function updateProprietaire(id: number, input: NewProprietaireInput): Promise<Proprietaire> {
+  const response = await fetch(`${API_BASE_URL}/api/proprietaires/${id}`, {
+    method: 'PATCH',
     headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(input),
   })
@@ -422,10 +496,12 @@ export async function createChecklistModele(nom: string): Promise<ChecklistModel
 export async function createChecklistModeleItem(
   checklistModeleId: number,
   libelle: string,
+  libelleAr?: string | null,
   photo?: File | null,
 ): Promise<ChecklistModeleItem> {
   const formData = new FormData()
   formData.append('libelle', libelle)
+  if (libelleAr) formData.append('libelle_ar', libelleAr)
   if (photo) formData.append('photo', photo)
 
   const response = await fetch(`${API_BASE_URL}/api/checklist-modeles/${checklistModeleId}/items`, {
@@ -460,7 +536,7 @@ export async function deleteChecklistModeleItem(itemId: number): Promise<void> {
 
   if (!response.ok) {
     const data = await response.json().catch(() => null)
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
   }
 }
 
@@ -531,7 +607,7 @@ export async function deleteUtilisateur(id: number): Promise<void> {
 
   if (!response.ok) {
     const data = await response.json().catch(() => null)
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
   }
 }
 
@@ -602,6 +678,15 @@ export async function checkoutSejour(id: number): Promise<{
   return parseJsonOrThrow(response)
 }
 
+export async function annulerSejour(id: number): Promise<Sejour> {
+  const response = await fetch(`${API_BASE_URL}/api/sejours/${id}/annuler`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
 export async function fetchProduitsCatalogue(): Promise<ProduitCatalogue[]> {
   const response = await fetch(`${API_BASE_URL}/api/produits-catalogue`, {
     headers: authHeaders(),
@@ -613,6 +698,7 @@ export async function fetchProduitsCatalogue(): Promise<ProduitCatalogue[]> {
 export async function createProduitCatalogue(input: NewProduitCatalogueInput): Promise<ProduitCatalogue> {
   const formData = new FormData()
   formData.append('nom', input.nom)
+  if (input.nom_ar) formData.append('nom_ar', input.nom_ar)
   formData.append('prix', String(input.prix))
   if (input.photo) formData.append('photo', input.photo)
 
@@ -630,6 +716,38 @@ export async function updateMissionMenageProduits(
   input: UpdateMissionMenageProduitsInput,
 ): Promise<MissionMenage> {
   return patchJsonOrQueue(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/produits`, input)
+}
+
+/**
+ * Marks one catalogue product as used on a mission, one of two ways:
+ * "stock_existant" (free, already in the appartement) or "rachete" (a new
+ * purchase -- carries its own proof-of-purchase photo and real prix_paye,
+ * never the catalogue's generic prix). Calling it again for the same
+ * product replaces its previous usage.
+ */
+export async function updateProduitUtilise(
+  missionMenageId: number,
+  produitId: number,
+  input: UpdateProduitUtiliseInput,
+): Promise<MissionMenage> {
+  const formData = new FormData()
+  formData.append('_method', 'PUT')
+  formData.append('type_utilisation', input.type_utilisation)
+  if (input.type_utilisation === 'rachete') {
+    formData.append('photo', input.photo)
+    formData.append('prix_paye', String(input.prix_paye))
+  }
+
+  return postFormDataOrQueue(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/produits/${produitId}`, formData)
+}
+
+export async function detacherProduitUtilise(missionMenageId: number, produitId: number): Promise<MissionMenage> {
+  const response = await fetch(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/produits/${produitId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
 }
 
 export async function marquerMissionMenageVue(missionMenageId: number): Promise<MissionMenage> {
@@ -747,6 +865,8 @@ export async function signalerProduit(
   const formData = new FormData()
   formData.append('photo', input.photo)
   if (input.note) formData.append('note', input.note)
+  if (input.prix != null) formData.append('prix', String(input.prix))
+  if (input.photoTicket) formData.append('photo_ticket', input.photoTicket)
 
   return postFormDataOrQueue(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/produits-signales`, formData)
 }
@@ -800,7 +920,7 @@ export async function signalerProbleme(
   input: SignalerProblemeInput,
 ): Promise<TicketMaintenance> {
   const formData = new FormData()
-  if (input.photo) formData.append('photo', input.photo)
+  input.photos?.forEach((photo) => formData.append('photos[]', photo))
   if (input.audio) formData.append('audio', input.audio)
   if (input.description) formData.append('description', input.description)
 
@@ -883,8 +1003,23 @@ export async function fetchMesTicketsMaintenance(): Promise<MonTicketMaintenance
   return parseJsonOrThrow(response)
 }
 
-export async function fetchMesTicketsMaintenanceHistorique(): Promise<HistoriqueTicketAgent[]> {
-  const response = await fetch(`${API_BASE_URL}/api/tickets-maintenance/mes-tickets/historique`, {
+export interface FetchMesTicketsMaintenanceHistoriqueParams {
+  appartementId?: number
+  dateDebut?: string
+  dateFin?: string
+  search?: string
+}
+
+export async function fetchMesTicketsMaintenanceHistorique(
+  params: FetchMesTicketsMaintenanceHistoriqueParams = {},
+): Promise<HistoriqueTicketAgent[]> {
+  const url = new URL(`${API_BASE_URL}/api/tickets-maintenance/mes-tickets/historique`)
+  if (params.appartementId) url.searchParams.set('appartement_id', String(params.appartementId))
+  if (params.dateDebut) url.searchParams.set('date_debut', params.dateDebut)
+  if (params.dateFin) url.searchParams.set('date_fin', params.dateFin)
+  if (params.search) url.searchParams.set('search', params.search)
+
+  const response = await fetch(url, {
     headers: authHeaders(),
   })
 
@@ -900,12 +1035,30 @@ export async function marquerTicketMaintenanceRefusVu(id: number): Promise<Ticke
   return parseJsonOrThrow(response)
 }
 
+export interface EnvoyerMessageAgentMaintenanceInput {
+  photos?: File[]
+  audio?: File | null
+  note?: string | null
+}
+
+export async function envoyerMessageAgentMaintenance(
+  id: number,
+  input: EnvoyerMessageAgentMaintenanceInput,
+): Promise<TicketMaintenance> {
+  const formData = new FormData()
+  input.photos?.forEach((photo) => formData.append('photos[]', photo))
+  if (input.audio) formData.append('audio', input.audio)
+  if (input.note) formData.append('note', input.note)
+
+  return postFormDataOrQueue(`${API_BASE_URL}/api/tickets-maintenance/${id}/message`, formData)
+}
+
 export async function resoudreTicketMaintenance(
   id: number,
   input: ResoudreTicketMaintenanceInput,
 ): Promise<TicketMaintenance> {
   const formData = new FormData()
-  formData.append('photo_apres', input.photoApres)
+  input.photosApres.forEach((photo) => formData.append('photos_apres[]', photo))
   formData.append('cout_reparation', String(input.coutReparation))
   if (input.note) formData.append('note', input.note)
   formData.append('_method', 'PATCH')
@@ -961,7 +1114,7 @@ export async function deleteFraisMaintenance(id: number): Promise<void> {
 
   if (!response.ok) {
     const data = await response.json().catch(() => null)
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
   }
 }
 
@@ -973,8 +1126,28 @@ export async function fetchDashboard(): Promise<DashboardData> {
   return parseJsonOrThrow(response)
 }
 
+export async function fetchCalendrier(params: { mois: string; appartementId?: number }): Promise<CalendrierData> {
+  const url = new URL(`${API_BASE_URL}/api/calendrier`)
+  url.searchParams.set('mois', params.mois)
+  if (params.appartementId) url.searchParams.set('appartement_id', String(params.appartementId))
+
+  const response = await fetch(url, {
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
 export async function fetchNotifications(): Promise<NotificationsData> {
   const response = await fetch(`${API_BASE_URL}/api/notifications`, {
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
+export async function fetchAppartementDetail(appartementId: number): Promise<AppartementDetail> {
+  const response = await fetch(`${API_BASE_URL}/api/appartements/${appartementId}`, {
     headers: authHeaders(),
   })
 
@@ -1010,6 +1183,18 @@ export async function fetchHistoriqueMenage(
   return parseJsonOrThrow(response)
 }
 
+/**
+ * Manager-wide "Ménage à valider" queue -- every mission currently waiting
+ * on the Manager's decision, across every agent and appartement.
+ */
+export async function fetchMissionsAValider(): Promise<MissionMenage[]> {
+  const response = await fetch(`${API_BASE_URL}/api/mission-menages/a-valider`, {
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
 export async function fetchReleve(appartementId: number, mois: string): Promise<Releve> {
   const response = await fetch(`${API_BASE_URL}/api/appartements/${appartementId}/releve?mois=${mois}`, {
     headers: authHeaders(),
@@ -1032,7 +1217,7 @@ export async function downloadRelevePdf(appartementId: number, mois: string): Pr
 
   if (!response.ok) {
     const data = await response.json().catch(() => null)
-    throw new ApiError(data?.message ?? 'Une erreur est survenue.', data?.errors)
+    throw new ApiError(data?.message ?? 'Une erreur est survenue.', response.status, data?.errors)
   }
 
   const blob = await response.blob()

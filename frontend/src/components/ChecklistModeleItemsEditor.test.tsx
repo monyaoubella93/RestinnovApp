@@ -9,8 +9,8 @@ function modeleFixture(overrides: Partial<ChecklistModele> = {}): ChecklistModel
     id: 1,
     nom: 'Standard',
     items: [
-      { id: 1, checklist_modele_id: 1, libelle: 'Item 1', photo_url: null, ordre: 0 },
-      { id: 2, checklist_modele_id: 1, libelle: 'Item 2', photo_url: 'checklist-modele-items/item2.jpg', ordre: 1 },
+      { id: 1, checklist_modele_id: 1, libelle: 'Item 1', libelle_ar: null, photo_url: null, ordre: 0 },
+      { id: 2, checklist_modele_id: 1, libelle: 'Item 2', libelle_ar: null, photo_url: 'checklist-modele-items/item2.jpg', ordre: 1 },
     ],
     ...overrides,
   }
@@ -31,6 +31,21 @@ describe('ChecklistModeleItemsEditor', () => {
     expect(items.map((el) => el.textContent)).toEqual(['Item 1', 'Item 2'])
   })
 
+  it('affiche le libellé arabe d\'un item existant quand renseigné', () => {
+    render(
+      <ChecklistModeleItemsEditor
+        checklistModele={modeleFixture({
+          items: [{ id: 1, checklist_modele_id: 1, libelle: 'Item 1', libelle_ar: 'تنظيف الحمام', photo_url: null, ordre: 0 }],
+        })}
+        onAddItem={vi.fn()}
+        onDeplacerItem={vi.fn()}
+        onDeleteItem={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('تنظيف الحمام', { exact: false })).toBeInTheDocument()
+  })
+
   it('affiche un message quand le modèle n\'a aucun item', () => {
     render(
       <ChecklistModeleItemsEditor
@@ -44,7 +59,7 @@ describe('ChecklistModeleItemsEditor', () => {
     expect(screen.getByText(/aucun item/i)).toBeInTheDocument()
   })
 
-  it('ajoute un item via le champ texte, sans photo', async () => {
+  it('ajoute un item via le champ texte, sans photo ni libellé arabe', async () => {
     const user = userEvent.setup()
     const onAddItem = vi.fn().mockResolvedValue(undefined)
     render(
@@ -56,10 +71,29 @@ describe('ChecklistModeleItemsEditor', () => {
       />,
     )
 
-    await user.type(screen.getByLabelText(/nouvel item pour standard/i), 'Nettoyer la salle de bain')
+    await user.type(screen.getByLabelText(/^nom \(français\)$/i), 'Nettoyer la salle de bain')
     await user.click(screen.getByRole('button', { name: /ajouter/i }))
 
-    expect(onAddItem).toHaveBeenCalledWith(1, 'Nettoyer la salle de bain', null)
+    expect(onAddItem).toHaveBeenCalledWith(1, 'Nettoyer la salle de bain', null, null)
+  })
+
+  it('inclut le libellé arabe optionnel à l\'ajout', async () => {
+    const user = userEvent.setup()
+    const onAddItem = vi.fn().mockResolvedValue(undefined)
+    render(
+      <ChecklistModeleItemsEditor
+        checklistModele={modeleFixture()}
+        onAddItem={onAddItem}
+        onDeplacerItem={vi.fn()}
+        onDeleteItem={vi.fn()}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/^nom \(français\)$/i), 'Nettoyer la salle de bain')
+    await user.type(screen.getByLabelText(/nom \(arabe\)/i), 'تنظيف الحمام')
+    await user.click(screen.getByRole('button', { name: /ajouter/i }))
+
+    expect(onAddItem).toHaveBeenCalledWith(1, 'Nettoyer la salle de bain', 'تنظيف الحمام', null)
   })
 
   it('inclut la photo de référence sélectionnée à l\'ajout', async () => {
@@ -75,11 +109,11 @@ describe('ChecklistModeleItemsEditor', () => {
     )
 
     const photo = new File(['x'], 'exemple.jpg', { type: 'image/jpeg' })
-    await user.type(screen.getByLabelText(/nouvel item pour standard/i), 'Nettoyer la salle de bain')
+    await user.type(screen.getByLabelText(/^nom \(français\)$/i), 'Nettoyer la salle de bain')
     await user.upload(screen.getByLabelText(/photo de référence pour le nouvel item/i), photo)
     await user.click(screen.getByRole('button', { name: /ajouter/i }))
 
-    expect(onAddItem).toHaveBeenCalledWith(1, 'Nettoyer la salle de bain', photo)
+    expect(onAddItem).toHaveBeenCalledWith(1, 'Nettoyer la salle de bain', null, photo)
   })
 
   it('affiche la photo de référence d\'un item existant quand présente', () => {

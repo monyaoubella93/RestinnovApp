@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\AuthorizesMissionAccess;
+use App\Http\Controllers\Concerns\HasFriendlyUploadMessages;
 use App\Models\ChecklistItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,6 +11,7 @@ use Illuminate\Http\Request;
 class ChecklistItemController extends Controller
 {
     use AuthorizesMissionAccess;
+    use HasFriendlyUploadMessages;
 
     /**
      * Toggle a checklist item and/or attach a photo to it.
@@ -25,8 +27,8 @@ class ChecklistItemController extends Controller
         // strings "true"/"false" -- which the `boolean` rule rejects outright.
         $validated = $request->validate([
             'coche' => ['sometimes'],
-            'photo' => ['sometimes', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
-        ]);
+            'photo' => ['sometimes', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+        ], $this->uploadValidationMessages());
 
         $updates = [];
         if (array_key_exists('coche', $validated)) {

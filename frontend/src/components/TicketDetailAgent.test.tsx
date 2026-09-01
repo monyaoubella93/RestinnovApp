@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TicketDetailAgent } from './TicketDetailAgent'
+import i18n from '../i18n'
 import type { MonTicketMaintenance } from '../types'
 
 const TICKET: MonTicketMaintenance = {
@@ -14,6 +15,7 @@ const TICKET: MonTicketMaintenance = {
   photo_url: null,
   appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' },
   refus: [],
+  messages_agent: [],
 }
 
 function mockFetch() {
@@ -25,6 +27,13 @@ function mockFetch() {
       return new Response(JSON.stringify({ ...TICKET, statut: 'resolu_en_attente_validation' }), { status: 200 })
     }
 
+    if (url.pathname === '/api/tickets-maintenance/1/message' && method === 'POST') {
+      return new Response(
+        JSON.stringify({ ...TICKET, messages_agent: [{ id: 1, photo_url: null, audio_url: null, note: 'Une précision.', created_at: '2026-08-20T10:00:00Z' }] }),
+        { status: 200 },
+      )
+    }
+
     throw new Error(`Unhandled request: ${method} ${url.pathname}`)
   })
 }
@@ -32,6 +41,10 @@ function mockFetch() {
 describe('TicketDetailAgent', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+  })
+
+  afterEach(() => {
+    void i18n.changeLanguage('fr')
   })
 
   it('affiche les informations du ticket : appartement, urgence, description_manager', () => {
@@ -42,6 +55,14 @@ describe('TicketDetailAgent', () => {
     expect(screen.getByText('Changer le joint du robinet.')).toBeInTheDocument()
     expect(screen.getByText('Urgence Haute')).toBeInTheDocument()
     expect(screen.getByText('MNT-0001')).toBeInTheDocument()
+  })
+
+  it("le niveau d'urgence reste en français quand l'interface est en arabe", async () => {
+    await i18n.changeLanguage('ar')
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    expect(screen.getByText('الأولوية Haute')).toBeInTheDocument()
   })
 
   it('affiche le motif du refus quand le ticket a été renvoyé pour être refait', () => {
@@ -183,5 +204,120 @@ describe('TicketDetailAgent', () => {
     expect(onResolu).toHaveBeenCalledTimes(1)
     // Stays visible -- no redirect back to the list.
     expect(screen.getByRole('button', { name: /retour à mes tickets/i })).toBeInTheDocument()
+  })
+
+  it('permet de prendre plusieurs photos de réparation et les envoie toutes', async () => {
+    const user = userEvent.setup()
+    const fetchMock = mockFetch()
+    globalThis.fetch = fetchMock as typeof fetch
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    const photoA = new File(['a'], 'reparation-1.jpg', { type: 'image/jpeg' })
+    const photoB = new File(['b'], 'reparation-2.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText(/photo de la réparation/i), [photoA, photoB])
+
+    expect(await screen.findByAltText('Aperçu de la photo 1')).toBeInTheDocument()
+    expect(screen.getByAltText('Aperçu de la photo 2')).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/prix de la réparation/i), '45')
+    await user.click(screen.getByRole('button', { name: /marquer résolu/i }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    const [, init] = fetchMock.mock.calls.find(([input]) => String(input).includes('/resoudre'))!
+    const formData = init!.body as FormData
+    expect(formData.getAll('photos_apres[]')).toHaveLength(2)
+  })
+
+  it('affiche un message clair quand la photo de réparation est trop lourde', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = vi.fn(async () => new Response(null, { status: 413 })) as typeof fetch
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    const photo = new File(['x'], 'reparation.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText(/photo de la réparation/i), photo)
+    await user.type(screen.getByLabelText(/prix de la réparation/i), '45')
+    await user.click(screen.getByRole('button', { name: /marquer résolu/i }))
+
+    expect(await screen.findByText(/photo trop lourde, réessayez avec une photo plus légère/i)).toBeInTheDocument()
+  })
+
+  it('propose d\'envoyer un message au Manager quand le ticket est en cours (assigne)', () => {
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: /envoyer un message au manager/i })).toBeInTheDocument()
+  })
+
+  it('ne propose pas d\'envoyer un message au Manager une fois le ticket résolu', () => {
+    render(<TicketDetailAgent ticket={{ ...TICKET, statut: 'resolu' }} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: /envoyer un message au manager/i })).not.toBeInTheDocument()
+  })
+
+  it('envoie un message texte au Manager, distinct de la résolution finale, et affiche une confirmation', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = mockFetch() as typeof fetch
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    // Both this form and the (always-visible) resolution form below have a
+    // "Note (optionnel)" field -- this one is the first in DOM order.
+    await user.type(screen.getAllByLabelText(/note \(optionnel\)/i)[0], 'Une précision.')
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
+
+    expect(await screen.findByTestId('message-agent-confirmation')).toBeInTheDocument()
+    // Resolution form/button is untouched -- this was a separate action.
+    expect(screen.getByRole('button', { name: /marquer résolu/i })).toBeInTheDocument()
+  })
+
+  it('refuse l\'envoi d\'un message sans photo, audio ni note', async () => {
+    const user = userEvent.setup()
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
+
+    expect(screen.getByText(/ajoutez une photo, un audio ou une note/i)).toBeInTheDocument()
+  })
+
+  it('permet de joindre plusieurs photos à un message et les envoie toutes', async () => {
+    const user = userEvent.setup()
+    const fetchMock = mockFetch()
+    globalThis.fetch = fetchMock as typeof fetch
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    const photoA = new File(['a'], 'a.jpg', { type: 'image/jpeg' })
+    const photoB = new File(['b'], 'b.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText(/photo du message/i), [photoA, photoB])
+
+    expect(await screen.findByAltText('Aperçu de la photo 1')).toBeInTheDocument()
+    expect(screen.getByAltText('Aperçu de la photo 2')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    const [, init] = fetchMock.mock.calls.find(([input]) => String(input).includes('/message'))!
+    const formData = init!.body as FormData
+    expect(formData.getAll('photos[]')).toHaveLength(2)
+  })
+
+  it('affiche un message clair quand la photo du message est trop lourde', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = vi.fn(async () => new Response(null, { status: 413 })) as typeof fetch
+
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    await user.upload(
+      screen.getByLabelText(/photo du message/i),
+      new File(['x'], 'photo.jpg', { type: 'image/jpeg' }),
+    )
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
+
+    expect(await screen.findByText(/photo trop lourde, réessayez avec une photo plus légère/i)).toBeInTheDocument()
   })
 })

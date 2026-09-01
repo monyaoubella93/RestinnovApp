@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import type { OfflineSyncState } from './useOfflineSync'
 
 /**
@@ -6,23 +7,22 @@ import type { OfflineSyncState } from './useOfflineSync'
  * state from useOfflineSync, not a static claim.
  */
 export function SyncStatusPill({ online, pendingCount }: OfflineSyncState) {
+  const { t } = useTranslation()
   const degraded = !online || pendingCount > 0
 
   if (degraded) {
     return (
-      <div className="ml-auto flex h-10 items-center gap-2 rounded-field bg-warning-bg px-3 text-xs font-bold text-warning-text">
+      <div className="ms-auto flex h-10 items-center gap-2 rounded-field bg-warning-bg px-3 text-xs font-bold text-warning-text">
         <span aria-hidden="true" className="h-2 w-2 rounded-full bg-warning" />
-        {online
-          ? `Synchronisation… ${pendingCount} action${pendingCount > 1 ? 's' : ''} en attente`
-          : `Hors ligne · ${pendingCount} action${pendingCount > 1 ? 's' : ''} en attente`}
+        {t(online ? 'sync.syncing' : 'sync.offline', { count: pendingCount })}
       </div>
     )
   }
 
   return (
-    <div className="ml-auto flex h-10 items-center gap-2 rounded-field bg-success-bg px-3 text-xs font-bold text-success-text">
+    <div className="ms-auto flex h-10 items-center gap-2 rounded-field bg-success-bg px-3 text-xs font-bold text-success-text">
       <span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />
-      Tout est synchronisé
+      {t('sync.synced')}
     </div>
   )
 }

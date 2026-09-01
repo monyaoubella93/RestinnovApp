@@ -7,7 +7,7 @@ import type { Agent, Appartement, ChecklistModele, Proprietaire } from '../types
 
 const checklistModeles: ChecklistModele[] = [{ id: 1, nom: 'Checklist standard' }]
 const agentsMenage: Agent[] = [{ id: 2, nom: 'Fatima Z.', role: 'menage', telephone: null }]
-const proprietaires: Proprietaire[] = [{ id: 5, nom: 'Karim Alaoui', telephone: null, email: null }]
+const proprietaires: Proprietaire[] = [{ id: 5, nom: 'Karim Alaoui', telephone: null, email: null, adresse: null }]
 
 function baseProps() {
   return {
@@ -121,6 +121,7 @@ describe('NouvelAppartementForm', () => {
       mode_gestion: 'mandat',
       taux_commission: null,
       loyer_fixe_mensuel: null,
+      charges: [],
     })
   })
 
@@ -167,15 +168,100 @@ describe('NouvelAppartementForm', () => {
 
   it('permet de créer un nouveau propriétaire à la volée et le sélectionne', async () => {
     const user = userEvent.setup()
-    const onCreateProprietaire = vi.fn().mockResolvedValue({ id: 42, nom: 'Sara Bennani', telephone: null, email: null })
+    const onCreateProprietaire = vi
+      .fn()
+      .mockResolvedValue({ id: 42, nom: 'Sara Bennani', telephone: null, email: null, adresse: null })
     render(<ManagedFormWithProprietaire onCreateProprietaire={onCreateProprietaire} />)
 
     await user.click(screen.getByRole('button', { name: /créer un nouveau propriétaire/i }))
     await user.type(screen.getByPlaceholderText(/nom du propriétaire/i), 'Sara Bennani')
     await user.click(screen.getByRole('button', { name: /^créer$/i }))
 
-    expect(onCreateProprietaire).toHaveBeenCalledWith({ nom: 'Sara Bennani', telephone: null, email: null })
+    expect(onCreateProprietaire).toHaveBeenCalledWith({
+      nom: 'Sara Bennani',
+      telephone: null,
+      email: null,
+      adresse: null,
+    })
     expect(await screen.findByRole('combobox', { name: /propriétaire/i })).toHaveValue('42')
+  })
+
+  describe('charges et services', () => {
+    it('coche un service prédéfini, saisit son montant et l\'inclut dans le payload', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn().mockResolvedValue(undefined)
+      render(<NouvelAppartementForm {...baseProps()} onSubmit={onSubmit} />)
+
+      await user.type(screen.getByLabelText(/nom d'appartement/i), 'Zenith 3ème étage')
+      await user.type(screen.getByLabelText(/adresse complète/i), '10 avenue Hassan II')
+      await user.click(screen.getByRole('checkbox', { name: 'WiFi' }))
+      await user.type(screen.getByLabelText('Montant pour WiFi'), '149')
+
+      await user.click(screen.getByRole('button', { name: /enregistrer l'appartement/i }))
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          charges: [{ id: undefined, nom_service: 'WiFi', montant: 149, frequence: 'mensuel', a_charge_de: 'restinnov' }],
+        }),
+      )
+    })
+
+    it('ajoute un service personnalisé via "+ Ajouter un autre service"', async () => {
+      const user = userEvent.setup()
+      render(<NouvelAppartementForm {...baseProps()} />)
+
+      await user.click(screen.getByRole('button', { name: /ajouter un autre service/i }))
+      await user.type(screen.getByPlaceholderText('Nom du service'), 'Jardinier')
+      await user.click(screen.getByRole('button', { name: /^ajouter$/i }))
+
+      expect(screen.getByText('Jardinier')).toBeInTheDocument()
+    })
+
+    it('bascule "à la charge de" entre RestInnov et le propriétaire', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn().mockResolvedValue(undefined)
+      render(<NouvelAppartementForm {...baseProps()} onSubmit={onSubmit} />)
+
+      await user.type(screen.getByLabelText(/nom d'appartement/i), 'Zenith 3ème étage')
+      await user.type(screen.getByLabelText(/adresse complète/i), '10 avenue Hassan II')
+      await user.click(screen.getByRole('checkbox', { name: 'Netflix' }))
+      await user.type(screen.getByLabelText('Montant pour Netflix'), '80')
+      await user.click(screen.getByRole('button', { name: 'À la charge du propriétaire' }))
+
+      await user.click(screen.getByRole('button', { name: /enregistrer l'appartement/i }))
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          charges: [{ id: undefined, nom_service: 'Netflix', montant: 80, frequence: 'mensuel', a_charge_de: 'proprietaire' }],
+        }),
+      )
+    })
+
+    it('décocher un service retire sa ligne', async () => {
+      const user = userEvent.setup()
+      render(<NouvelAppartementForm {...baseProps()} />)
+
+      await user.click(screen.getByRole('checkbox', { name: 'WiFi' }))
+      expect(screen.getByLabelText('Montant pour WiFi')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('checkbox', { name: 'WiFi' }))
+      expect(screen.queryByLabelText('Montant pour WiFi')).not.toBeInTheDocument()
+    })
+
+    it('exige un montant pour chaque service coché avant de soumettre', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn().mockResolvedValue(undefined)
+      render(<NouvelAppartementForm {...baseProps()} onSubmit={onSubmit} />)
+
+      await user.type(screen.getByLabelText(/nom d'appartement/i), 'Zenith 3ème étage')
+      await user.type(screen.getByLabelText(/adresse complète/i), '10 avenue Hassan II')
+      await user.click(screen.getByRole('checkbox', { name: 'WiFi' }))
+
+      await user.click(screen.getByRole('button', { name: /enregistrer l'appartement/i }))
+
+      expect(await screen.findByText(/indiquer un montant/i)).toBeInTheDocument()
+      expect(onSubmit).not.toHaveBeenCalled()
+    })
   })
 
   describe('mode édition', () => {
@@ -191,6 +277,9 @@ describe('NouvelAppartementForm', () => {
       mode_gestion: 'mandat',
       taux_commission: 15,
       loyer_fixe_mensuel: null,
+      charges_actives: [
+        { id: 10, nom_service: 'WiFi', montant: 149, frequence: 'mensuel', a_charge_de: 'restinnov', date_debut: '2026-01-01', date_fin: null },
+      ],
     }
 
     it('préremplit le formulaire et affiche le statut réel (lecture seule)', () => {
@@ -205,6 +294,22 @@ describe('NouvelAppartementForm', () => {
       expect(screen.getByLabelText(/taux de commission/i)).toHaveValue(15)
       expect(screen.getByText('Occupé')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /enregistrer les modifications/i })).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'WiFi' })).toBeChecked()
+      expect(screen.getByLabelText('Montant pour WiFi')).toHaveValue(149)
+    })
+
+    it('conserve l\'id de la charge existante lors de la modification et ferme celle décochée', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn().mockResolvedValue(undefined)
+      render(<NouvelAppartementForm {...baseProps()} onSubmit={onSubmit} appartementToEdit={appartementToEdit} />)
+
+      await user.click(screen.getByRole('button', { name: /enregistrer les modifications/i }))
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          charges: [{ id: 10, nom_service: 'WiFi', montant: 149, frequence: 'mensuel', a_charge_de: 'restinnov' }],
+        }),
+      )
     })
 
     it('soumet le payload modifié sans statut', async () => {

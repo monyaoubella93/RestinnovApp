@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MissionMenage;
 use App\Models\ProduitMenageCatalogue;
 use App\Models\ProduitMenageSignale;
 use Illuminate\Http\JsonResponse;
@@ -27,9 +28,12 @@ class ProduitSignaleController extends Controller
 
     /**
      * Validate a reported product: create its catalogue entry, link it back,
-     * and attach it to the mission that reported it. The photo the agent
-     * took at signalement time is carried over to the new catalogue entry
-     * -- the Manager is never asked to supply another one.
+     * and attach it to the mission that reported it as "rachete" -- a
+     * product the agent found in the field wasn't already in the
+     * appartement's stock, so this is definitionally a purchase. The photo
+     * the agent took at signalement time is carried over both as the new
+     * catalogue entry's reference photo and as this usage's proof-of-
+     * purchase photo -- the Manager is never asked to supply another one.
      */
     public function valider(Request $request, ProduitMenageSignale $produitSignale): JsonResponse
     {
@@ -57,7 +61,13 @@ class ProduitSignaleController extends Controller
                 'statut' => ProduitMenageSignale::STATUT_VALIDE,
             ]);
 
-            $produitSignale->missionMenage->produits()->syncWithoutDetaching([$produitCatalogue->id]);
+            $produitSignale->missionMenage->produits()->syncWithoutDetaching([
+                $produitCatalogue->id => [
+                    'type_utilisation' => MissionMenage::TYPE_UTILISATION_RACHETE,
+                    'photo_url' => $produitSignale->photo_url,
+                    'prix_paye' => $validated['prix'],
+                ],
+            ]);
         });
 
         return response()->json($produitSignale->fresh(['produitCatalogue', 'missionMenage']));

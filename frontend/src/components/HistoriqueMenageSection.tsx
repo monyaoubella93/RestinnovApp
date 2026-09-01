@@ -87,7 +87,7 @@ function MissionRow({ mission }: { mission: HistoriqueMissionManager }) {
                         className="h-6 w-6 rounded object-cover"
                       />
                     )}
-                    {produit.nom} — {formatMad(produit.prix)}
+                    {produit.nom} — {produit.type_utilisation === 'stock_existant' ? 'Déjà présent' : formatMad(produit.prix_paye ?? 0)}
                   </li>
                 ))}
               </ul>

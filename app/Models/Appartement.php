@@ -8,10 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Appartement extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     public const STATUT_DISPONIBLE = 'disponible';
 
@@ -45,6 +47,17 @@ class Appartement extends Model
     public function sejours(): HasMany
     {
         return $this->hasMany(Sejour::class);
+    }
+
+    public function chargesAppartement(): HasMany
+    {
+        return $this->hasMany(ChargeAppartement::class);
+    }
+
+    /** Charges/services not yet closed (date_fin null) -- what the "Charges et services" form shows as checked. */
+    public function chargesActives(): HasMany
+    {
+        return $this->chargesAppartement()->whereNull('date_fin');
     }
 
     public function proprietaire(): BelongsTo

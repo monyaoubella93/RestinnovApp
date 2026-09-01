@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { resolveStorageUrl, type RefuserInput } from '../api'
+import { resolveStorageUrl, type RefuserInput, type UpdateProduitUtiliseInput } from '../api'
 import type { MissionMenage, ProduitCatalogue, Sejour } from '../types'
+import { ConfirmModal } from './ConfirmModal'
 import { FraisMaintenanceSection } from './FraisMaintenanceSection'
 import { FraisMenageSection } from './FraisMenageSection'
 import { MissionValidationDetail } from './MissionValidationDetail'
@@ -10,12 +11,14 @@ const STATUT_LABELS: Record<Sejour['statut'], string> = {
   a_venir: 'À venir',
   en_cours: 'En cours',
   termine: 'Terminé',
+  annule: 'Annulé',
 }
 
 const STATUT_STYLES: Record<Sejour['statut'], string> = {
   a_venir: 'bg-brand-pale text-brand',
   en_cours: 'bg-warning-bg text-warning-text',
   termine: 'bg-table-header-bg text-ink-tertiary',
+  annule: 'bg-danger-bg text-danger',
 }
 
 function formatDate(iso: string): string {
@@ -55,10 +58,16 @@ interface SejourCardProps {
   sejour: Sejour
   catalogue: ProduitCatalogue[]
   onCheckout: (id: number) => Promise<void>
+  onAnnuler: (id: number) => Promise<void>
   onValiderMission: (missionMenageId: number) => Promise<void>
   onRefuserMission: (missionMenageId: number, input: RefuserInput) => Promise<void>
-  onUpdateMissionProduits: (missionMenageId: number, input: { frais_forfait: number; produit_ids: number[] }) => Promise<void>
-  onSignalerProduit: (missionMenageId: number, input: { photo: File; note?: string | null }) => Promise<void>
+  onUpdateMissionProduits: (missionMenageId: number, input: { frais_forfait: number }) => Promise<void>
+  onUpdateProduitUtilise: (missionMenageId: number, produitId: number, input: UpdateProduitUtiliseInput) => Promise<void>
+  onDetacherProduit: (missionMenageId: number, produitId: number) => Promise<void>
+  onSignalerProduit: (
+    missionMenageId: number,
+    input: { photo: File; note?: string | null; prix?: number | null; photoTicket?: File | null },
+  ) => Promise<void>
   onValiderProduitSignale: (id: number, input: { nom: string; prix: number }) => Promise<void>
   onRejeterProduitSignale: (id: number) => Promise<void>
   onAddFraisMaintenance: (sejourId: number, input: { description: string; prix: number }) => Promise<void>
@@ -69,9 +78,12 @@ export function SejourCard({
   sejour,
   catalogue,
   onCheckout,
+  onAnnuler,
   onValiderMission,
   onRefuserMission,
   onUpdateMissionProduits,
+  onUpdateProduitUtilise,
+  onDetacherProduit,
   onSignalerProduit,
   onValiderProduitSignale,
   onRejeterProduitSignale,
@@ -83,6 +95,7 @@ export function SejourCard({
   const [validating, setValidating] = useState(false)
   const [validerError, setValiderError] = useState<string | null>(null)
   const [showRefuserModal, setShowRefuserModal] = useState(false)
+  const [showAnnulerModal, setShowAnnulerModal] = useState(false)
 
   const handleCheckout = async () => {
     setError(null)
@@ -152,6 +165,7 @@ export function SejourCard({
               <p className="mb-2 font-semibold text-violet">En attente de validation</p>
               <MissionValidationDetail
                 mission={sejour.mission_menage}
+                catalogue={catalogue}
                 onValiderProduitSignale={onValiderProduitSignale}
                 onRejeterProduitSignale={onRejeterProduitSignale}
               />
@@ -191,14 +205,40 @@ export function SejourCard({
           {sejour.mission_menage.statut === 'non_conforme' && (
             <div className="mt-2 space-y-2" data-testid="mission-non-conforme">
               <p className="font-semibold text-danger">Refusée — en attente de correction par l'agent</p>
-              <MissionValidationDetail mission={sejour.mission_menage} />
+              <MissionValidationDetail mission={sejour.mission_menage} catalogue={catalogue} />
               <RefusHistoriqueMenage mission={sejour.mission_menage} />
             </div>
           )}
         </div>
       )}
 
-      {sejour.statut !== 'termine' && (
+      {sejour.statut === 'a_venir' && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowAnnulerModal(true)}
+            className="rounded-field border border-danger px-3 py-1.5 text-sm font-bold text-danger hover:bg-danger-bg"
+          >
+            Annuler
+          </button>
+          {error && <p className="mt-1 text-sm text-danger">{error}</p>}
+
+          {showAnnulerModal && (
+            <ConfirmModal
+              title="Annuler ce séjour"
+              message="Êtes-vous sûr de vouloir annuler ce séjour ?"
+              confirmLabel="Annuler le séjour"
+              onCancel={() => setShowAnnulerModal(false)}
+              onConfirm={async () => {
+                await onAnnuler(sejour.id)
+                setShowAnnulerModal(false)
+              }}
+            />
+          )}
+        </div>
+      )}
+
+      {sejour.statut === 'en_cours' && (
         <div className="mt-3">
           <button
             type="button"
@@ -218,7 +258,10 @@ export function SejourCard({
             missionMenage={sejour.mission_menage}
             catalogue={catalogue}
             onUpdateProduits={onUpdateMissionProduits}
+            onUpdateProduitUtilise={onUpdateProduitUtilise}
+            onDetacherProduit={onDetacherProduit}
             onSignalerProduit={onSignalerProduit}
+            readOnly
           />
           <FraisMaintenanceSection
             sejourId={sejour.id}

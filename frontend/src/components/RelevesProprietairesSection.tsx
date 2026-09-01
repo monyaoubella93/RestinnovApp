@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { downloadRelevePdf, fetchAppartements, fetchReleve } from '../api'
-import type { Appartement, ModeGestion, Releve } from '../types'
+import { downloadRelevePdf, fetchAppartements, fetchReleve, updateProprietaire, type NewProprietaireInput } from '../api'
+import type { Appartement, ModeGestion, Proprietaire, Releve } from '../types'
+import { EditProprietaireModal } from './EditProprietaireModal'
 
 function currentMonth(): string {
   const now = new Date()
@@ -11,12 +12,12 @@ function formatMontant(value: number | undefined): string {
   return `${(value ?? 0).toFixed(2)} MAD`
 }
 
-const MODE_GESTION_LABELS: Record<ModeGestion, string> = {
+export const MODE_GESTION_LABELS: Record<ModeGestion, string> = {
   mandat: 'Mandat',
   sous_location: 'Sous-location',
 }
 
-const MODE_GESTION_STYLES: Record<ModeGestion, string> = {
+export const MODE_GESTION_STYLES: Record<ModeGestion, string> = {
   mandat: 'bg-brand-pale text-brand',
   sous_location: 'bg-violet-bg text-violet',
 }
@@ -35,6 +36,7 @@ export function RelevesProprietairesSection() {
   const [error, setError] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<number | null>(null)
   const [downloadingAll, setDownloadingAll] = useState(false)
+  const [editingProprietaire, setEditingProprietaire] = useState<Proprietaire | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -63,6 +65,27 @@ export function RelevesProprietairesSection() {
       cancelled = true
     }
   }, [mois])
+
+  const handleSaveProprietaire = async (input: NewProprietaireInput) => {
+    if (!editingProprietaire) return
+    const updated = await updateProprietaire(editingProprietaire.id, input)
+    setAppartements((current) =>
+      current.map((appartement) =>
+        appartement.proprietaire?.id === updated.id ? { ...appartement, proprietaire: updated } : appartement,
+      ),
+    )
+    setReleves((current) =>
+      Object.fromEntries(
+        Object.entries(current).map(([id, releve]) => [
+          id,
+          releve.appartement.proprietaire?.id === updated.id
+            ? { ...releve, appartement: { ...releve.appartement, proprietaire: updated } }
+            : releve,
+        ]),
+      ),
+    )
+    setEditingProprietaire(null)
+  }
 
   const handleDownload = async (appartementId: number) => {
     setError(null)
@@ -163,7 +186,9 @@ export function RelevesProprietairesSection() {
             <tbody className="divide-y divide-border-light">
               {appartements.map((appartement) => {
                 const releve = releves[appartement.id]
-                const frais = releve ? releve.frais_menage_total + releve.frais_maintenance_total : 0
+                const frais = releve
+                  ? releve.frais_menage_total + releve.frais_maintenance_total + releve.charges_restinnov_total
+                  : 0
                 const modeGestion = releve?.appartement.mode_gestion
 
                 return (
@@ -183,14 +208,25 @@ export function RelevesProprietairesSection() {
                       {formatMontant(releve?.montant_proprietaire)}
                     </td>
                     <td className="py-2 pr-4">
-                      <button
-                        type="button"
-                        onClick={() => handleDownload(appartement.id)}
-                        disabled={downloadingId === appartement.id}
-                        className="text-sm font-semibold text-brand-light hover:text-brand disabled:opacity-50"
-                      >
-                        {downloadingId === appartement.id ? 'Téléchargement...' : 'Télécharger PDF'}
-                      </button>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(appartement.id)}
+                          disabled={downloadingId === appartement.id}
+                          className="text-sm font-semibold text-brand-light hover:text-brand disabled:opacity-50"
+                        >
+                          {downloadingId === appartement.id ? 'Téléchargement...' : 'Télécharger PDF'}
+                        </button>
+                        {appartement.proprietaire && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingProprietaire(appartement.proprietaire!)}
+                            className="text-sm font-semibold text-ink-secondary hover:text-ink"
+                          >
+                            Propriétaire
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
@@ -198,6 +234,14 @@ export function RelevesProprietairesSection() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {editingProprietaire && (
+        <EditProprietaireModal
+          proprietaire={editingProprietaire}
+          onCancel={() => setEditingProprietaire(null)}
+          onSave={handleSaveProprietaire}
+        />
       )}
     </div>
   )

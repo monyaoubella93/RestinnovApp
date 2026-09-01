@@ -89,6 +89,8 @@ class ProduitSignaleTest extends TestCase
         $this->assertDatabaseHas('mission_menage_produits', [
             'mission_menage_id' => $mission->id,
             'produit_catalogue_id' => $produitCatalogueId,
+            'type_utilisation' => 'rachete',
+            'prix_paye' => 15,
         ]);
         $this->assertDatabaseHas('produits_menage_signales', [
             'id' => $signale->id,
@@ -112,6 +114,31 @@ class ProduitSignaleTest extends TestCase
         $this->assertDatabaseHas('produits_menage_catalogue', [
             'nom' => 'Éponge magique',
             'photo_url' => 'produits-signales/fake.jpg',
+        ]);
+    }
+
+    public function test_a_produit_signale_only_reaches_the_general_catalogue_once_validated(): void
+    {
+        $mission = $this->missionMenage();
+        $signale = $this->produitSignale($mission);
+
+        // Not yet validated: absent from the general "Catalogue ménage" listing.
+        $before = $this->getJson('/api/produits-catalogue');
+        $before->assertOk();
+        $before->assertJsonMissing(['nom' => 'Éponge magique']);
+
+        $this->patchJson("/api/produits-signales/{$signale->id}/valider", [
+            'nom' => 'Éponge magique',
+            'prix' => 15,
+        ])->assertOk();
+
+        // Validated: now appears in the general catalogue, photo carried over.
+        $after = $this->getJson('/api/produits-catalogue');
+        $after->assertOk();
+        $after->assertJsonFragment([
+            'nom' => 'Éponge magique',
+            'photo_url' => 'produits-signales/fake.jpg',
+            'actif' => true,
         ]);
     }
 
@@ -151,6 +178,20 @@ class ProduitSignaleTest extends TestCase
         $response = $this->patchJson("/api/produits-signales/{$signale->id}/rejeter");
 
         $response->assertStatus(422);
+    }
+
+    public function test_mission_detail_only_includes_produits_signales_for_that_mission(): void
+    {
+        $mission = $this->missionMenage();
+        $autreMission = $this->missionMenage();
+        $ceProduit = $this->produitSignale($mission);
+        $this->produitSignale($autreMission);
+
+        $response = $this->getJson("/api/mission-menages/{$mission->id}");
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'produits_signales');
+        $response->assertJsonPath('produits_signales.0.id', $ceProduit->id);
     }
 
     public function test_nom_and_prix_are_required_to_valider(): void

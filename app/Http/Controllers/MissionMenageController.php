@@ -3,19 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\AuthorizesMissionAccess;
+use App\Http\Controllers\Concerns\HasFriendlyUploadMessages;
 use App\Models\MissionMenage;
 use App\Models\MissionMenagePhotoPreuve;
+use App\Models\ProduitMenageCatalogue;
 use App\Models\ProduitMenageSignale;
 use App\Models\TicketMaintenance;
+use App\Models\TicketMaintenancePhoto;
 use App\Models\Utilisateur;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class MissionMenageController extends Controller
 {
     use AuthorizesMissionAccess;
+    use HasFriendlyUploadMessages;
 
     private const DETAIL_RELATIONS = ['sejour.appartement', 'agent', 'produits', 'checklistItems', 'produitsSignales', 'refus', 'photosPreuve'];
 
@@ -111,11 +115,7 @@ class MissionMenageController extends Controller
                 'photo_url' => $item->photo_url,
                 'photo_reference_url' => $item->photo_reference_url,
             ])->values(),
-            'produits' => $mission->produits->map(fn ($produit) => [
-                'nom' => $produit->nom,
-                'prix' => round((float) $produit->prix, 2),
-                'photo_url' => $produit->photo_url,
-            ])->values(),
+            'produits' => $mission->produitsDetail(),
         ]));
     }
 
@@ -153,7 +153,7 @@ class MissionMenageController extends Controller
 
         return response()->json($missions->map(function (MissionMenage $mission) {
             $fraisForfait = (float) $mission->frais_forfait;
-            $fraisProduitsTotal = (float) $mission->produits->sum('prix');
+            $fraisProduitsTotal = $mission->fraisProduitsTotal();
 
             return [
                 'id' => $mission->id,
@@ -181,16 +181,32 @@ class MissionMenageController extends Controller
                     'photo_url' => $item->photo_url,
                     'photo_reference_url' => $item->photo_reference_url,
                 ])->values(),
-                'produits' => $mission->produits->map(fn ($produit) => [
-                    'nom' => $produit->nom,
-                    'prix' => round((float) $produit->prix, 2),
-                    'photo_url' => $produit->photo_url,
-                ])->values(),
+                'produits' => $mission->produitsDetail(),
                 'frais_forfait' => round($fraisForfait, 2),
                 'frais_produits_total' => round($fraisProduitsTotal, 2),
                 'frais_total' => round($fraisForfait + $fraisProduitsTotal, 2),
             ];
         })->values());
+    }
+
+    /**
+     * Manager-wide "Ménage à valider" queue -- every mission currently
+     * waiting on the Manager's decision (en_attente_validation), across
+     * every agent and appartement, with the full checklist/produits/photos
+     * detail already eager-loaded so MissionValidationDetail can render
+     * without a second request. A mission leaves this list the moment it
+     * is validated (moves to historiqueManager()) or refused (moves back to
+     * the agent, statut non_conforme).
+     */
+    public function aValider(): JsonResponse
+    {
+        $missions = MissionMenage::with(self::DETAIL_RELATIONS)
+            ->where('statut', MissionMenage::STATUT_EN_ATTENTE_VALIDATION)
+            ->latest()
+            ->latest('id')
+            ->get();
+
+        return response()->json($missions);
     }
 
     /**
@@ -299,9 +315,9 @@ class MissionMenageController extends Controller
 
         $validator = Validator::make($request->all(), [
             'motif' => ['nullable', 'string', 'max:1000'],
-            'motif_audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:10240'],
-            'motif_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
-        ]);
+            'motif_audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:5120'],
+            'motif_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+        ], $this->uploadValidationMessages());
 
         $validator->after(function ($validator) use ($request) {
             $hasMotif = trim((string) $request->input('motif', '')) !== '';
@@ -346,7 +362,10 @@ class MissionMenageController extends Controller
     }
 
     /**
-     * Update the forfait and the catalogue products checked for a mission.
+     * Update the forfait for a mission. Which catalogue products were used,
+     * and how (stock_existant vs rachete), is handled per-product by
+     * updateProduitUtilise()/detacherProduit() below -- each carries its own
+     * proof (photo + real price) when rachete, so it can't be bulk-synced.
      */
     public function updateProduits(Request $request, MissionMenage $missionMenage): JsonResponse
     {
@@ -354,19 +373,58 @@ class MissionMenageController extends Controller
 
         $validated = $request->validate([
             'frais_forfait' => ['sometimes', 'numeric', 'min:0'],
-            'produit_ids' => ['sometimes', 'array'],
-            'produit_ids.*' => ['integer', 'exists:produits_menage_catalogue,id'],
         ]);
 
-        DB::transaction(function () use ($missionMenage, $validated) {
-            if (array_key_exists('frais_forfait', $validated)) {
-                $missionMenage->update(['frais_forfait' => $validated['frais_forfait']]);
-            }
+        if (array_key_exists('frais_forfait', $validated)) {
+            $missionMenage->update(['frais_forfait' => $validated['frais_forfait']]);
+        }
 
-            if (array_key_exists('produit_ids', $validated)) {
-                $missionMenage->produits()->sync($validated['produit_ids']);
-            }
-        });
+        return response()->json($missionMenage->fresh(self::DETAIL_RELATIONS));
+    }
+
+    /**
+     * Mark one catalogue product as used on this mission, one of two ways:
+     * "stock_existant" (already present in the appartement, free -- no proof
+     * needed) or "rachete" (the agent bought a new one -- a proof-of-purchase
+     * photo and the real prix_paye are required, since that's what counts
+     * towards the frais total, not the catalogue's generic prix). Called
+     * again for the same product, it replaces its previous usage.
+     */
+    public function updateProduitUtilise(Request $request, MissionMenage $missionMenage, ProduitMenageCatalogue $produitCatalogue): JsonResponse
+    {
+        $this->authorizeMissionAccess($request, $missionMenage);
+
+        $validated = $request->validate([
+            'type_utilisation' => ['required', Rule::in([
+                MissionMenage::TYPE_UTILISATION_STOCK_EXISTANT,
+                MissionMenage::TYPE_UTILISATION_RACHETE,
+            ])],
+            'photo' => ['required_if:type_utilisation,'.MissionMenage::TYPE_UTILISATION_RACHETE, 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
+            'prix_paye' => ['required_if:type_utilisation,'.MissionMenage::TYPE_UTILISATION_RACHETE, 'numeric', 'min:0'],
+        ]);
+
+        $estRachete = $validated['type_utilisation'] === MissionMenage::TYPE_UTILISATION_RACHETE;
+
+        $pivotData = [
+            'type_utilisation' => $validated['type_utilisation'],
+            'photo_url' => $estRachete ? $request->file('photo')->store('mission-menage-produits', 'public') : null,
+            'prix_paye' => $estRachete ? $validated['prix_paye'] : null,
+        ];
+
+        $missionMenage->produits()->syncWithoutDetaching([$produitCatalogue->id => $pivotData]);
+
+        return response()->json($missionMenage->fresh(self::DETAIL_RELATIONS));
+    }
+
+    /**
+     * Un-check a catalogue product from this mission entirely (neither
+     * stock_existant nor rachete anymore).
+     */
+    public function detacherProduit(Request $request, MissionMenage $missionMenage, ProduitMenageCatalogue $produitCatalogue): JsonResponse
+    {
+        $this->authorizeMissionAccess($request, $missionMenage);
+
+        $missionMenage->produits()->detach($produitCatalogue->id);
 
         return response()->json($missionMenage->fresh(self::DETAIL_RELATIONS));
     }
@@ -388,22 +446,42 @@ class MissionMenageController extends Controller
 
     /**
      * Report a cleaning product used in the field that is not in the catalogue yet.
+     * Beyond the product's own photo, the agent must also account for what it
+     * cost -- either typing the prix directly, or attaching a photo of the
+     * purchase receipt (photo_ticket) for the Manager to read the price off
+     * of at validation time. At least one of the two is required; both are
+     * welcome.
      */
     public function signalerProduit(Request $request, MissionMenage $missionMenage): JsonResponse
     {
         $this->authorizeMissionAccess($request, $missionMenage);
 
-        $validated = $request->validate([
-            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
+        $validator = Validator::make($request->all(), [
+            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'note' => ['nullable', 'string', 'max:255'],
-        ]);
+            'prix' => ['nullable', 'numeric', 'min:0'],
+            'photo_ticket' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+        ], $this->uploadValidationMessages());
+
+        $validator->after(function ($validator) use ($request) {
+            if (! $request->filled('prix') && ! $request->hasFile('photo_ticket')) {
+                $validator->errors()->add('prix', 'Indiquez le prix payé ou une photo du ticket de caisse.');
+            }
+        });
+
+        $validated = $validator->validate();
 
         $photoUrl = $request->file('photo')->store('produits-signales', 'public');
+        $photoTicketUrl = $request->hasFile('photo_ticket')
+            ? $request->file('photo_ticket')->store('produits-signales', 'public')
+            : null;
 
         $produitSignale = ProduitMenageSignale::create([
             'mission_menage_id' => $missionMenage->id,
             'photo_url' => $photoUrl,
             'note' => $validated['note'] ?? null,
+            'prix' => $validated['prix'] ?? null,
+            'photo_ticket_url' => $photoTicketUrl,
             'statut' => ProduitMenageSignale::STATUT_EN_ATTENTE,
         ]);
 
@@ -424,9 +502,9 @@ class MissionMenageController extends Controller
 
         $validated = $request->validate([
             'photos' => ['required', 'array', 'min:1'],
-            'photos.*' => ['image', 'mimes:jpg,jpeg,png', 'max:5120'],
+            'photos.*' => ['image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'note' => ['nullable', 'string', 'max:255'],
-        ]);
+        ], $this->uploadValidationMessages());
 
         $photosPreuve = collect($validated['photos'])->map(function ($photo) use ($missionMenage, $validated) {
             return MissionMenagePhotoPreuve::create([
@@ -451,33 +529,43 @@ class MissionMenageController extends Controller
         $this->authorizeMissionAccess($request, $missionMenage);
 
         $validator = Validator::make($request->all(), [
-            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
-            'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:10240'],
+            'photos' => ['nullable', 'array'],
+            'photos.*' => ['image', 'mimes:jpg,jpeg,png', 'max:10240'],
+            'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:5120'],
             'description' => ['nullable', 'string', 'max:1000'],
-        ]);
+        ], $this->uploadValidationMessages());
 
         $validator->after(function ($validator) use ($request) {
             $hasDescription = trim((string) $request->input('description', '')) !== '';
 
-            if (! $request->hasFile('photo') && ! $request->hasFile('audio') && ! $hasDescription) {
+            if (! $request->hasFile('photos') && ! $request->hasFile('audio') && ! $hasDescription) {
                 $validator->errors()->add('description', 'Fournissez au moins une photo, un audio ou une description.');
             }
         });
 
         $validated = $validator->validate();
 
-        $photoUrl = $request->hasFile('photo') ? $request->file('photo')->store('tickets-maintenance', 'public') : null;
+        $photos = collect($validated['photos'] ?? [])
+            ->map(fn ($photo) => $photo->store('tickets-maintenance', 'public'))
+            ->values();
         $audioUrl = $request->hasFile('audio') ? $request->file('audio')->store('tickets-maintenance', 'public') : null;
 
         $ticket = TicketMaintenance::create([
             'appartement_id' => $missionMenage->sejour->appartement_id,
             'mission_origine_id' => $missionMenage->id,
             'description' => $validated['description'] ?? null,
-            'photo_url' => $photoUrl,
+            'photo_url' => $photos->first(),
             'audio_url' => $audioUrl,
             'statut' => TicketMaintenance::STATUT_OUVERT,
         ]);
 
-        return response()->json($ticket, 201);
+        foreach ($photos->slice(1) as $photoUrl) {
+            $ticket->photosSignalement()->create([
+                'contexte' => TicketMaintenancePhoto::CONTEXTE_SIGNALEMENT,
+                'photo_url' => $photoUrl,
+            ]);
+        }
+
+        return response()->json($ticket->load('photosSignalement'), 201);
     }
 }

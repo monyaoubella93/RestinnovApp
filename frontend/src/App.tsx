@@ -31,9 +31,12 @@ import {
 } from './api'
 import { AgentsMenageListeSection } from './components/AgentsMenageListeSection'
 import { AppartementsListeSection } from './components/AppartementsListeSection'
+import { CalendrierSection } from './components/CalendrierSection'
 import { CatalogueProduitsSection } from './components/CatalogueProduitsSection'
 import { DashboardSection } from './components/DashboardSection'
+import { HeaderSearchBar } from './components/HeaderSearchBar'
 import { HistoriqueMenageSection } from './components/HistoriqueMenageSection'
+import { MenageAValiderSection } from './components/MenageAValiderSection'
 import { NotificationBell } from './components/NotificationBell'
 import { NouveauSejourForm } from './components/NouveauSejourForm'
 import { NouvelAgentForm } from './components/NouvelAgentForm'
@@ -59,6 +62,7 @@ import type {
 
 type Tab =
   | 'dashboard'
+  | 'calendrier'
   | 'sejour-creer'
   | 'sejour-liste'
   | 'appartement-creer'
@@ -66,8 +70,10 @@ type Tab =
   | 'menage-agent'
   | 'menage-agents-liste'
   | 'menage-catalogue'
+  | 'menage-a-valider'
   | 'menage-historique'
   | 'maintenance-agent'
+  | 'maintenance-a-valider'
   | 'maintenance-tickets'
 
 interface NavGroup {
@@ -103,6 +109,7 @@ const NAV_GROUPS: NavGroup[] = [
       ['menage-agent', 'Ajouter un agent ménage'],
       ['menage-agents-liste', 'Liste des agents'],
       ['menage-catalogue', 'Catalogue ménage'],
+      ['menage-a-valider', 'Ménage à valider'],
       ['menage-historique', 'Historique'],
     ],
     defaultTab: 'menage-agent',
@@ -112,6 +119,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Maintenance',
     tabs: [
       ['maintenance-agent', 'Ajouter un agent maintenance'],
+      ['maintenance-a-valider', 'Maintenance à valider'],
       ['maintenance-tickets', 'Tickets de maintenance'],
     ],
     defaultTab: 'maintenance-agent',
@@ -120,6 +128,7 @@ const NAV_GROUPS: NavGroup[] = [
 
 const SECTION_TITLES: Record<Tab, string> = {
   dashboard: 'Dashboard',
+  calendrier: 'Calendrier',
   'sejour-creer': 'Séjours',
   'sejour-liste': 'Séjours',
   'appartement-creer': 'Appartements',
@@ -127,8 +136,10 @@ const SECTION_TITLES: Record<Tab, string> = {
   'menage-agent': 'Ménage',
   'menage-agents-liste': 'Ménage',
   'menage-catalogue': 'Ménage',
+  'menage-a-valider': 'Ménage',
   'menage-historique': 'Ménage',
   'maintenance-agent': 'Maintenance',
+  'maintenance-a-valider': 'Maintenance',
   'maintenance-tickets': 'Maintenance',
 }
 
@@ -153,8 +164,10 @@ function App() {
   const [editingAppartement, setEditingAppartement] = useState<Appartement | null>(null)
   const [editingUtilisateur, setEditingUtilisateur] = useState<Agent | null>(null)
   const [pendingSejourId, setPendingSejourId] = useState<number | null>(null)
+  const [pendingAppartementDetail, setPendingAppartementDetail] = useState<Appartement | null>(null)
   const [pendingStatutFilter, setPendingStatutFilter] = useState<SejourStatut | ''>('')
   const [pendingTicketStatutFilter, setPendingTicketStatutFilter] = useState<TicketMaintenanceStatut | ''>('')
+  const [pendingTicketId, setPendingTicketId] = useState<number | null>(null)
   const { user, logout } = useAuth()
 
   usePwaIdentity('manager')
@@ -163,13 +176,20 @@ function App() {
     setActiveTab(tab)
     setExpandedGroup(groupKeyForTab(tab))
     setPendingSejourId(null)
+    setPendingAppartementDetail(null)
     setPendingStatutFilter('')
     setPendingTicketStatutFilter('')
+    setPendingTicketId(null)
   }
 
   const handleNavigateToSejourDetail = (sejourId: number) => {
     navigateTo('sejour-liste')
     setPendingSejourId(sejourId)
+  }
+
+  const handleNavigateToAppartementDetail = (appartement: Appartement) => {
+    navigateTo('appartement-liste')
+    setPendingAppartementDetail(appartement)
   }
 
   const handleNavigateToSejoursListe = (statut?: SejourStatut) => {
@@ -180,6 +200,11 @@ function App() {
   const handleNavigateToTicketsMaintenance = (statut?: TicketMaintenanceStatut) => {
     navigateTo('maintenance-tickets')
     if (statut) setPendingTicketStatutFilter(statut)
+  }
+
+  const handleNavigateToTicketDetail = (ticketId: number) => {
+    navigateTo('maintenance-tickets')
+    setPendingTicketId(ticketId)
   }
 
   const loadData = async () => {
@@ -327,8 +352,13 @@ function App() {
     return modele
   }
 
-  const handleAddChecklistModeleItem = async (checklistModeleId: number, libelle: string, photo?: File | null) => {
-    const item = await createChecklistModeleItem(checklistModeleId, libelle, photo)
+  const handleAddChecklistModeleItem = async (
+    checklistModeleId: number,
+    libelle: string,
+    libelleAr?: string | null,
+    photo?: File | null,
+  ) => {
+    const item = await createChecklistModeleItem(checklistModeleId, libelle, libelleAr, photo)
     setChecklistModeles((current) =>
       current.map((m) => (m.id === checklistModeleId ? { ...m, items: [...(m.items ?? []), item] } : m)),
     )
@@ -484,14 +514,8 @@ function App() {
   return (
     <div className="flex min-h-screen bg-app-bg font-sans text-ink">
       <nav className="flex w-[246px] shrink-0 flex-col bg-marine px-3.5 py-5">
-        <div className="flex items-center gap-2.5 px-2 pb-5">
-          <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] bg-white">
-            <img src="/logo.png" alt="RestInnov" className="h-[34px] w-auto" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[15px] font-bold tracking-[-0.01em] text-white">Restinnov</div>
-            <div className="text-[11px] uppercase tracking-[0.06em] text-rail-meta">Conciergerie</div>
-          </div>
+        <div className="flex items-center px-2 pb-5">
+          <img src="/logo.png" alt="RestInnov" className="h-[38px] w-auto object-contain" />
         </div>
 
         <div className="flex flex-col gap-0.5">
@@ -506,6 +530,15 @@ function App() {
             }`}
           >
             Dashboard
+          </button>
+          <button
+            type="button"
+            onClick={() => navigateTo('calendrier')}
+            className={`flex items-center gap-2.5 rounded-field px-2.5 py-2.5 text-left text-sm font-semibold ${
+              activeTab === 'calendrier' ? 'bg-brand text-white' : 'text-rail-text hover:bg-white/5'
+            }`}
+          >
+            Calendrier
           </button>
 
           {NAV_GROUPS.slice(0, 2).map((group) => {
@@ -630,10 +663,10 @@ function App() {
           <h2 className="text-lg font-bold tracking-[-0.02em] text-ink">{SECTION_TITLES[activeTab]}</h2>
           <div className="border-l border-border-default pl-4 text-[13px] text-ink-tertiary">{todayCapitalized}</div>
           <div className="ml-auto flex items-center gap-2.5">
-            <div className="flex h-9 w-[260px] items-center gap-2 rounded-field border border-border-default bg-table-header-bg px-3 text-[13px] text-ink-disabled">
-              <span aria-hidden="true">⌕</span>
-              Rechercher un séjour, un appartement…
-            </div>
+            <HeaderSearchBar
+              onNavigateToSejour={handleNavigateToSejourDetail}
+              onNavigateToAppartement={handleNavigateToAppartementDetail}
+            />
             <NotificationBell
               onNavigateToSejour={handleNavigateToSejourDetail}
               onNavigateToTicketsMaintenance={() => handleNavigateToTicketsMaintenance('ouvert')}
@@ -657,6 +690,9 @@ function App() {
               onNavigateToTicketsMaintenance={() => handleNavigateToTicketsMaintenance('ouvert')}
               onNavigateToResolutionsAValider={() => handleNavigateToTicketsMaintenance('resolu_en_attente_validation')}
             />
+          )}
+          {activeTab === 'calendrier' && (
+            <CalendrierSection appartements={appartements} onNavigateToSejour={handleNavigateToSejourDetail} />
           )}
           {activeTab === 'sejour-creer' && (
             <NouveauSejourForm
@@ -701,6 +737,12 @@ function App() {
                 navigateTo('appartement-creer')
               }}
               onEditAppartement={handleEditAppartement}
+              onNavigateToCreerSejour={() => {
+                setEditingSejour(null)
+                navigateTo('sejour-creer')
+              }}
+              onNavigateToTicket={handleNavigateToTicketDetail}
+              initialAppartement={pendingAppartementDetail}
             />
           )}
           {activeTab === 'menage-agent' && (
@@ -724,12 +766,20 @@ function App() {
               />
             </>
           )}
+          {activeTab === 'menage-a-valider' && <MenageAValiderSection catalogue={produitsCatalogue} />}
           {activeTab === 'menage-historique' && <HistoriqueMenageSection appartements={appartements} />}
           {activeTab === 'maintenance-agent' && (
             <NouvelAgentMaintenanceForm onSubmit={handleCreateUtilisateur} />
           )}
+          {activeTab === 'maintenance-a-valider' && (
+            <TicketsMaintenanceSection appartements={appartements} initialStatutFilter="resolu_en_attente_validation" />
+          )}
           {activeTab === 'maintenance-tickets' && (
-            <TicketsMaintenanceSection appartements={appartements} initialStatutFilter={pendingTicketStatutFilter} />
+            <TicketsMaintenanceSection
+              appartements={appartements}
+              initialStatutFilter={pendingTicketStatutFilter}
+              initialTicketId={pendingTicketId}
+            />
           )}
           </div>
         </main>

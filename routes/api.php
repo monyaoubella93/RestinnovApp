@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AppartementController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CalendrierController;
+use App\Http\Controllers\ChargeAppartementController;
 use App\Http\Controllers\ChecklistItemController;
 use App\Http\Controllers\ChecklistModeleController;
 use App\Http\Controllers\ChecklistModeleItemController;
@@ -27,17 +29,24 @@ Route::middleware('auth:sanctum')->group(function () {
     // produits catalogue.
     Route::middleware('role:manager')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index']);
+        Route::get('/calendrier', [CalendrierController::class, 'index']);
         Route::get('/notifications', [NotificationController::class, 'index']);
 
         Route::get('/appartements', [AppartementController::class, 'index']);
         Route::post('/appartements', [AppartementController::class, 'store']);
+        Route::get('/appartements/{appartement}', [AppartementController::class, 'show']);
         Route::patch('/appartements/{appartement}', [AppartementController::class, 'update']);
+        Route::delete('/appartements/{appartement}', [AppartementController::class, 'destroy']);
         Route::get('/appartements/{appartement}/historique', [AppartementController::class, 'historique']);
         Route::get('/appartements/{appartement}/releve', [AppartementController::class, 'releve']);
         Route::get('/appartements/{appartement}/releve/pdf', [AppartementController::class, 'relevePdf']);
+        Route::post('/appartements/{appartement}/charges', [ChargeAppartementController::class, 'store']);
+        Route::patch('/charges-appartement/{chargeAppartement}', [ChargeAppartementController::class, 'update']);
+        Route::delete('/charges-appartement/{chargeAppartement}', [ChargeAppartementController::class, 'destroy']);
 
         Route::get('/proprietaires', [ProprietaireController::class, 'index']);
         Route::post('/proprietaires', [ProprietaireController::class, 'store']);
+        Route::patch('/proprietaires/{proprietaire}', [ProprietaireController::class, 'update']);
 
         Route::get('/checklist-modeles', [ChecklistModeleController::class, 'index']);
         Route::post('/checklist-modeles', [ChecklistModeleController::class, 'store']);
@@ -57,6 +66,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/sejours', [SejourController::class, 'store']);
         Route::patch('/sejours/{sejour}', [SejourController::class, 'update']);
         Route::patch('/sejours/{sejour}/checkout', [SejourController::class, 'checkout']);
+        Route::patch('/sejours/{sejour}/annuler', [SejourController::class, 'annuler']);
 
         Route::post('/sejours/{sejour}/frais-maintenance', [FraisMaintenanceController::class, 'store']);
         Route::delete('/frais-maintenance/{fraisMaintenance}', [FraisMaintenanceController::class, 'destroy']);
@@ -67,6 +77,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/produits-signales/{produitSignale}/valider', [ProduitSignaleController::class, 'valider']);
         Route::patch('/produits-signales/{produitSignale}/rejeter', [ProduitSignaleController::class, 'rejeter']);
 
+        Route::get('/mission-menages/a-valider', [MissionMenageController::class, 'aValider']);
         Route::patch('/mission-menages/{missionMenage}/valider', [MissionMenageController::class, 'valider']);
         Route::patch('/mission-menages/{missionMenage}/refuser', [MissionMenageController::class, 'refuser']);
         Route::get('/mission-menages/historique', [MissionMenageController::class, 'historiqueManager']);
@@ -87,6 +98,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/mes-missions/historique', [MissionMenageController::class, 'historique']);
         Route::get('/mission-menages/{missionMenage}', [MissionMenageController::class, 'show']);
         Route::patch('/mission-menages/{missionMenage}/produits', [MissionMenageController::class, 'updateProduits']);
+        Route::put('/mission-menages/{missionMenage}/produits/{produitCatalogue}', [MissionMenageController::class, 'updateProduitUtilise']);
+        Route::delete('/mission-menages/{missionMenage}/produits/{produitCatalogue}', [MissionMenageController::class, 'detacherProduit']);
         Route::patch('/mission-menages/{missionMenage}/vue', [MissionMenageController::class, 'marquerVue']);
         Route::patch('/mission-menages/{missionMenage}/refus-vu', [MissionMenageController::class, 'marquerRefusVu']);
         Route::patch('/mission-menages/{missionMenage}/ouvrir', [MissionMenageController::class, 'ouvrir']);
@@ -103,6 +116,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:maintenance,manager')->group(function () {
         Route::get('/tickets-maintenance/mes-tickets', [TicketMaintenanceController::class, 'mesTickets']);
         Route::get('/tickets-maintenance/mes-tickets/historique', [TicketMaintenanceController::class, 'mesTicketsHistorique']);
+        Route::post('/tickets-maintenance/{ticketMaintenance}/message', [TicketMaintenanceController::class, 'envoyerMessage']);
         Route::patch('/tickets-maintenance/{ticketMaintenance}/resoudre', [TicketMaintenanceController::class, 'resoudre']);
         Route::patch('/tickets-maintenance/{ticketMaintenance}/refus-vu', [TicketMaintenanceController::class, 'marquerRefusVu']);
     });

@@ -225,6 +225,14 @@ function mockFetch(handlers: {
       return new Response(JSON.stringify([]), { status: 200 })
     }
 
+    if (url === '/api/mission-menages/a-valider' && method === 'GET') {
+      return new Response(JSON.stringify([]), { status: 200 })
+    }
+
+    if (url === '/api/tickets-maintenance' && method === 'GET') {
+      return new Response(JSON.stringify([]), { status: 200 })
+    }
+
     if (url === '/api/logout' && method === 'POST') {
       return new Response(JSON.stringify({ message: 'Déconnecté.' }), { status: 200 })
     }
@@ -489,7 +497,7 @@ describe('App', () => {
     await screen.findByTestId('dashboard-revenus-totaux')
     await user.click(screen.getByRole('button', { name: /jean dupont/i }))
 
-    expect(await screen.findByText(/confirmer le checkout/i)).toBeInTheDocument()
+    expect(await screen.findByTestId('sejour-reference')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Liste des séjours' })).toHaveClass(/bg-brand/)
   })
 
@@ -539,6 +547,18 @@ describe('App', () => {
     await openSubItem(user, 'Historique')
 
     expect(await screen.findByText(/historique des missions de ménage/i)).toBeInTheDocument()
+  })
+
+  it('affiche la section "Ménage à valider" sous le groupe Ménage', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = mockFetch({ sejours: [] }) as typeof fetch
+
+    renderApp()
+    await openGroup(user, 'Ménage')
+    await openSubItem(user, 'Ménage à valider')
+
+    expect(await screen.findByRole('heading', { name: /ménage à valider/i })).toBeInTheDocument()
+    expect(await screen.findByText(/aucun ménage en attente de validation/i)).toBeInTheDocument()
   })
 
   it('affiche la liste des agents de ménage, puis modifie un agent via le crayon', async () => {
@@ -615,6 +635,18 @@ describe('App', () => {
     )
   })
 
+  it('affiche la section "Maintenance à valider" sous le groupe Maintenance', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = mockFetch({ sejours: [] }) as typeof fetch
+
+    renderApp()
+    await openGroup(user, 'Maintenance')
+    await openSubItem(user, 'Maintenance à valider')
+
+    expect(await screen.findByRole('heading', { name: /tickets de maintenance/i })).toBeInTheDocument()
+    expect(await screen.findByLabelText(/^statut$/i)).toHaveValue('resolu_en_attente_validation')
+  })
+
   it('crée un agent de ménage avec mot de passe en clair', async () => {
     const user = userEvent.setup()
     globalThis.fetch = mockFetch({
@@ -644,7 +676,7 @@ describe('App', () => {
   it('confirme le checkout depuis le détail d\'un séjour et affiche la mission de ménage', async () => {
     const user = userEvent.setup()
     globalThis.fetch = mockFetch({
-      sejours: [sejourFixture()],
+      sejours: [sejourFixture({ statut: 'en_cours' })],
       onCheckout: () => ({
         sejour: sejourFixture({ statut: 'termine' }),
         mission_menage: {
@@ -693,6 +725,20 @@ describe('App', () => {
     await user.click(viewButton)
 
     expect(await screen.findByTestId('sejour-reference')).toHaveTextContent('SEJ-0042')
+  })
+
+  it('le champ de recherche global de l\'en-tête est cliquable et accepte du texte saisi', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = mockFetch({ sejours: [] }) as typeof fetch
+
+    renderApp()
+    await screen.findByTestId('dashboard-revenus-totaux')
+
+    const search = screen.getByLabelText(/rechercher un séjour, un appartement/i)
+    await user.click(search)
+    await user.type(search, 'Loft Bastille')
+
+    expect(search).toHaveValue('Loft Bastille')
   })
 
   it('le bouton Déconnexion appelle /api/logout et efface la session locale', async () => {

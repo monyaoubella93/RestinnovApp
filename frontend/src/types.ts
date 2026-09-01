@@ -1,4 +1,4 @@
-export type SejourStatut = 'a_venir' | 'en_cours' | 'termine'
+export type SejourStatut = 'a_venir' | 'en_cours' | 'termine' | 'annule'
 
 export type MissionStatut = 'a_faire' | 'en_cours' | 'en_attente_validation' | 'conforme' | 'non_conforme'
 
@@ -19,6 +19,7 @@ export interface ChecklistModeleItem {
   id: number
   checklist_modele_id: number
   libelle: string
+  libelle_ar: string | null
   photo_url: string | null
   ordre: number
 }
@@ -33,6 +34,7 @@ export interface ChecklistItem {
   id: number
   mission_menage_id: number
   libelle: string
+  libelle_ar: string | null
   checklist_modele_nom?: string | null
   coche: boolean
   photo_url: string | null
@@ -47,6 +49,35 @@ export interface Proprietaire {
   nom: string
   telephone: string | null
   email: string | null
+  adresse: string | null
+}
+
+export type FrequenceCharge = 'mensuel' | 'annuel'
+export type AChargeDe = 'restinnov' | 'proprietaire'
+
+export interface ChargeAppartement {
+  id: number
+  nom_service: string
+  montant: string | number
+  frequence: FrequenceCharge
+  a_charge_de: AChargeDe
+  date_debut: string
+  date_fin: string | null
+}
+
+export interface ResumeFinancierMensuel {
+  mois: string
+  revenus_bruts: number
+  frais_menage_total: number
+  frais_maintenance_total: number
+  resultat_net: number
+}
+
+export interface AppartementDetail {
+  appartement: Appartement
+  resume_financier: ResumeFinancierMensuel
+  tickets_maintenance: TicketMaintenance[]
+  tickets_maintenance_recurrent: boolean
 }
 
 export interface Appartement {
@@ -65,6 +96,7 @@ export interface Appartement {
   proprietaire?: Proprietaire | null
   sejours_count?: number
   dernier_sejour?: string | null
+  charges_actives?: ChargeAppartement[]
 }
 
 export interface Agent {
@@ -81,9 +113,28 @@ export interface Agent {
 export interface ProduitCatalogue {
   id: number
   nom: string
+  nom_ar: string | null
   prix: string | number
   photo_url: string | null
   actif: boolean
+}
+
+export type TypeUtilisationProduit = 'stock_existant' | 'rachete'
+
+/**
+ * Per-mission usage of a catalogue product, carried on the mission_menage_
+ * produits pivot: "stock_existant" is free and needs no proof, "rachete"
+ * requires a proof-of-purchase photo and the real prix_paye (never the
+ * catalogue's generic prix).
+ */
+export interface ProduitUtilisationPivot {
+  type_utilisation: TypeUtilisationProduit
+  photo_url: string | null
+  prix_paye: string | number | null
+}
+
+export interface ProduitCatalogueUtilise extends ProduitCatalogue {
+  pivot: ProduitUtilisationPivot
 }
 
 export interface ProduitMenageSignale {
@@ -91,6 +142,8 @@ export interface ProduitMenageSignale {
   mission_menage_id: number
   photo_url: string
   note: string | null
+  prix: string | number | null
+  photo_ticket_url: string | null
   statut: ProduitSignaleStatut
   produit_catalogue_id: number | null
   produit_catalogue?: ProduitCatalogue | null
@@ -123,11 +176,18 @@ export interface MissionMenage {
   frais_forfait: string | number
   vue: boolean
   created_at?: string
-  produits?: ProduitCatalogue[]
+  produits?: ProduitCatalogueUtilise[]
   checklist_items?: ChecklistItem[]
   produits_signales?: ProduitMenageSignale[]
   photos_preuve?: MissionMenagePhotoPreuve[]
-  sejour?: { id: number; appartement: Appartement | null } | null
+  sejour?: {
+    id: number
+    appartement: Appartement | null
+    reference?: string
+    nom_voyageur?: string
+    date_arrivee?: string
+    date_depart?: string
+  } | null
   refus?: MissionMenageRefus[]
 }
 
@@ -139,6 +199,25 @@ export interface TicketMaintenanceRefus {
   vu: boolean
   created_at: string
   manager: { id: number; nom: string } | null
+}
+
+/**
+ * The maintenance agent's own intermediate photo/audio/note message to the
+ * Manager on an in-progress ticket -- distinct from the final resolution
+ * (photo_apres/cout_reparation/note_resolution). Chronological, oldest first.
+ */
+export interface PhotoSupplementaire {
+  id: number
+  photo_url: string
+}
+
+export interface MessageAgentMaintenance {
+  id: number
+  photo_url: string | null
+  photos_supplementaires?: PhotoSupplementaire[]
+  audio_url: string | null
+  note: string | null
+  created_at: string
 }
 
 export interface TicketMaintenanceParAppartement {
@@ -171,6 +250,9 @@ export interface TicketMaintenance {
   agent?: Agent | null
   mission_origine?: (Omit<MissionMenage, 'sejour'> & { sejour?: Sejour | null }) | null
   refus?: TicketMaintenanceRefus[]
+  messages_agent?: MessageAgentMaintenance[]
+  photos_signalement?: PhotoSupplementaire[]
+  photos_resolution?: PhotoSupplementaire[]
 }
 
 /**
@@ -192,6 +274,7 @@ export interface MonTicketMaintenance {
   photo_url: string | null
   appartement: { id: number; nom: string; adresse: string } | null
   refus: { motif: string | null; motif_audio_url: string | null; motif_photo_url: string | null; vu: boolean; date: string }[]
+  messages_agent: MessageAgentMaintenance[]
 }
 
 export type VoyageurType = 'adulte' | 'enfant'
@@ -318,17 +401,41 @@ export interface DashboardData {
   resolutions_a_valider: DashboardResolutionAValider[]
 }
 
+export interface CalendrierSejour {
+  id: number
+  reference: string
+  nom_voyageur: string
+  statut: SejourStatut
+  appartement: { id: number; nom: string } | null
+}
+
+export interface CalendrierJour {
+  date: string
+  sejours: CalendrierSejour[]
+}
+
+export interface CalendrierData {
+  mois: string
+  jours: CalendrierJour[]
+}
+
 export interface ReleveSejour {
   id: number
   nom_voyageur: string
   date_arrivee: string
   date_depart: string
+  nuitees: number
+  periode: string
   montant_mad: number
 }
 
 export interface ReleveProduitDetail {
   nom: string
   prix: number
+  photo_url: string | null
+  type_utilisation: TypeUtilisationProduit
+  photo_preuve_url: string | null
+  prix_paye: number | null
 }
 
 export interface ReleveFraisMenageDetail {
@@ -342,6 +449,15 @@ export interface ReleveFraisMaintenanceDetail {
   sejour_id: number
   description: string | null
   prix: number
+}
+
+export interface ReleveChargeDetail {
+  id: number
+  nom_service: string
+  montant: number
+  frequence: FrequenceCharge
+  a_charge_de: AChargeDe
+  montant_mensuel: number
 }
 
 export interface Releve {
@@ -358,12 +474,15 @@ export interface Releve {
   revenus_bruts: number
   frais_menage_total: number
   frais_maintenance_total: number
+  charges_restinnov_total: number
+  charges_proprietaire_total: number
   resultat_net: number
   montant_proprietaire: number
   commission_restinnov: number
   sejours: ReleveSejour[]
   frais_menage_detail: ReleveFraisMenageDetail[]
   frais_maintenance_detail: ReleveFraisMaintenanceDetail[]
+  charges_detail: ReleveChargeDetail[]
 }
 
 export interface HistoriqueChecklistItem {
@@ -378,6 +497,9 @@ export interface HistoriqueProduit {
   nom: string
   prix: number
   photo_url: string | null
+  type_utilisation: TypeUtilisationProduit
+  photo_preuve_url: string | null
+  prix_paye: number | null
 }
 
 export interface HistoriqueMission {
@@ -430,9 +552,11 @@ export interface HistoriqueTicketAgent {
   urgence: TicketMaintenanceUrgence
   description_manager: string | null
   photo_apres: string | null
+  photos_resolution?: PhotoSupplementaire[]
   cout_reparation: string | number | null
   note_resolution: string | null
   appartement: { id: number; nom: string; adresse: string } | null
+  messages_agent: MessageAgentMaintenance[]
 }
 
 /**
