@@ -175,4 +175,47 @@ describe('AgentWorkspace', () => {
     expect(container.firstElementChild).toHaveAttribute('dir', 'ltr')
     expect(localStorage.getItem('app_language')).toBe('fr')
   })
+
+  describe('en portrait mobile (largeur <= 767px)', () => {
+    function mockMobileViewport() {
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })) as typeof window.matchMedia
+    }
+
+    it('affiche une barre d\'onglets en bas d\'écran (pas la barre latérale) et une déconnexion accessible dans l\'en-tête', async () => {
+      mockMobileViewport()
+      globalThis.fetch = mockFetch([missionFixture({ id: 1, statut: 'a_faire' })]) as typeof fetch
+      renderWithAuth()
+
+      await screen.findByText('Mes missions du jour')
+
+      // The 4 tabs are still reachable...
+      expect(screen.getByRole('tab', { name: /mes missions.*1/i })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /validées/i })).toBeInTheDocument()
+      // ...but the desktop-only user footer (name + role) is gone, and
+      // logout is reachable from the compact mobile header instead.
+      expect(screen.queryByText('Agent ménage')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Déconnexion' })).toBeInTheDocument()
+    })
+
+    it('permet de changer d\'onglet depuis la barre du bas', async () => {
+      const user = userEvent.setup()
+      mockMobileViewport()
+      globalThis.fetch = mockFetch() as typeof fetch
+      renderWithAuth()
+
+      await screen.findByText('Mes missions du jour')
+      await user.click(screen.getByRole('tab', { name: /validées/i }))
+
+      expect(await screen.findByRole('heading', { name: 'Validées' })).toBeInTheDocument()
+    })
+  })
 })

@@ -193,7 +193,8 @@
   "install": {
     "title": "Installer sur le téléphone",
     "subtitle": "Accès rapide depuis l'écran d'accueil, même hors ligne.",
-    "button": "Installer"
+    "button": "Installer",
+    "iosInstructions": "Appuyez sur Partager, puis « Sur l'écran d'accueil »."
   },
   "sync": {
     "syncing_one": "Synchronisation… {{count}} action en attente",

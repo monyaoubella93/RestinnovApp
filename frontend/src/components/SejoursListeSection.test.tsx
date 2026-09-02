@@ -141,6 +141,39 @@ describe('SejoursListeSection', () => {
     expect(screen.getAllByText('À venir').length).toBeGreaterThan(0)
   })
 
+  it('affiche une ligne avec des champs optionnels absents (montant et appartement) sans casser le reste du tableau', async () => {
+    globalThis.fetch = mockFetchSejours([
+      sejourFixture({ id: 1, nom_voyageur: 'Jean Dupont' }),
+      sejourFixture({
+        id: 2,
+        nom_voyageur: 'Séjour Historique',
+        montant_mad: null,
+        appartement: undefined,
+        appartement_id: 99,
+      }),
+    ]) as typeof fetch
+
+    render(
+      <SejoursListeSection
+        appartements={[appartementLoft, appartementZenith]}
+        catalogue={[]}
+        onNavigateToCreer={vi.fn()}
+        onEditSejour={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByText('2 séjours trouvés')).toBeInTheDocument()
+
+    const rows = screen.getAllByRole('row').slice(1)
+    expect(rows).toHaveLength(2)
+
+    const rowSansDonnees = rows.find((r) => within(r).queryByText('Séjour Historique'))!
+    expect(within(rowSansDonnees).getByText('—')).toBeInTheDocument()
+    expect(within(rowSansDonnees).getByText('Appartement #99')).toBeInTheDocument()
+
+    expect(screen.getByText('Jean Dupont')).toBeInTheDocument()
+  })
+
   it('affiche "Checkout effectué" dans le filtre statut pour la valeur termine', async () => {
     globalThis.fetch = mockFetchSejours([]) as typeof fetch
 
