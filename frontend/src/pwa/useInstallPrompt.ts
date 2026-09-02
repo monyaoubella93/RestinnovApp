@@ -15,6 +15,22 @@ function isStandaloneDisplay(): boolean {
 }
 
 /**
+ * iOS never fires `beforeinstallprompt` (no browser-driven install flow
+ * exists there at all), so `canInstall` below is always false on iOS --
+ * the only way to install is the manual Share-sheet > "Sur l'écran
+ * d'accueil" flow, which only Safari itself offers as a real standalone
+ * app (other iOS browsers all run on the same WebKit engine but are
+ * excluded here since the manual steps differ / aren't equivalent).
+ */
+function isIosSafari(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent
+  const isIos = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1)
+  if (!isIos) return false
+  return !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua)
+}
+
+/**
  * Captures `beforeinstallprompt` (README §PWA: "capter beforeinstallprompt,
  * afficher la carte «Installer sur le téléphone»") and hides itself once
  * the app is already running standalone -- Chrome only fires the event
@@ -52,6 +68,7 @@ export function useInstallPrompt() {
 
   return {
     canInstall: deferredEvent !== null && !standalone,
+    showIosHint: !standalone && isIosSafari(),
     promptInstall,
   }
 }
