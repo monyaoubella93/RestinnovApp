@@ -230,6 +230,7 @@ export interface AssignerTicketMaintenanceInput {
   descriptionManager?: string | null
   descriptionManagerAudio?: File | null
   photoTransferee?: boolean
+  dateLimiteIntervention?: string | null
 }
 
 export interface ResoudreTicketMaintenanceInput {
@@ -1007,6 +1008,7 @@ export async function assignerTicketMaintenance(
   if (input.descriptionManager) formData.append('description_manager', input.descriptionManager)
   if (input.descriptionManagerAudio) formData.append('description_manager_audio', input.descriptionManagerAudio)
   if (input.photoTransferee) formData.append('photo_transferee', '1')
+  if (input.dateLimiteIntervention) formData.append('date_limite_intervention', input.dateLimiteIntervention)
   formData.append('_method', 'PATCH')
 
   const response = await fetch(`${API_BASE_URL}/api/tickets-maintenance/${id}/assigner`, {
@@ -1074,6 +1076,15 @@ export async function envoyerMessageAgentMaintenance(
   if (input.note) formData.append('note', input.note)
 
   return postFormDataOrQueue(`${API_BASE_URL}/api/tickets-maintenance/${id}/message`, formData)
+}
+
+export async function commencerTicketMaintenance(id: number): Promise<TicketMaintenance> {
+  const response = await fetch(`${API_BASE_URL}/api/tickets-maintenance/${id}/commencer`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
 }
 
 export async function resoudreTicketMaintenance(

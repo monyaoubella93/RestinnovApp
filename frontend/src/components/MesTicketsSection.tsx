@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { InstallPromptCard } from '../pwa/InstallPromptCard'
 import type { MonTicketMaintenance } from '../types'
 import { STATUT_VALIDATION_LABELS, STATUT_VALIDATION_STYLES } from '../utils/statutValidation'
-import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
+import { EN_RETARD_STYLE, formatDateLimite, URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 import { TicketDetailAgent } from './TicketDetailAgent'
 
 interface MesTicketsSectionProps {
@@ -52,6 +52,11 @@ export function MesTicketsSection({ tickets, loading, error, heading, emptyMessa
           // back to "Mes tickets".
           onRefresh()
         }}
+        onCommence={() => {
+          // Same rationale as onResolu -- keep the underlying list fresh in
+          // the background while the agent stays on the detail view.
+          onRefresh()
+        }}
       />
     )
   }
@@ -97,11 +102,20 @@ export function MesTicketsSection({ tickets, loading, error, heading, emptyMessa
                   <p className="truncate text-sm text-ink-tertiary">{ticket.appartement?.adresse}</p>
                 </div>
                 <span
-                  className={`shrink-0 rounded-badge px-2 py-0.5 text-xs font-bold ${URGENCE_STYLES[ticket.urgence]}`}
+                  className={`shrink-0 rounded-badge px-2 py-0.5 text-xs font-bold ${
+                    ticket.est_en_retard ? EN_RETARD_STYLE : URGENCE_STYLES[ticket.urgence]
+                  }`}
                 >
-                  {t('maintenance.urgenceLabel', { label: URGENCE_LABELS[ticket.urgence] })}
+                  {ticket.est_en_retard
+                    ? t('maintenance.detail.enRetard')
+                    : t('maintenance.urgenceLabel', { label: URGENCE_LABELS[ticket.urgence] })}
                 </span>
               </div>
+              {ticket.date_limite_intervention && (
+                <p className="mt-1 text-xs text-ink-tertiary">
+                  {t('maintenance.detail.dateLimite', { date: formatDateLimite(ticket.date_limite_intervention) })}
+                </p>
+              )}
               {STATUT_BADGES[ticket.statut] && (
                 <span
                   className={`mt-1 inline-block rounded-badge px-2 py-0.5 text-xs font-bold ${STATUT_BADGES[ticket.statut]!.style}`}

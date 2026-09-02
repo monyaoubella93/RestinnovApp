@@ -8,8 +8,10 @@ import type { MonTicketMaintenance } from '../types'
 const TICKET: MonTicketMaintenance = {
   id: 1,
   reference: 'MNT-0001',
-  statut: 'assigne',
+  statut: 'en_cours',
   urgence: 'haute',
+  date_limite_intervention: null,
+  est_en_retard: false,
   description_manager: 'Changer le joint du robinet.',
   description_manager_audio_url: null,
   photo_url: null,
@@ -34,6 +36,10 @@ function mockFetch() {
       )
     }
 
+    if (url.pathname === '/api/tickets-maintenance/1/commencer' && method === 'PATCH') {
+      return new Response(JSON.stringify({ ...TICKET, statut: 'en_cours' }), { status: 200 })
+    }
+
     throw new Error(`Unhandled request: ${method} ${url.pathname}`)
   })
 }
@@ -48,7 +54,7 @@ describe('TicketDetailAgent', () => {
   })
 
   it('affiche les informations du ticket : appartement, urgence, description_manager', () => {
-    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
     expect(screen.getByText('Loft Bastille')).toBeInTheDocument()
     expect(screen.getByText('12 rue de la Roquette')).toBeInTheDocument()
@@ -60,7 +66,7 @@ describe('TicketDetailAgent', () => {
   it("le niveau d'urgence reste en français quand l'interface est en arabe", async () => {
     await i18n.changeLanguage('ar')
 
-    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
     expect(screen.getByText('الأولوية Haute')).toBeInTheDocument()
   })
@@ -77,6 +83,7 @@ describe('TicketDetailAgent', () => {
         }}
         onBack={vi.fn()}
         onResolu={vi.fn()}
+        onCommence={vi.fn()}
       />,
     )
 
@@ -101,6 +108,7 @@ describe('TicketDetailAgent', () => {
         }}
         onBack={vi.fn()}
         onResolu={vi.fn()}
+        onCommence={vi.fn()}
       />,
     )
 
@@ -129,6 +137,7 @@ describe('TicketDetailAgent', () => {
         }}
         onBack={vi.fn()}
         onResolu={vi.fn()}
+        onCommence={vi.fn()}
       />,
     )
 
@@ -141,7 +150,7 @@ describe('TicketDetailAgent', () => {
   })
 
   it('n\'affiche ni lecteur audio ni photo quand le Manager n\'en a fourni aucun', () => {
-    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
     expect(document.querySelector('audio')).not.toBeInTheDocument()
     expect(screen.queryByAltText(/photo du problème signalé/i)).not.toBeInTheDocument()
@@ -153,6 +162,7 @@ describe('TicketDetailAgent', () => {
         ticket={{ ...TICKET, description_manager_audio_url: 'tickets-maintenance/manager-note.webm' }}
         onBack={vi.fn()}
         onResolu={vi.fn()}
+        onCommence={vi.fn()}
       />,
     )
 
@@ -167,17 +177,126 @@ describe('TicketDetailAgent', () => {
         ticket={{ ...TICKET, photo_url: 'tickets-maintenance/photo.jpg' }}
         onBack={vi.fn()}
         onResolu={vi.fn()}
+        onCommence={vi.fn()}
       />,
     )
 
     expect(screen.getByAltText(/photo du problème signalé/i)).toBeInTheDocument()
   })
 
+  it('affiche "Commencer le travail" au lieu du formulaire de résolution quand le ticket est assigne', () => {
+    render(
+      <TicketDetailAgent
+        ticket={{ ...TICKET, statut: 'assigne' }}
+        onBack={vi.fn()}
+        onResolu={vi.fn()}
+        onCommence={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /commencer le travail/i })).toBeInTheDocument()
+    expect(screen.queryByText('Marquer comme résolu')).not.toBeInTheDocument()
+  })
+
+  it('cliquer sur "Commencer le travail" appelle l\'API et affiche le formulaire de résolution', async () => {
+    const user = userEvent.setup()
+    const onCommence = vi.fn()
+    globalThis.fetch = mockFetch() as typeof fetch
+
+    render(
+      <TicketDetailAgent
+        ticket={{ ...TICKET, statut: 'assigne' }}
+        onBack={vi.fn()}
+        onResolu={vi.fn()}
+        onCommence={onCommence}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /commencer le travail/i }))
+
+    await waitFor(() => expect(onCommence).toHaveBeenCalled())
+    expect(screen.getByText('Marquer comme résolu')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /commencer le travail/i })).not.toBeInTheDocument()
+  })
+
+  it('affiche une erreur si "Commencer le travail" échoue', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = vi.fn(async () =>
+      new Response(JSON.stringify({ message: 'Ce ticket n\'est pas assigné.' }), { status: 422 }),
+    ) as typeof fetch
+
+    render(
+      <TicketDetailAgent
+        ticket={{ ...TICKET, statut: 'assigne' }}
+        onBack={vi.fn()}
+        onResolu={vi.fn()}
+        onCommence={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /commencer le travail/i }))
+
+    expect(await screen.findByText('Ce ticket n\'est pas assigné.')).toBeInTheDocument()
+  })
+
+  it('n\'affiche pas "Envoyer un message au Manager" avant que le ticket soit commencé ou refusé', () => {
+    render(
+      <TicketDetailAgent
+        ticket={{ ...TICKET, statut: 'resolu_en_attente_validation' }}
+        onBack={vi.fn()}
+        onResolu={vi.fn()}
+        onCommence={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: /envoyer un message au manager/i })).not.toBeInTheDocument()
+  })
+
+  it('affiche "Envoyer un message au Manager" quand le ticket est assigne (avant de commencer)', () => {
+    render(
+      <TicketDetailAgent
+        ticket={{ ...TICKET, statut: 'assigne' }}
+        onBack={vi.fn()}
+        onResolu={vi.fn()}
+        onCommence={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /envoyer un message au manager/i })).toBeInTheDocument()
+  })
+
+  it('affiche le badge "En retard" à la place du badge d\'urgence quand est_en_retard est vrai', () => {
+    render(
+      <TicketDetailAgent
+        ticket={{ ...TICKET, urgence: 'basse', est_en_retard: true }}
+        onBack={vi.fn()}
+        onResolu={vi.fn()}
+        onCommence={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('En retard')).toBeInTheDocument()
+    expect(screen.queryByText(/urgence basse/i)).not.toBeInTheDocument()
+  })
+
+  it('affiche la date limite d\'intervention quand renseignée', () => {
+    render(
+      <TicketDetailAgent
+        ticket={{ ...TICKET, date_limite_intervention: '2026-09-10' }}
+        onBack={vi.fn()}
+        onResolu={vi.fn()}
+        onCommence={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('À effectuer avant le 10/09/2026')).toBeInTheDocument()
+  })
+
   it('refuse la résolution sans photo ni prix', async () => {
     const user = userEvent.setup()
     globalThis.fetch = mockFetch() as typeof fetch
 
-    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: /marquer résolu/i }))
 
@@ -190,7 +309,7 @@ describe('TicketDetailAgent', () => {
     const fetchMock = mockFetch()
     globalThis.fetch = fetchMock as typeof fetch
 
-    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={onResolu} />)
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={onResolu} onCommence={vi.fn()} />)
 
     const photo = new File(['x'], 'reparation.jpg', { type: 'image/jpeg' })
     await user.upload(screen.getByLabelText(/photo de la réparation/i), photo)
@@ -211,7 +330,7 @@ describe('TicketDetailAgent', () => {
     const fetchMock = mockFetch()
     globalThis.fetch = fetchMock as typeof fetch
 
-    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
     const photoA = new File(['a'], 'reparation-1.jpg', { type: 'image/jpeg' })
     const photoB = new File(['b'], 'reparation-2.jpg', { type: 'image/jpeg' })
@@ -233,7 +352,7 @@ describe('TicketDetailAgent', () => {
     const user = userEvent.setup()
     globalThis.fetch = vi.fn(async () => new Response(null, { status: 413 })) as typeof fetch
 
-    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
     const photo = new File(['x'], 'reparation.jpg', { type: 'image/jpeg' })
     await user.upload(screen.getByLabelText(/photo de la réparation/i), photo)
@@ -244,13 +363,13 @@ describe('TicketDetailAgent', () => {
   })
 
   it('propose d\'envoyer un message au Manager quand le ticket est en cours (assigne)', () => {
-    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: /envoyer un message au manager/i })).toBeInTheDocument()
   })
 
   it('ne propose pas d\'envoyer un message au Manager une fois le ticket résolu', () => {
-    render(<TicketDetailAgent ticket={{ ...TICKET, statut: 'resolu' }} onBack={vi.fn()} onResolu={vi.fn()} />)
+    render(<TicketDetailAgent ticket={{ ...TICKET, statut: 'resolu' }} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
     expect(screen.queryByRole('button', { name: /envoyer un message au manager/i })).not.toBeInTheDocument()
   })
@@ -259,7 +378,7 @@ describe('TicketDetailAgent', () => {
     const user = userEvent.setup()
     globalThis.fetch = mockFetch() as typeof fetch
 
-    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
     // Both this form and the (always-visible) resolution form below have a
@@ -274,7 +393,7 @@ describe('TicketDetailAgent', () => {
 
   it('refuse l\'envoi d\'un message sans photo, audio ni note', async () => {
     const user = userEvent.setup()
-    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
     await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
@@ -287,7 +406,7 @@ describe('TicketDetailAgent', () => {
     const fetchMock = mockFetch()
     globalThis.fetch = fetchMock as typeof fetch
 
-    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
     const photoA = new File(['a'], 'a.jpg', { type: 'image/jpeg' })
@@ -309,7 +428,7 @@ describe('TicketDetailAgent', () => {
     const user = userEvent.setup()
     globalThis.fetch = vi.fn(async () => new Response(null, { status: 413 })) as typeof fetch
 
-    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} />)
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
     await user.upload(

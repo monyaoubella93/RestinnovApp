@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  commencerTicketMaintenance,
   envoyerMessageAgentMaintenance,
   marquerTicketMaintenanceRefusVu,
   resoudreTicketMaintenance,
   resolveStorageUrl,
 } from '../api'
 import type { MessageAgentMaintenance, MonTicketMaintenance } from '../types'
-import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
+import { EN_RETARD_STYLE, formatDateLimite, URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 import { friendlyUploadErrorMessage } from '../utils/uploadError'
 import { useAudioRecorder, MAX_RECORDING_SECONDS } from '../hooks/useAudioRecorder'
 import { RecordingIndicator } from './RecordingIndicator'
@@ -16,6 +17,7 @@ interface TicketDetailAgentProps {
   ticket: MonTicketMaintenance
   onBack: () => void
   onResolu: () => void
+  onCommence: () => void
 }
 
 /**
@@ -311,7 +313,7 @@ function MessageAgentSection({ ticket }: { ticket: MonTicketMaintenance }) {
   )
 }
 
-export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgentProps) {
+export function TicketDetailAgent({ ticket, onBack, onResolu, onCommence }: TicketDetailAgentProps) {
   const { t } = useTranslation()
   const [photos, setPhotos] = useState<PhotoEntry[]>([])
   const [coutReparation, setCoutReparation] = useState('')
@@ -319,6 +321,9 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [resolu, setResolu] = useState(false)
+  const [statutActuel, setStatutActuel] = useState(ticket.statut)
+  const [commencing, setCommencing] = useState(false)
+  const [commencerError, setCommencerError] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -372,7 +377,25 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
     }
   }
 
-  const enCours = ticket.statut === 'assigne' || ticket.statut === 'a_refaire'
+  const handleCommencer = async () => {
+    setCommencerError(null)
+    setCommencing(true)
+    try {
+      await commencerTicketMaintenance(ticket.id)
+      setStatutActuel('en_cours')
+      onCommence()
+    } catch (err) {
+      setCommencerError(err instanceof Error ? err.message : t('common.genericError'))
+    } finally {
+      setCommencing(false)
+    }
+  }
+
+  // The "envoyer un message" flow is open to the agent at every point their
+  // ticket is actively on their plate -- before they've clicked "Commencer
+  // le travail" (assigne), while working (en_cours), and after a Manager
+  // refus sent it back (a_refaire).
+  const peutEnvoyerMessage = statutActuel === 'assigne' || statutActuel === 'en_cours' || statutActuel === 'a_refaire'
 
   return (
     <div className="space-y-4">
@@ -390,11 +413,21 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
             <p className="text-sm text-ink-tertiary">{ticket.appartement?.adresse}</p>
           </div>
           <span
-            className={`shrink-0 rounded-badge px-2 py-0.5 text-xs font-bold ${URGENCE_STYLES[ticket.urgence]}`}
+            className={`shrink-0 rounded-badge px-2 py-0.5 text-xs font-bold ${
+              ticket.est_en_retard ? EN_RETARD_STYLE : URGENCE_STYLES[ticket.urgence]
+            }`}
           >
-            {t('maintenance.urgenceLabel', { label: URGENCE_LABELS[ticket.urgence] })}
+            {ticket.est_en_retard
+              ? t('maintenance.detail.enRetard')
+              : t('maintenance.urgenceLabel', { label: URGENCE_LABELS[ticket.urgence] })}
           </span>
         </div>
+
+        {ticket.date_limite_intervention && (
+          <p className="mt-2 text-sm text-ink-tertiary">
+            {t('maintenance.detail.dateLimite', { date: formatDateLimite(ticket.date_limite_intervention) })}
+          </p>
+        )}
 
         {ticket.statut === 'a_refaire' && ticket.refus.length > 0 && (
           <div data-testid="refus-banner" className="mt-3 space-y-2 rounded-field bg-danger-bg px-3 py-2 text-sm font-semibold text-danger">
@@ -439,7 +472,7 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
         )}
       </div>
 
-      {enCours && <MessageAgentSection ticket={ticket} />}
+      {peutEnvoyerMessage && <MessageAgentSection ticket={ticket} />}
 
       {resolu ? (
         <div
@@ -450,6 +483,23 @@ export function TicketDetailAgent({ ticket, onBack, onResolu }: TicketDetailAgen
             ✅
           </span>
           <p className="text-base font-medium text-success-text">{t('maintenance.detail.sentForValidation')}</p>
+        </div>
+      ) : statutActuel === 'assigne' ? (
+        <div className="space-y-3 rounded-card-agent-lg border-2 border-brand-border bg-brand-pale p-4">
+          {commencerError && (
+            <p className="flex items-center gap-2 rounded-field bg-danger-bg px-3 py-2 text-sm font-medium text-danger">
+              <span aria-hidden="true">⚠️</span>
+              {commencerError}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={handleCommencer}
+            disabled={commencing}
+            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2 text-base font-bold text-white hover:bg-brand-light disabled:opacity-50"
+          >
+            {commencing ? t('maintenance.detail.commencerStarting') : t('maintenance.detail.commencerButton')}
+          </button>
         </div>
       ) : (
         <div className="space-y-4 rounded-card-agent-lg border-2 border-border-default bg-surface p-4">

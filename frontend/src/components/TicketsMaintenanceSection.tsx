@@ -11,7 +11,7 @@ import {
 } from '../api'
 import type { Agent, Appartement, TicketMaintenance, TicketMaintenanceParAppartement, TicketMaintenanceStatut } from '../types'
 import { STATUT_VALIDATION_STYLES } from '../utils/statutValidation'
-import { URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
+import { EN_RETARD_STYLE, formatDateLimite, URGENCE_LABELS, URGENCE_STYLES } from '../utils/urgence'
 import { RefuserModal } from './RefuserModal'
 import { useAudioRecorder, MAX_RECORDING_SECONDS } from '../hooks/useAudioRecorder'
 import { RecordingIndicator } from './RecordingIndicator'
@@ -27,11 +27,13 @@ interface AssignerValues {
   descriptionManager: string
   descriptionManagerAudio: File | null
   photoTransferee: boolean
+  dateLimiteIntervention: string
 }
 
 export const STATUT_LABELS: Record<TicketMaintenanceStatut, string> = {
   ouvert: 'Ouvert',
   assigne: 'Assigné',
+  en_cours: 'En cours',
   resolu_en_attente_validation: 'Résolu — en attente de validation',
   a_refaire: 'À refaire',
   resolu: 'Résolu',
@@ -40,6 +42,7 @@ export const STATUT_LABELS: Record<TicketMaintenanceStatut, string> = {
 export const STATUT_STYLES: Record<TicketMaintenanceStatut, string> = {
   ouvert: 'bg-warning-bg text-warning-text',
   assigne: 'bg-brand-pale text-brand',
+  en_cours: 'bg-violet-bg text-violet',
   resolu_en_attente_validation: STATUT_VALIDATION_STYLES.en_attente,
   a_refaire: STATUT_VALIDATION_STYLES.refuse,
   resolu: STATUT_VALIDATION_STYLES.valide,
@@ -62,6 +65,7 @@ function AssignerForm({
   const [expressionMode, setExpressionMode] = useState<ExpressionMode>('texte')
   const [descriptionManager, setDescriptionManager] = useState('')
   const [photoTransferee, setPhotoTransferee] = useState(false)
+  const [dateLimiteIntervention, setDateLimiteIntervention] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -100,6 +104,7 @@ function AssignerForm({
         descriptionManager,
         descriptionManagerAudio: audioFile,
         photoTransferee,
+        dateLimiteIntervention,
       })
     } catch (err) {
       setError(
@@ -224,6 +229,18 @@ function AssignerForm({
               </option>
             ))}
           </select>
+        </div>
+        <div className="min-w-0 flex-1">
+          <label htmlFor={`ticket_date_limite_${ticket.id}`} className="block text-xs font-semibold text-ink-secondary">
+            Date limite d'intervention
+          </label>
+          <input
+            id={`ticket_date_limite_${ticket.id}`}
+            type="date"
+            value={dateLimiteIntervention}
+            onChange={(e) => setDateLimiteIntervention(e.target.value)}
+            className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
+          />
         </div>
         <button
           type="button"
@@ -428,10 +445,19 @@ function TicketMaintenanceCard({
           </p>
           <p className="truncate text-sm text-ink-secondary">{ticket.description || 'Aucune description.'}</p>
           <p className="font-mono text-xs text-ink-tertiary">{formatDate(ticket.created_at)}</p>
+          {ticket.date_limite_intervention && (
+            <p className="text-xs text-ink-tertiary">
+              À effectuer avant le {formatDateLimite(ticket.date_limite_intervention)}
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${URGENCE_STYLES[ticket.urgence]}`}>
-            Urgence {URGENCE_LABELS[ticket.urgence]}
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              ticket.est_en_retard ? EN_RETARD_STYLE : URGENCE_STYLES[ticket.urgence]
+            }`}
+          >
+            {ticket.est_en_retard ? 'En retard' : `Urgence ${URGENCE_LABELS[ticket.urgence]}`}
           </span>
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUT_STYLES[ticket.statut]}`}>
             {STATUT_LABELS[ticket.statut]}
@@ -474,7 +500,7 @@ function TicketMaintenanceCard({
             <ValiderRefuserActions ticket={ticket} onValider={onValider} onRefuser={onRefuser} />
           )}
 
-          {(ticket.statut === 'assigne' || ticket.statut === 'a_refaire' || ticket.statut === 'resolu') && (
+          {(ticket.statut === 'assigne' || ticket.statut === 'en_cours' || ticket.statut === 'a_refaire' || ticket.statut === 'resolu') && (
             <div className="space-y-3">
               {ticket.description_manager && (
                 <p className="text-sm text-ink-secondary">
@@ -656,6 +682,7 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter, i
       descriptionManager: values.descriptionManager.trim() ? values.descriptionManager : null,
       descriptionManagerAudio: values.descriptionManagerAudio,
       photoTransferee: values.photoTransferee,
+      dateLimiteIntervention: values.dateLimiteIntervention || null,
     })
     load()
   }
@@ -741,6 +768,7 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter, i
             <option value="">Tous</option>
             <option value="ouvert">Ouvert</option>
             <option value="assigne">Assigné</option>
+            <option value="en_cours">En cours</option>
             <option value="resolu_en_attente_validation">Résolu — en attente de validation</option>
             <option value="a_refaire">À refaire</option>
             <option value="resolu">Résolu</option>
