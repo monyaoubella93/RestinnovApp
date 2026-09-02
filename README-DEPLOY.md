@@ -118,6 +118,76 @@ docker compose -f docker-compose.prod.yml down
 (volume `dbdata`, certificats Let's Encrypt dans `caddy_data`) — n'ajoutez
 `-v` que si vous voulez vraiment tout effacer.
 
+## Fichiers uploadés (photos, audio) invisibles en production
+
+Les photos et audios envoyés par les agents (signalement, résolution de
+ticket, preuve de travail...) sont stockés par Laravel dans
+`storage/app/public`, et servis publiquement via `/storage/...` grâce à
+`storage:link` (le lien symbolique `public/storage -> ../storage/app/public`,
+créé automatiquement au démarrage du conteneur `app` — voir
+`docker/php/entrypoint.sh`).
+
+**Piège à connaître** : ce lien est *relatif*. Il ne fonctionne que si
+`storage/app/public` est atteignable au même chemin relatif depuis
+`public/`, **à l'intérieur du conteneur qui essaie de le lire**. Le
+conteneur `app` monte tout le dépôt (`.:/var/www`), donc ça marche toujours
+de son côté. Mais si le montage du conteneur `nginx` — celui qui sert
+réellement les requêtes `/storage/...` — ne couvre un jour que `public/`
+seul (ex. `./public:/var/www/public:ro`, pour éviter d'exposer `.env`,
+`vendor/`, etc. à ce conteneur), le lien pointe alors vers un chemin qui
+n'existe tout simplement pas dans son propre système de fichiers : chaque
+fichier uploadé renvoie un 404, silencieusement, sans rien casser d'autre.
+
+**Correctif appliqué (déjà en place dans ce dépôt)** : `docker-compose.prod.yml`
+monte pour `nginx` exactement les deux dossiers dont il a besoin, jamais le
+dépôt entier :
+
+```yaml
+volumes:
+  - ./public:/var/www/public:ro
+  - ./storage/app/public:/var/www/storage/app/public:ro
+```
+
+Et `docker/nginx/conf.d/default.prod.conf` sert `/storage/...` directement
+depuis `storage/app/public` via un `alias` nginx, **sans passer par le lien
+symbolique** :
+
+```nginx
+location /storage/ {
+    alias /var/www/storage/app/public/;
+}
+```
+
+Résultat : le lien symbolique reste créé (utile en développement, où
+`nginx` monte tout le dépôt) mais la production n'en dépend plus du tout —
+même s'il n'existait pas, ou si `storage:link` échouait silencieusement
+(l'entrypoint l'exécute avec `|| true`), les fichiers uploadés restent
+servis correctement.
+
+**Si le problème revient malgré tout** (après une modification future de
+la config Docker, par exemple), diagnostiquer dans cet ordre :
+
+```bash
+# 1. Le fichier existe-t-il vraiment sur le disque, côté app ?
+docker compose -f docker-compose.prod.yml exec app \
+  ls -la storage/app/public/
+
+# 2. nginx a-t-il accès à ce même dossier (peu importe le lien symbolique) ?
+docker compose -f docker-compose.prod.yml exec nginx \
+  ls -la /var/www/storage/app/public/
+
+# 3. Le lien symbolique lui-même (utile pour le dev, plus pour nginx en prod) :
+docker compose -f docker-compose.prod.yml exec app \
+  readlink -f public/storage
+```
+
+Si (1) est vide, le problème est côté upload (permissions d'écriture sur
+`storage/`, voir `chmod -R ugo+rwX storage` dans `entrypoint.sh`). Si (1)
+contient le fichier mais (2) échoue ou renvoie un dossier différent, c'est
+que le montage `nginx` dans `docker-compose.prod.yml` a changé et ne couvre
+plus `storage/app/public` — corriger le montage plutôt que de recréer le
+lien symbolique, qui ne réglera pas le vrai problème.
+
 ## Vérifier la configuration sans rien démarrer
 
 ```bash

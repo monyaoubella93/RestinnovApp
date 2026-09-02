@@ -67,8 +67,17 @@ services:
       dockerfile: docker/nginx/Dockerfile.prod
     container_name: restinnov-nginx
     restart: unless-stopped
+    # Read-only, and deliberately narrower than the "app"/"scheduler"
+    # mount: nginx only ever needs public/ (PHP front-controller root +
+    # static assets it serves without going through PHP) and
+    # storage/app/public (user-uploaded files, see default.prod.conf's
+    # /storage/ alias) -- never .env, vendor/, database.sqlite,
+    # storage/logs, or the rest of the app's source. Mounting the whole
+    # repo here would work too (and did, before), but needlessly exposes
+    # all of that to the one container closest to the internet.
     volumes:
-      - .:/var/www:ro
+      - ./public:/var/www/public:ro
+      - ./storage/app/public:/var/www/storage/app/public:ro
     depends_on:
       app:
         condition: service_healthy
