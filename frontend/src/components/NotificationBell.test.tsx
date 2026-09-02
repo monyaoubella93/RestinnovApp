@@ -8,8 +8,10 @@ function notificationsFixture(overrides: Partial<NotificationsData> = {}): Notif
   return {
     menages_a_valider_count: 0,
     problemes_signales_count: 0,
+    alertes_maintenance_count: 0,
     menages_a_valider: [],
     problemes_signales: [],
+    alertes_maintenance: [],
     ...overrides,
   }
 }
@@ -77,6 +79,108 @@ describe('NotificationBell', () => {
     const badge = await screen.findByTestId('notification-badge')
     expect(badge).toHaveTextContent('2')
     expect(badge).toHaveClass('bg-danger')
+  })
+
+  it('affiche un badge bleu quand seules des alertes rappel sont en attente', async () => {
+    globalThis.fetch = mockFetch(
+      notificationsFixture({
+        alertes_maintenance_count: 1,
+        alertes_maintenance: [
+          { id: 1, niveau: 'rappel', message: 'Le ticket MNT-0001 arrive à échéance demain.', ticket_maintenance_id: 1, appartement: null },
+        ],
+      }),
+    ) as typeof fetch
+
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+
+    const badge = await screen.findByTestId('notification-badge')
+    expect(badge).toHaveTextContent('1')
+    expect(badge).toHaveClass('bg-brand')
+  })
+
+  it('affiche un badge orange quand une alerte urgente est en attente, même sans problème signalé', async () => {
+    globalThis.fetch = mockFetch(
+      notificationsFixture({
+        alertes_maintenance_count: 1,
+        alertes_maintenance: [
+          { id: 1, niveau: 'urgente', message: 'Le ticket MNT-0001 est en retard.', ticket_maintenance_id: 1, appartement: null },
+        ],
+      }),
+    ) as typeof fetch
+
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+
+    const badge = await screen.findByTestId('notification-badge')
+    expect(badge).toHaveClass('bg-warning')
+  })
+
+  it('affiche un badge rouge dès qu\'une alerte critique est en attente, même sans problème signalé', async () => {
+    globalThis.fetch = mockFetch(
+      notificationsFixture({
+        alertes_maintenance_count: 1,
+        alertes_maintenance: [
+          { id: 1, niveau: 'critique', message: 'Voyageur bientôt, ticket non résolu.', ticket_maintenance_id: 1, appartement: null },
+        ],
+      }),
+    ) as typeof fetch
+
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+
+    const badge = await screen.findByTestId('notification-badge')
+    expect(badge).toHaveClass('bg-danger')
+  })
+
+  it('affiche les 3 niveaux d\'alerte de maintenance avec des couleurs distinctes dans le panneau', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = mockFetch(
+      notificationsFixture({
+        alertes_maintenance_count: 3,
+        alertes_maintenance: [
+          { id: 1, niveau: 'critique', message: 'Voyageur bientôt, ticket non résolu.', ticket_maintenance_id: 1, appartement: null },
+          { id: 2, niveau: 'urgente', message: 'Le ticket MNT-0002 est en retard.', ticket_maintenance_id: 2, appartement: null },
+          { id: 3, niveau: 'rappel', message: 'Le ticket MNT-0003 arrive à échéance demain.', ticket_maintenance_id: 3, appartement: null },
+        ],
+      }),
+    ) as typeof fetch
+
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+
+    await screen.findByTestId('notification-badge')
+    await user.click(screen.getByRole('button', { name: 'Notifications' }))
+
+    expect(screen.getByText('Alertes de maintenance')).toBeInTheDocument()
+    expect(screen.getByText('Voyageur bientôt, ticket non résolu.')).toBeInTheDocument()
+    expect(screen.getByText('Le ticket MNT-0002 est en retard.')).toBeInTheDocument()
+    expect(screen.getByText('Le ticket MNT-0003 arrive à échéance demain.')).toBeInTheDocument()
+
+    const critiqueLabel = screen.getByText('Critique')
+    expect(critiqueLabel).toHaveClass('bg-danger-bg', 'text-danger')
+    const urgenteLabel = screen.getByText('Urgente')
+    expect(urgenteLabel).toHaveClass('bg-warning-bg', 'text-warning-text')
+    const rappelLabel = screen.getByText('Rappel')
+    expect(rappelLabel).toHaveClass('bg-brand-pale', 'text-brand')
+  })
+
+  it('le clic sur une alerte de maintenance navigue vers les tickets de maintenance et ferme le panneau', async () => {
+    const user = userEvent.setup()
+    const onNavigateToTicketsMaintenance = vi.fn()
+    globalThis.fetch = mockFetch(
+      notificationsFixture({
+        alertes_maintenance_count: 1,
+        alertes_maintenance: [
+          { id: 1, niveau: 'urgente', message: 'Le ticket MNT-0001 est en retard.', ticket_maintenance_id: 1, appartement: null },
+        ],
+      }),
+    ) as typeof fetch
+
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={onNavigateToTicketsMaintenance} />)
+
+    await screen.findByTestId('notification-badge')
+    await user.click(screen.getByRole('button', { name: 'Notifications' }))
+    await user.click(screen.getByText('Le ticket MNT-0001 est en retard.'))
+
+    expect(onNavigateToTicketsMaintenance).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('Alertes de maintenance')).not.toBeInTheDocument()
   })
 
   it('ouvre un panneau avec les deux sections colorées, nom + adresse par ligne', async () => {

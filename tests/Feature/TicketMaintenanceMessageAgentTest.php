@@ -71,6 +71,23 @@ class TicketMaintenanceMessageAgentTest extends TestCase
         ]);
     }
 
+    public function test_the_assigned_agent_can_send_a_note_only_message_while_en_cours(): void
+    {
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'en_cours', 'agent_id' => $agent->id]);
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->postJson("/api/tickets-maintenance/{$ticket->id}/message", [
+            'note' => 'Toujours en train de réparer.',
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('messages_agent_maintenance', [
+            'ticket_maintenance_id' => $ticket->id,
+            'note' => 'Toujours en train de réparer.',
+        ]);
+    }
+
     public function test_the_assigned_agent_can_send_a_photo_only_message(): void
     {
         Storage::fake('public');

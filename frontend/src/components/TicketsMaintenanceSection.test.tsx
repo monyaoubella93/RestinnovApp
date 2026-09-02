@@ -16,6 +16,8 @@ function ticketFixture(overrides: Partial<TicketMaintenance> = {}): TicketMainte
     appartement_id: 1,
     mission_origine_id: 1,
     agent_id: null,
+    date_limite_intervention: null,
+    est_en_retard: false,
     description: 'Le robinet fuit.',
     description_manager: null,
     description_manager_audio_url: null,
@@ -226,6 +228,21 @@ describe('TicketsMaintenanceSection', () => {
     expect(within(card).getByText('Ouvert')).toBeInTheDocument()
   })
 
+  it('affiche la date limite d\'intervention sur la carte quand renseignée', async () => {
+    renderSection([ticketFixture({ date_limite_intervention: '2026-09-10' })])
+
+    expect(await screen.findByText('À effectuer avant le 10/09/2026')).toBeInTheDocument()
+  })
+
+  it('affiche le badge rouge "En retard" à la place du badge d\'urgence quand est_en_retard est vrai', async () => {
+    renderSection([ticketFixture({ urgence: 'haute', est_en_retard: true })])
+
+    const card = await screen.findByRole('listitem')
+    const badge = within(card).getByText('En retard')
+    expect(badge).toBeInTheDocument()
+    expect(within(card).queryByText(/urgence haute/i)).not.toBeInTheDocument()
+  })
+
   it("charge tous les statuts par défaut (pas seulement ouvert/à refaire)", async () => {
     renderSection([
       ticketFixture({ id: 1, statut: 'ouvert', description: 'Ticket ouvert' }),
@@ -292,6 +309,47 @@ describe('TicketsMaintenanceSection', () => {
       const body = call![1]!.body as FormData
       expect(body.get('agent_id')).toBe(String(agent.id))
       expect(body.get('description_manager')).toBe('Changer le joint.')
+    })
+  })
+
+  it('assigne un ticket ouvert avec une date limite d\'intervention', async () => {
+    const user = userEvent.setup()
+    const agent = agentFixture()
+    globalThis.fetch = mockFetch([ticketFixture()], [agent]) as typeof fetch
+    render(<TicketsMaintenanceSection appartements={APPARTEMENTS} />)
+    const fetchMock = globalThis.fetch as ReturnType<typeof mockFetch>
+
+    await expandTicket(user, 'Le robinet fuit.')
+    await user.selectOptions(screen.getByLabelText(/^agent de maintenance$/i), String(agent.id))
+    await user.type(screen.getByLabelText(/instruction écrite pour l'agent/i), 'Changer le joint.')
+    await user.type(screen.getByLabelText(/date limite d'intervention/i), '2026-09-10')
+    await user.click(screen.getByRole('button', { name: /assigner/i }))
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input]) => String(input).includes('/assigner'))
+      expect(call).toBeDefined()
+      const body = call![1]!.body as FormData
+      expect(body.get('date_limite_intervention')).toBe('2026-09-10')
+    })
+  })
+
+  it('assigne sans date limite d\'intervention quand le champ est laissé vide', async () => {
+    const user = userEvent.setup()
+    const agent = agentFixture()
+    globalThis.fetch = mockFetch([ticketFixture()], [agent]) as typeof fetch
+    render(<TicketsMaintenanceSection appartements={APPARTEMENTS} />)
+    const fetchMock = globalThis.fetch as ReturnType<typeof mockFetch>
+
+    await expandTicket(user, 'Le robinet fuit.')
+    await user.selectOptions(screen.getByLabelText(/^agent de maintenance$/i), String(agent.id))
+    await user.type(screen.getByLabelText(/instruction écrite pour l'agent/i), 'Changer le joint.')
+    await user.click(screen.getByRole('button', { name: /assigner/i }))
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input]) => String(input).includes('/assigner'))
+      expect(call).toBeDefined()
+      const body = call![1]!.body as FormData
+      expect(body.get('date_limite_intervention')).toBeNull()
     })
   })
 

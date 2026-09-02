@@ -50,6 +50,17 @@ class SejourMaintenanceGuardTest extends TestCase
         $this->assertDatabaseCount('sejours', 0);
     }
 
+    public function test_rejects_a_new_sejour_on_an_appartement_with_an_en_cours_ticket(): void
+    {
+        $appartement = $this->appartement();
+        TicketMaintenance::create(['appartement_id' => $appartement->id, 'statut' => 'en_cours']);
+
+        $response = $this->postJson('/api/sejours', $this->payload($appartement));
+
+        $response->assertStatus(422);
+        $this->assertDatabaseCount('sejours', 0);
+    }
+
     public function test_allows_a_new_sejour_once_the_ticket_is_resolu(): void
     {
         $appartement = $this->appartement();

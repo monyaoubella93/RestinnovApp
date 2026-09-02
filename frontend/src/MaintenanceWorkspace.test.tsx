@@ -17,6 +17,8 @@ function ticketFixture(overrides: Partial<MonTicketMaintenance> = {}): MonTicket
     reference: 'MNT-0001',
     statut: 'assigne',
     urgence: 'normale',
+    date_limite_intervention: null,
+    est_en_retard: false,
     description_manager: 'Changer le joint.',
     description_manager_audio_url: null,
     photo_url: null,

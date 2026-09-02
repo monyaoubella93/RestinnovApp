@@ -419,6 +419,20 @@ class AppartementStatutCalculeTest extends TestCase
         $response->assertJsonPath('data.0.nom', 'Loft Bastille');
     }
 
+    public function test_it_filters_by_statut_maintenance_including_en_cours(): void
+    {
+        $maintenance = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);
+        TicketMaintenance::create(['appartement_id' => $maintenance->id, 'statut' => 'en_cours']);
+
+        Appartement::create(['nom' => 'Zenith', 'adresse' => 'B', 'statut' => 'disponible']);
+
+        $response = $this->getJson('/api/appartements?statut=maintenance&page=1');
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.nom', 'Loft Bastille');
+    }
+
     public function test_it_filters_by_statut_maintenance_including_resolu_en_attente_validation(): void
     {
         $maintenance = Appartement::create(['nom' => 'Loft Bastille', 'adresse' => 'A', 'statut' => 'disponible']);

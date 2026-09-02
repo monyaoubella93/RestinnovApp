@@ -10,8 +10,10 @@ function ticketFixture(overrides: Partial<MonTicketMaintenance> = {}): MonTicket
   return {
     id: 1,
     reference: 'MNT-0001',
-    statut: 'assigne',
+    statut: 'en_cours',
     urgence: 'normale',
+    date_limite_intervention: null,
+    est_en_retard: false,
     description_manager: 'Changer le joint du robinet.',
     description_manager_audio_url: null,
     photo_url: null,
@@ -64,6 +66,21 @@ describe('MesTicketsSection', () => {
     expect(screen.getByText('الأولوية Haute')).toBeInTheDocument()
   })
 
+  it('affiche la date limite d\'intervention quand renseignée', () => {
+    renderSection({ tickets: [ticketFixture({ date_limite_intervention: '2026-09-10' })] })
+
+    expect(screen.getByText('À effectuer avant le 10/09/2026')).toBeInTheDocument()
+  })
+
+  it('affiche le badge rouge "En retard" à la place du badge d\'urgence quand est_en_retard est vrai', () => {
+    renderSection({ tickets: [ticketFixture({ urgence: 'haute', est_en_retard: true })] })
+
+    const badge = screen.getByText('En retard')
+    expect(badge).toBeInTheDocument()
+    expect(badge).toHaveClass('bg-danger-bg', 'text-danger')
+    expect(screen.queryByText(/urgence haute/i)).not.toBeInTheDocument()
+  })
+
   it('affiche la référence du ticket et le badge rouge "Refusé" pour un ticket a_refaire', () => {
     const ticket = ticketFixture({
       statut: 'a_refaire',
@@ -99,6 +116,16 @@ describe('MesTicketsSection', () => {
 
     expect(screen.getByText('Marquer comme résolu')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /retour à mes tickets/i })).toBeInTheDocument()
+  })
+
+  it('affiche "Commencer le travail" au lieu du formulaire de résolution pour un ticket assigne', async () => {
+    const user = userEvent.setup()
+    renderSection({ tickets: [ticketFixture({ statut: 'assigne' })] })
+
+    await user.click(screen.getByText('Loft Bastille'))
+
+    expect(screen.getByRole('button', { name: /commencer le travail/i })).toBeInTheDocument()
+    expect(screen.queryByText('Marquer comme résolu')).not.toBeInTheDocument()
   })
 
   it('reste sur la confirmation de résolution même une fois le ticket disparu de la liste rafraîchie', async () => {

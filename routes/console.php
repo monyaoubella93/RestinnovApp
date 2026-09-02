@@ -9,6 +9,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('sejours:activer-en-cours')->daily();
+Schedule::command('maintenance:verifier-retards')->daily();
 
 // Disabled per décision du DG (2026-08): an automatic 11:00 checkout is too
 // risky -- a traveler running late or extending their stay would get their

@@ -136,6 +136,11 @@ class AppartementDeletionTest extends TestCase
         $this->assertBlockedByTicketStatut('assigne');
     }
 
+    public function test_it_blocks_deletion_when_a_ticket_is_en_cours(): void
+    {
+        $this->assertBlockedByTicketStatut('en_cours');
+    }
+
     public function test_it_blocks_deletion_when_a_ticket_is_resolu_en_attente_validation(): void
     {
         $this->assertBlockedByTicketStatut('resolu_en_attente_validation');
