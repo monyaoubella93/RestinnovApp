@@ -8,15 +8,19 @@
 # same convention as the existing dev frontend/Dockerfile.
 #
 # The built SPA is copied to /srv/frontend-dist, NOT /var/www/frontend-dist:
-# the "nginx" service in docker-compose.prod.yml bind-mounts the host repo
-# root over /var/www at container start (".:/var/www:ro", needed so nginx
-# can resolve the Laravel "public/" root and the storage:link symlink for
-# fastcgi_pass to "app"). That mount replaces the ENTIRE /var/www directory
-# tree at runtime, silently shadowing anything baked into the image under
-# /var/www -- including a frontend-dist placed there at build time. The
-# build itself succeeds either way (this stage never touches /var/www), so
-# the missing folder only shows up once the container is actually running.
-# Keeping the SPA under /srv instead sidesteps the mount entirely.
+# the "nginx" service in docker-compose.prod.yml bind-mounts two host
+# subdirectories under /var/www at container start (./public and
+# ./storage/app/public -- see that file's comment on why it's narrower than
+# the "app"/"scheduler" mount). A bind mount at /var/www/public or
+# /var/www/storage/app/public only shadows that one path, but an earlier
+# version of this mount was the whole repo (".:/var/www:ro"), which
+# replaces the ENTIRE /var/www directory tree at runtime and would silently
+# shadow anything baked into the image under /var/www -- including a
+# frontend-dist placed there at build time. The build itself succeeds
+# either way (this stage never touches /var/www), so the missing folder
+# only shows up once the container is actually running. Keeping the SPA
+# under /srv sidesteps that risk entirely, regardless of how /var/www ends
+# up mounted.
 
 FROM node:20-alpine AS frontend-build
 
