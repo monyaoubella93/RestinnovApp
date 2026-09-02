@@ -115,6 +115,18 @@ describe('MaintenanceWorkspace', () => {
     expect(screen.getByRole('tab', { name: /validés/i })).toBeInTheDocument()
   })
 
+  it('un ticket "en_cours" (après "Commencer le travail") reste visible dans "Mes tickets", pas ailleurs', async () => {
+    globalThis.fetch = mockFetch([ticketFixture({ id: 1, statut: 'en_cours' })]) as typeof fetch
+    renderWithAuth()
+
+    await screen.findByRole('heading', { name: 'Mes tickets' })
+
+    expect(screen.getByRole('tab', { name: /mes tickets.*1/i })).toBeInTheDocument()
+    expect(screen.getByText('Loft Bastille')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /en attente.*0/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /refusés.*0/i })).toBeInTheDocument()
+  })
+
   it('bascule vers "Validés" au clic sur l\'onglet', async () => {
     const user = userEvent.setup()
     globalThis.fetch = mockFetch() as typeof fetch
