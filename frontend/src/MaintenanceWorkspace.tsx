@@ -62,7 +62,10 @@ export function MaintenanceWorkspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const actifs = tickets.filter((t) => t.statut === 'assigne')
+  // "en_cours" is the agent's own active work (post "Commencer le travail")
+  // -- it belongs alongside "assigne" here, or the ticket vanishes from
+  // every tab the moment the agent leaves the detail screen.
+  const actifs = tickets.filter((t) => t.statut === 'assigne' || t.statut === 'en_cours')
   const enAttente = tickets.filter((t) => t.statut === 'resolu_en_attente_validation')
   const refuses = tickets.filter((t) => t.statut === 'a_refaire')
   const refusesNonVus = refuses.some((t) => t.refus.some((r) => !r.vu))

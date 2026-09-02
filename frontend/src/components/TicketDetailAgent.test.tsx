@@ -325,6 +325,14 @@ describe('TicketDetailAgent', () => {
     expect(screen.getByRole('button', { name: /retour à mes tickets/i })).toBeInTheDocument()
   })
 
+  it('la photo de réparation propose caméra et galerie -- accept="image/*", pas de capture forcée', () => {
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
+
+    const input = screen.getByLabelText(/photo de la réparation/i)
+    expect(input).toHaveAttribute('accept', 'image/*')
+    expect(input).not.toHaveAttribute('capture')
+  })
+
   it('permet de prendre plusieurs photos de réparation et les envoie toutes', async () => {
     const user = userEvent.setup()
     const fetchMock = mockFetch()
@@ -399,6 +407,16 @@ describe('TicketDetailAgent', () => {
     await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
 
     expect(screen.getByText(/ajoutez une photo, un audio ou une note/i)).toBeInTheDocument()
+  })
+
+  it('la photo du message au Manager propose caméra et galerie -- accept="image/*", pas de capture forcée', async () => {
+    const user = userEvent.setup()
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    const input = screen.getByLabelText(/photo du message/i)
+    expect(input).toHaveAttribute('accept', 'image/*')
+    expect(input).not.toHaveAttribute('capture')
   })
 
   it('permet de joindre plusieurs photos à un message et les envoie toutes', async () => {
