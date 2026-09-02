@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ComponentProps } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -157,6 +157,22 @@ describe('MesMissionsSection', () => {
         return new Response(JSON.stringify(missionFixture({ statut: 'en_attente_validation' })), { status: 200 })
       }
 
+      if (url.pathname === '/api/mission-menages/10/photos-preuve' && method === 'POST') {
+        return new Response(
+          JSON.stringify([
+            {
+              id: 1,
+              mission_menage_id: 10,
+              photo_url: 'missions-menage-photos-preuve/apres.jpg',
+              note: null,
+              type: 'apres',
+              created_at: '2026-08-11T10:00:00Z',
+            },
+          ]),
+          { status: 201 },
+        )
+      }
+
       throw new Error(`Unhandled request: ${method} ${url.pathname}`)
     }) as typeof fetch
 
@@ -165,7 +181,15 @@ describe('MesMissionsSection', () => {
     await user.click(await screen.findByText('Loft Bastille'))
     await screen.findByText('Checklist')
 
+    await user.click(screen.getByRole('button', { name: /ajouter une photo de mon travail/i }))
+    await user.upload(
+      screen.getByLabelText(/photos de preuve de travail/i),
+      new File(['contenu'], 'apres.jpg', { type: 'image/jpeg' }),
+    )
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
+
     const boutonTerminer = await screen.findByRole('button', { name: /marquer terminé/i })
+    await waitFor(() => expect(boutonTerminer).toBeEnabled())
     await user.click(boutonTerminer)
 
     expect(await screen.findByText(/envoyé au manager pour validation/i)).toBeInTheDocument()

@@ -94,6 +94,7 @@ class MissionMenageValidationTest extends TestCase
 
     public function test_full_cycle_checkout_to_en_menage_to_validation_to_disponible(): void
     {
+        \Illuminate\Support\Facades\Storage::fake('public');
         $appartement = $this->appartement();
         $agent = $this->agent();
 
@@ -111,6 +112,14 @@ class MissionMenageValidationTest extends TestCase
         $this->assertSame('en_menage', $this->getJson('/api/appartements')->json('0.statut'));
 
         Sanctum::actingAs($agent, ['*']);
+
+        $this->post("/api/mission-menages/{$missionId}/commencer", [
+            'photo' => \Illuminate\Http\UploadedFile::fake()->image('avant.jpg'),
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        $this->post("/api/mission-menages/{$missionId}/photos-preuve", [
+            'photos' => [\Illuminate\Http\UploadedFile::fake()->image('apres.jpg')],
+        ], ['Accept' => 'application/json'])->assertCreated();
 
         $terminer = $this->patchJson("/api/mission-menages/{$missionId}/terminer");
         $terminer->assertOk();
@@ -132,6 +141,11 @@ class MissionMenageValidationTest extends TestCase
     {
         $mission = $this->mission(['statut' => 'en_cours']);
         ChecklistItem::create(['mission_menage_id' => $mission->id, 'libelle' => 'Item 1', 'coche' => true, 'ordre' => 0]);
+        \App\Models\MissionMenagePhotoPreuve::create([
+            'mission_menage_id' => $mission->id,
+            'photo_url' => 'missions-menage-photos-preuve/apres.jpg',
+            'type' => 'apres',
+        ]);
 
         $this->patchJson("/api/mission-menages/{$mission->id}/terminer")->assertOk();
         $this->patchJson("/api/mission-menages/{$mission->id}/valider")->assertOk();

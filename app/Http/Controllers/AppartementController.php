@@ -158,6 +158,7 @@ class AppartementController extends Controller
         $validated = $request->validate([
             'nom' => ['required', 'string', 'max:255'],
             'adresse' => ['required', 'string', 'max:255'],
+            'lien_airbnb' => ['nullable', 'url', 'max:2048'],
             'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'checklist_modele_ids' => ['sometimes', 'array'],
             'checklist_modele_ids.*' => ['integer', 'exists:checklist_modeles,id'],
@@ -219,6 +220,7 @@ class AppartementController extends Controller
         $validated = $request->validate([
             'nom' => ['required', 'string', 'max:255'],
             'adresse' => ['required', 'string', 'max:255'],
+            'lien_airbnb' => ['nullable', 'url', 'max:2048'],
             'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
             'checklist_modele_ids' => ['sometimes', 'array'],
             'checklist_modele_ids.*' => ['integer', 'exists:checklist_modeles,id'],

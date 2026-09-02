@@ -33,7 +33,7 @@ function missionFixture(overrides: Partial<MissionMenage> = {}): MissionMenage {
     id: 10,
     sejour_id: 1,
     agent_id: 1,
-    statut: 'a_faire',
+    statut: 'en_cours',
     agent: { id: 1, nom: 'Fatima Z.', role: 'menage', telephone: null },
     frais_forfait: 0,
     vue: false,
@@ -53,7 +53,26 @@ function mockFetch(mission: MissionMenage) {
     const path = url.pathname
 
     if (path === `/api/mission-menages/${mission.id}/ouvrir` && method === 'PATCH') {
-      current = { ...current, vue: true, statut: current.statut === 'a_faire' ? 'en_cours' : current.statut }
+      current = { ...current, vue: true }
+      return new Response(JSON.stringify(current), { status: 200 })
+    }
+
+    if (path === `/api/mission-menages/${mission.id}/commencer` && method === 'POST') {
+      current = {
+        ...current,
+        statut: 'en_cours',
+        photos_preuve: [
+          {
+            id: 200,
+            mission_menage_id: mission.id,
+            photo_url: 'missions-menage-photos-preuve/avant.jpg',
+            note: null,
+            type: 'avant',
+            created_at: '2026-08-11T10:00:00Z',
+          },
+          ...(current.photos_preuve ?? []),
+        ],
+      }
       return new Response(JSON.stringify(current), { status: 200 })
     }
 
@@ -86,18 +105,17 @@ function mockFetch(mission: MissionMenage) {
     if (path === `/api/mission-menages/${mission.id}/photos-preuve` && method === 'POST') {
       const formData = init?.body as FormData
       const photos = formData.getAll('photos[]')
-      const note = formData.get('note')
-      return new Response(
-        JSON.stringify(
-          photos.map((_, index) => ({
-            id: 100 + index,
-            mission_menage_id: mission.id,
-            photo_url: 'missions-menage-photos-preuve/preuve.jpg',
-            note: note || null,
-          })),
-        ),
-        { status: 201 },
-      )
+      const note = formData.get('note') as string | null
+      const created = photos.map((_, index) => ({
+        id: 100 + index,
+        mission_menage_id: mission.id,
+        photo_url: 'missions-menage-photos-preuve/preuve.jpg',
+        note: note || null,
+        type: 'apres' as const,
+        created_at: '2026-08-11T10:00:00Z',
+      }))
+      current = { ...current, photos_preuve: [...created, ...(current.photos_preuve ?? [])] }
+      return new Response(JSON.stringify(created), { status: 201 })
     }
 
     if (path === `/api/mission-menages/${mission.id}/signalements` && method === 'POST') {
@@ -131,8 +149,8 @@ describe('MissionDetailAgent', () => {
     void i18n.changeLanguage('fr')
   })
 
-  it("ouvre la mission au montage (marque vue, passe a_faire à en_cours)", async () => {
-    const fetchMock = mockFetch(missionFixture())
+  it('ouvre la mission au montage (marque vue) sans faire avancer le statut', async () => {
+    const fetchMock = mockFetch(missionFixture({ statut: 'a_faire' }))
     globalThis.fetch = fetchMock as typeof fetch
 
     render(<MissionDetailAgent missionId={10} catalogue={[]} onBack={vi.fn()} onMissionTerminee={vi.fn()} />)
@@ -142,6 +160,41 @@ describe('MissionDetailAgent', () => {
       expect.stringContaining('/api/mission-menages/10/ouvrir'),
       expect.objectContaining({ method: 'PATCH' }),
     )
+    // ouvrir() no longer moves the mission out of "a_faire" -- only the
+    // mandatory photo avant ménage (commencer()) does that.
+    expect(screen.getByRole('button', { name: /prendre la photo avant ménage/i })).toBeInTheDocument()
+  })
+
+  it('masque la checklist et exige la photo avant ménage tant que la mission est a_faire', async () => {
+    globalThis.fetch = mockFetch(missionFixture({ statut: 'a_faire' })) as typeof fetch
+
+    render(<MissionDetailAgent missionId={10} catalogue={[]} onBack={vi.fn()} onMissionTerminee={vi.fn()} />)
+
+    await screen.findByText('Loft Bastille')
+    expect(screen.getByRole('button', { name: /prendre la photo avant ménage/i })).toBeInTheDocument()
+    expect(screen.queryByText("Passer l'aspirateur")).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /marquer terminé/i })).not.toBeInTheDocument()
+  })
+
+  it('envoie la photo avant ménage : la mission passe en_cours et la checklist apparaît', async () => {
+    const user = userEvent.setup()
+    const fetchMock = mockFetch(missionFixture({ statut: 'a_faire' }))
+    globalThis.fetch = fetchMock as typeof fetch
+
+    render(<MissionDetailAgent missionId={10} catalogue={[]} onBack={vi.fn()} onMissionTerminee={vi.fn()} />)
+
+    await screen.findByText('Loft Bastille')
+    const photo = new File(['contenu'], 'avant.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText(/photo avant ménage/i), photo)
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/mission-menages/10/commencer'),
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    )
+    expect(await screen.findByText("Passer l'aspirateur")).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /prendre la photo avant ménage/i })).not.toBeInTheDocument()
   })
 
   it('affiche un avertissement clair quand la mission a été renvoyée (non_conforme)', async () => {
@@ -232,7 +285,22 @@ describe('MissionDetailAgent', () => {
     expect(screen.getByRole('button', { name: /marquer terminé/i })).toBeDisabled()
   })
 
-  it('cocher le seul item active le bouton "Marquer terminé", puis le clic termine la mission', async () => {
+  it('le bouton "Marquer terminé" reste désactivé tant qu\'aucune photo après ménage n\'est envoyée, même checklist cochée', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = mockFetch(missionFixture()) as typeof fetch
+
+    render(<MissionDetailAgent missionId={10} catalogue={[]} onBack={vi.fn()} onMissionTerminee={vi.fn()} />)
+
+    await screen.findByText("Passer l'aspirateur")
+    await user.click(screen.getByRole('checkbox', { name: "Passer l'aspirateur" }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: "Passer l'aspirateur" })).toHaveAttribute('aria-checked', 'true'),
+    )
+    expect(screen.getByRole('button', { name: /marquer terminé/i })).toBeDisabled()
+  })
+
+  it('cocher le seul item et envoyer une photo après ménage active "Marquer terminé", puis le clic termine la mission', async () => {
     const user = userEvent.setup()
     globalThis.fetch = mockFetch(missionFixture()) as typeof fetch
     const onMissionTerminee = vi.fn()
@@ -241,6 +309,11 @@ describe('MissionDetailAgent', () => {
 
     await screen.findByText("Passer l'aspirateur")
     await user.click(screen.getByRole('checkbox', { name: "Passer l'aspirateur" }))
+
+    await user.click(screen.getByRole('button', { name: /ajouter une photo de mon travail/i }))
+    const photo = new File(['contenu'], 'apres.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText(/photos de preuve de travail/i), photo)
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
 
     await waitFor(() => expect(screen.getByRole('button', { name: /marquer terminé/i })).toBeEnabled())
 
@@ -435,7 +508,7 @@ describe('MissionDetailAgent', () => {
     expect(await screen.findByTestId('photo-preuve-confirmation')).toBeInTheDocument()
   })
 
-  it('permet de marquer terminé une mission sans aucun item de checklist', async () => {
+  it('permet de marquer terminé une mission sans aucun item de checklist, une fois la photo après ménage envoyée', async () => {
     const user = userEvent.setup()
     globalThis.fetch = mockFetch(missionFixture({ checklist_items: [] })) as typeof fetch
     const onMissionTerminee = vi.fn()
@@ -443,7 +516,14 @@ describe('MissionDetailAgent', () => {
     render(<MissionDetailAgent missionId={10} catalogue={[]} onBack={vi.fn()} onMissionTerminee={onMissionTerminee} />)
 
     await screen.findByText('Loft Bastille')
-    expect(screen.getByRole('button', { name: /marquer terminé/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /marquer terminé/i })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: /ajouter une photo de mon travail/i }))
+    const photo = new File(['contenu'], 'apres.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText(/photos de preuve de travail/i), photo)
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /marquer terminé/i })).toBeEnabled())
 
     await user.click(screen.getByRole('button', { name: /marquer terminé/i }))
 

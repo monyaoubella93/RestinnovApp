@@ -254,7 +254,7 @@ describe('MissionValidationDetail', () => {
       <MissionValidationDetail
         mission={missionFixture({
           photos_preuve: [
-            { id: 1, mission_menage_id: 10, photo_url: 'missions-menage-photos-preuve/preuve.jpg', note: 'Corrigé', created_at: '2026-08-17T10:00:00Z' },
+            { id: 1, mission_menage_id: 10, photo_url: 'missions-menage-photos-preuve/preuve.jpg', note: 'Corrigé', type: null, created_at: '2026-08-17T10:00:00Z' },
           ],
         })}
       />,
@@ -268,13 +268,54 @@ describe('MissionValidationDetail', () => {
     expect(screen.getByText('Corrigé')).toBeInTheDocument()
   })
 
+  it('affiche les photos avant et après ménage côte à côte', async () => {
+    const user = userEvent.setup()
+    render(
+      <MissionValidationDetail
+        mission={missionFixture({
+          photos_preuve: [
+            { id: 1, mission_menage_id: 10, photo_url: 'missions-menage-photos-preuve/avant.jpg', note: null, type: 'avant', created_at: '2026-08-17T09:00:00Z' },
+            { id: 2, mission_menage_id: 10, photo_url: 'missions-menage-photos-preuve/apres.jpg', note: 'Terminé', type: 'apres', created_at: '2026-08-17T11:00:00Z' },
+          ],
+        })}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /voir le détail/i }))
+
+    expect(screen.getByText('Avant / après ménage')).toBeInTheDocument()
+    const avant = screen.getByAltText('Photo avant ménage')
+    expect(avant).toHaveAttribute('src', expect.stringContaining('avant.jpg'))
+    const apres = screen.getByAltText('Photo après ménage')
+    expect(apres).toHaveAttribute('src', expect.stringContaining('apres.jpg'))
+    expect(screen.getByText('Terminé')).toBeInTheDocument()
+  })
+
+  it('indique "Aucune photo" côté avant ou après quand une seule des deux existe', async () => {
+    const user = userEvent.setup()
+    render(
+      <MissionValidationDetail
+        mission={missionFixture({
+          photos_preuve: [
+            { id: 2, mission_menage_id: 10, photo_url: 'missions-menage-photos-preuve/apres.jpg', note: null, type: 'apres', created_at: '2026-08-17T11:00:00Z' },
+          ],
+        })}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /voir le détail/i }))
+
+    expect(screen.getAllByText('Aucune photo')).toHaveLength(1)
+    expect(screen.getByAltText('Photo après ménage')).toBeInTheDocument()
+  })
+
   it('agrandit une photo de preuve du travail au clic, et la referme', async () => {
     const user = userEvent.setup()
     render(
       <MissionValidationDetail
         mission={missionFixture({
           photos_preuve: [
-            { id: 1, mission_menage_id: 10, photo_url: 'missions-menage-photos-preuve/preuve.jpg', note: null, created_at: '2026-08-17T10:00:00Z' },
+            { id: 1, mission_menage_id: 10, photo_url: 'missions-menage-photos-preuve/preuve.jpg', note: null, type: null, created_at: '2026-08-17T10:00:00Z' },
           ],
         })}
       />,

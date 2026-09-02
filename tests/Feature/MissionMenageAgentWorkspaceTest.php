@@ -95,7 +95,7 @@ class MissionMenageAgentWorkspaceTest extends TestCase
 
     // --- ouvrir() ---
 
-    public function test_ouvrir_marks_vue_and_activates_an_a_faire_mission(): void
+    public function test_ouvrir_marks_vue_but_does_not_activate_an_a_faire_mission(): void
     {
         $appartement = $this->appartement();
         $agent = $this->agent();
@@ -105,8 +105,8 @@ class MissionMenageAgentWorkspaceTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('vue', true);
-        $response->assertJsonPath('statut', 'en_cours');
-        $this->assertDatabaseHas('mission_menages', ['id' => $mission->id, 'vue' => true, 'statut' => 'en_cours']);
+        $response->assertJsonPath('statut', 'a_faire');
+        $this->assertDatabaseHas('mission_menages', ['id' => $mission->id, 'vue' => true, 'statut' => 'a_faire']);
     }
 
     public function test_ouvrir_does_not_regress_an_already_en_cours_mission(): void
@@ -121,7 +121,91 @@ class MissionMenageAgentWorkspaceTest extends TestCase
         $response->assertJsonPath('statut', 'en_cours');
     }
 
+    // --- commencer() ---
+
+    public function test_commencer_requires_a_photo_avant(): void
+    {
+        $appartement = $this->appartement();
+        $agent = $this->agent();
+        $mission = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $agent->id, 'statut' => 'a_faire']);
+
+        $response = $this->postJson("/api/mission-menages/{$mission->id}/commencer", []);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('photo');
+        $this->assertDatabaseHas('mission_menages', ['id' => $mission->id, 'statut' => 'a_faire']);
+    }
+
+    public function test_commencer_moves_a_faire_to_en_cours_and_stores_the_photo_avant(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $appartement = $this->appartement();
+        $agent = $this->agent();
+        $mission = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $agent->id, 'statut' => 'a_faire']);
+
+        $response = $this->post("/api/mission-menages/{$mission->id}/commencer", [
+            'photo' => \Illuminate\Http\UploadedFile::fake()->image('avant.jpg'),
+        ], ['Accept' => 'application/json']);
+
+        $response->assertOk();
+        $response->assertJsonPath('statut', 'en_cours');
+        $this->assertDatabaseHas('mission_menages', ['id' => $mission->id, 'statut' => 'en_cours']);
+        $this->assertDatabaseHas('mission_menage_photos_preuve', ['mission_menage_id' => $mission->id, 'type' => 'avant']);
+        $photoUrl = $mission->fresh()->photosPreuve()->where('type', 'avant')->first()->photo_url;
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($photoUrl);
+    }
+
+    public function test_commencer_is_rejected_once_the_mission_is_already_started(): void
+    {
+        $appartement = $this->appartement();
+        $agent = $this->agent();
+        $mission = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $agent->id, 'statut' => 'en_cours']);
+
+        $response = $this->post("/api/mission-menages/{$mission->id}/commencer", [
+            'photo' => \Illuminate\Http\UploadedFile::fake()->image('avant.jpg'),
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_a_menage_account_cannot_commencer_another_agents_mission(): void
+    {
+        $appartement = $this->appartement();
+        $autreAgent = $this->agent();
+        $leurMission = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $autreAgent->id, 'statut' => 'a_faire']);
+
+        $this->actingAsMenage();
+
+        $response = $this->post("/api/mission-menages/{$leurMission->id}/commencer", [
+            'photo' => \Illuminate\Http\UploadedFile::fake()->image('avant.jpg'),
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(403);
+        $this->assertDatabaseHas('mission_menages', ['id' => $leurMission->id, 'statut' => 'a_faire']);
+    }
+
     // --- terminer() ---
+
+    private function ajouterPhotoApres(MissionMenage $mission): void
+    {
+        \App\Models\MissionMenagePhotoPreuve::create([
+            'mission_menage_id' => $mission->id,
+            'photo_url' => 'missions-menage-photos-preuve/apres.jpg',
+            'type' => 'apres',
+        ]);
+    }
+
+    public function test_terminer_is_rejected_while_the_mission_is_still_a_faire(): void
+    {
+        $appartement = $this->appartement();
+        $agent = $this->agent();
+        $mission = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $agent->id, 'statut' => 'a_faire']);
+
+        $response = $this->patchJson("/api/mission-menages/{$mission->id}/terminer");
+
+        $response->assertStatus(422);
+        $this->assertDatabaseHas('mission_menages', ['id' => $mission->id, 'statut' => 'a_faire']);
+    }
 
     public function test_terminer_is_rejected_while_items_remain_unchecked(): void
     {
@@ -137,13 +221,27 @@ class MissionMenageAgentWorkspaceTest extends TestCase
         $this->assertDatabaseHas('mission_menages', ['id' => $mission->id, 'statut' => 'en_cours']);
     }
 
-    public function test_terminer_succeeds_once_all_items_are_checked(): void
+    public function test_terminer_is_rejected_without_a_photo_apres_even_with_a_complete_checklist(): void
+    {
+        $appartement = $this->appartement();
+        $agent = $this->agent();
+        $mission = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $agent->id, 'statut' => 'en_cours']);
+        ChecklistItem::create(['mission_menage_id' => $mission->id, 'libelle' => 'Item 1', 'coche' => true, 'ordre' => 0]);
+
+        $response = $this->patchJson("/api/mission-menages/{$mission->id}/terminer");
+
+        $response->assertStatus(422);
+        $this->assertDatabaseHas('mission_menages', ['id' => $mission->id, 'statut' => 'en_cours']);
+    }
+
+    public function test_terminer_succeeds_once_all_items_are_checked_and_a_photo_apres_exists(): void
     {
         $appartement = $this->appartement();
         $agent = $this->agent();
         $mission = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $agent->id, 'statut' => 'en_cours']);
         ChecklistItem::create(['mission_menage_id' => $mission->id, 'libelle' => 'Item 1', 'coche' => true, 'ordre' => 0]);
         ChecklistItem::create(['mission_menage_id' => $mission->id, 'libelle' => 'Item 2', 'coche' => true, 'ordre' => 1]);
+        $this->ajouterPhotoApres($mission);
 
         $response = $this->patchJson("/api/mission-menages/{$mission->id}/terminer");
 
@@ -152,11 +250,12 @@ class MissionMenageAgentWorkspaceTest extends TestCase
         $this->assertDatabaseHas('mission_menages', ['id' => $mission->id, 'statut' => 'en_attente_validation']);
     }
 
-    public function test_terminer_succeeds_when_there_are_no_checklist_items_at_all(): void
+    public function test_terminer_succeeds_when_there_are_no_checklist_items_at_all_but_a_photo_apres_exists(): void
     {
         $appartement = $this->appartement();
         $agent = $this->agent();
         $mission = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $agent->id, 'statut' => 'en_cours']);
+        $this->ajouterPhotoApres($mission);
 
         $response = $this->patchJson("/api/mission-menages/{$mission->id}/terminer");
 

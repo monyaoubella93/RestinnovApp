@@ -128,8 +128,13 @@ $logoBase64 = base64_encode(file_get_contents(resource_path('images/logo.png')))
                     <tr>
                         <td>Séjour {{ $loop->iteration }}: {{ $sejour['periode'] }}</td>
                         <td>{{ $sejour['nuitees'] }}</td>
-                        <td class="montant">{{ number_format($sejour['nuitees'] > 0 ? $sejour['montant_mad'] / $sejour['nuitees'] : 0, 2) }}</td>
-                        <td class="montant montant-vert">{{ number_format($sejour['montant_mad'], 2) }}</td>
+                        @if ($sejour['montant_mad'] === null)
+                            <td class="montant empty">Non renseigné</td>
+                            <td class="montant empty">Non renseigné</td>
+                        @else
+                            <td class="montant">{{ number_format($sejour['nuitees'] > 0 ? $sejour['montant_mad'] / $sejour['nuitees'] : 0, 2) }}</td>
+                            <td class="montant montant-vert">{{ number_format($sejour['montant_mad'], 2) }}</td>
+                        @endif
                     </tr>
                 @endforeach
                 <tr class="ligne-total">
@@ -138,6 +143,15 @@ $logoBase64 = base64_encode(file_get_contents(resource_path('images/logo.png')))
                     <td></td>
                     <td class="montant montant-vert">{{ number_format($revenus_bruts, 2) }}</td>
                 </tr>
+                @if ($sejours_sans_montant > 0)
+                    <tr>
+                        <td colspan="4" class="empty">
+                            ⚠ Montant non renseigné pour {{ $sejours_sans_montant }} séjour(s) historique(s) ce mois-ci
+                            (donnée non disponible lors de l'import) -- le total ci-dessus ne les inclut pas et est donc
+                            probablement sous-évalué.
+                        </td>
+                    </tr>
+                @endif
             @endif
 
             <tr class="section-titre"><td colspan="4">Les charges:</td></tr>

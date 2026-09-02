@@ -59,6 +59,7 @@ export function NouvelAppartementForm({
 }: NouvelAppartementFormProps) {
   const [nom, setNom] = useState('')
   const [adresse, setAdresse] = useState('')
+  const [lienAirbnb, setLienAirbnb] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
   const [checklistModeleIds, setChecklistModeleIds] = useState<number[]>([])
   const [agentHabituelId, setAgentHabituelId] = useState('')
@@ -86,6 +87,7 @@ export function NouvelAppartementForm({
   const resetForm = () => {
     setNom('')
     setAdresse('')
+    setLienAirbnb('')
     setPhoto(null)
     setChecklistModeleIds([])
     setAgentHabituelId('')
@@ -110,6 +112,7 @@ export function NouvelAppartementForm({
     if (appartementToEdit) {
       setNom(appartementToEdit.nom)
       setAdresse(appartementToEdit.adresse)
+      setLienAirbnb(appartementToEdit.lien_airbnb ?? '')
       setPhoto(null)
       setChecklistModeleIds((appartementToEdit.checklist_modeles ?? []).map((modele) => modele.id))
       setAgentHabituelId(appartementToEdit.agent_habituel_id ? String(appartementToEdit.agent_habituel_id) : '')
@@ -249,6 +252,7 @@ export function NouvelAppartementForm({
       await onSubmit({
         nom,
         adresse,
+        lien_airbnb: lienAirbnb.trim() || null,
         photo,
         checklist_modele_ids: checklistModeleIds,
         agent_habituel_id: agentHabituelId ? Number(agentHabituelId) : null,
@@ -297,6 +301,20 @@ export function NouvelAppartementForm({
           required
           value={adresse}
           onChange={(e) => setAdresse(e.target.value)}
+          className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="appartement_lien_airbnb" className="block text-sm font-semibold text-ink-secondary">
+          Lien Airbnb (optionnel)
+        </label>
+        <input
+          id="appartement_lien_airbnb"
+          type="url"
+          value={lienAirbnb}
+          onChange={(e) => setLienAirbnb(e.target.value)}
+          placeholder="https://www.airbnb.com/rooms/..."
           className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
       </div>

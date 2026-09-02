@@ -58,6 +58,9 @@
       "photoReferenceFor": "Photo de référence pour \"{{libelle}}\"",
       "sentForValidation": "Envoyé au Manager pour validation",
       "checkAllToFinish": "Cochez tous les items de la checklist pour terminer la mission.",
+      "photoApresRequiredToFinish": "Ajoutez une photo après ménage pour terminer la mission.",
+      "photoApresTitle": "Photo après ménage",
+      "photoApresHint": "Prenez une photo du résultat une fois le ménage terminé, avant de marquer la mission comme terminée.",
       "finishing": "Enregistrement...",
       "finish": "Marquer terminé"
     },
@@ -89,6 +92,15 @@
       "photoTicket": "Photo du ticket de caisse",
       "prixOuTicketHint": "Indiquez le prix payé, ou prenez en photo le ticket de caisse.",
       "prixOuTicketRequis": "Indiquez le prix payé ou une photo du ticket de caisse."
+    },
+    "photoAvant": {
+      "hint": "Avant de commencer, prenez une photo de l'état actuel de l'appartement.",
+      "button": "Prendre la photo avant ménage",
+      "sending": "Envoi...",
+      "openCamera": "Ouvrir l'appareil photo",
+      "caption": "Photo avant ménage",
+      "inputLabel": "Photo avant ménage",
+      "photoTooLarge": "Photo trop lourde, réessayez avec une photo plus légère."
     },
     "photoPreuve": {
       "refuseeHint": "Mission refusée : montrez au Manager le travail corrigé.",

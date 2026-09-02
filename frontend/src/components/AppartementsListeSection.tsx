@@ -334,6 +334,17 @@ export function AppartementsListeSection({
               <div>
                 <h3 className="text-lg font-bold text-ink">{selectedAppartement.nom}</h3>
                 <p className="text-sm text-ink-secondary">{selectedAppartement.adresse}</p>
+                {selectedAppartement.lien_airbnb && (
+                  <a
+                    href={selectedAppartement.lien_airbnb}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-0.5 inline-flex items-center gap-1 text-sm font-semibold text-brand-light hover:text-brand hover:underline"
+                  >
+                    <span aria-hidden="true">🔗</span>
+                    Voir l'annonce Airbnb
+                  </a>
+                )}
                 <div className="mt-2">
                   <StatutBadge statut={selectedAppartement.statut} />
                 </div>
@@ -473,6 +484,20 @@ export function AppartementsListeSection({
                       >
                         <span aria-hidden="true">⚠️</span>
                         <span>Aucune charge n'a été saisie pour ce mois -- vérifiez avant de générer le relevé.</span>
+                      </p>
+                    )}
+
+                    {releve.sejours_sans_montant > 0 && (
+                      <p
+                        role="status"
+                        className="mt-3 flex items-start gap-2 rounded-field border border-warning-border bg-warning-bg px-3 py-2 text-sm font-medium text-warning-text"
+                      >
+                        <span aria-hidden="true">⚠️</span>
+                        <span>
+                          Montant non renseigné pour {releve.sejours_sans_montant} séjour{releve.sejours_sans_montant > 1 ? 's' : ''}{' '}
+                          historique{releve.sejours_sans_montant > 1 ? 's' : ''} ce mois-ci (donnée non disponible lors de
+                          l'import) -- les revenus ci-dessous ne les incluent pas et sont donc probablement sous-évalués.
+                        </span>
                       </p>
                     )}
 

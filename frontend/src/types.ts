@@ -84,6 +84,7 @@ export interface Appartement {
   id: number
   nom: string
   adresse: string
+  lien_airbnb?: string | null
   statut: string
   photo_principale: string | null
   agent_habituel_id: number | null
@@ -164,6 +165,8 @@ export interface MissionMenagePhotoPreuve {
   mission_menage_id: number
   photo_url: string
   note: string | null
+  /** 'avant' (before starting), 'apres' (proof of finished work), or null for photos attached before this distinction existed. */
+  type: 'avant' | 'apres' | null
   created_at: string
 }
 
@@ -426,7 +429,8 @@ export interface ReleveSejour {
   date_depart: string
   nuitees: number
   periode: string
-  montant_mad: number
+  /** null pour un séjour historique importé sans montant connu (donnée non disponible dans le fichier source). */
+  montant_mad: number | null
 }
 
 export interface ReleveProduitDetail {
@@ -486,6 +490,8 @@ export interface Releve {
   resultat_net: number
   montant_proprietaire: number
   commission_restinnov: number
+  /** Séjours historiques importés sans montant_mad connu, inclus dans ce mois -- 0 pour un mois normal. */
+  sejours_sans_montant: number
   sejours: ReleveSejour[]
   frais_menage_detail: ReleveFraisMenageDetail[]
   frais_maintenance_detail: ReleveFraisMaintenanceDetail[]

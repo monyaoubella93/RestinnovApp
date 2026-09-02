@@ -31,6 +31,7 @@ class Appartement extends Model
         'code_externe',
         'nom',
         'adresse',
+        'lien_airbnb',
         'statut',
         'photo_principale',
         'agent_habituel_id',

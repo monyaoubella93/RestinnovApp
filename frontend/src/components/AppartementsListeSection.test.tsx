@@ -24,6 +24,7 @@ function releveFixture(overrides: Partial<Releve> = {}): Releve {
     resultat_net: 850,
     montant_proprietaire: 680,
     commission_restinnov: 170,
+    sejours_sans_montant: 0,
     sejours: [],
     frais_menage_detail: [],
     frais_maintenance_detail: [],
@@ -398,6 +399,35 @@ describe('AppartementsListeSection', () => {
       expect(screen.getByText('Aucune charge active.')).toBeInTheDocument()
     })
 
+    it('affiche un lien cliquable vers l\'annonce Airbnb quand lien_airbnb est renseigné', async () => {
+      const appartement = appartementFixture({ lien_airbnb: 'https://www.airbnb.com/rooms/12345' })
+      globalThis.fetch = mockFetchAppartements([appartement]) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      const lien = await screen.findByRole('link', { name: /voir l'annonce airbnb/i })
+      expect(lien).toHaveAttribute('href', 'https://www.airbnb.com/rooms/12345')
+      expect(lien).toHaveAttribute('target', '_blank')
+      expect(lien).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    })
+
+    it('n\'affiche aucun lien Airbnb quand lien_airbnb est absent', async () => {
+      globalThis.fetch = mockFetchAppartements([appartementFixture()]) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      await screen.findByText('12 rue de la Roquette')
+      expect(screen.queryByRole('link', { name: /voir l'annonce airbnb/i })).not.toBeInTheDocument()
+    })
+
     it('liste les tickets de maintenance liés avec leur statut et le badge "Récurrent"', async () => {
       const appartement = appartementFixture()
       const detail = appartementDetailFixture({
@@ -540,6 +570,34 @@ describe('AppartementsListeSection', () => {
 
       await screen.findByText('Résumé financier')
       expect(screen.queryByText(/aucune charge n'a été saisie pour ce mois/i)).not.toBeInTheDocument()
+    })
+
+    it('avertit quand des séjours historiques sans montant sont inclus dans le mois affiché', async () => {
+      const appartement = appartementFixture()
+      const releve = releveFixture({ sejours_sans_montant: 2 })
+      globalThis.fetch = mockFetchAppartements([appartement], {}, {}, {}, { 1: releve }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      expect(await screen.findByText(/montant non renseigné pour 2 séjours historiques ce mois-ci/i)).toBeInTheDocument()
+    })
+
+    it("n'avertit pas des montants manquants quand tous les séjours du mois ont un montant renseigné", async () => {
+      const appartement = appartementFixture()
+      globalThis.fetch = mockFetchAppartements([appartement], {}, {}, {}, { 1: releveFixture() }) as typeof fetch
+      const user = userEvent.setup()
+
+      render(<AppartementsListeSection onNavigateToCreer={vi.fn()} onEditAppartement={vi.fn()} />)
+
+      await screen.findByText('1 appartements trouvés')
+      await user.click(screen.getByRole('button', { name: /voir le détail de l'appartement loft bastille/i }))
+
+      await screen.findByText('Résumé financier')
+      expect(screen.queryByText(/montant non renseigné/i)).not.toBeInTheDocument()
     })
 
     it('affiche un avertissement quand le mois est déjà verrouillé, sans bloquer le téléchargement', async () => {

@@ -279,6 +279,87 @@ class AppartementReleveTest extends TestCase
         $response->assertJsonPath('sejours', []);
     }
 
+    public function test_sejours_sans_montant_is_zero_when_every_sejour_has_a_montant(): void
+    {
+        $appartement = Appartement::create([
+            'nom' => 'Loft Bastille',
+            'adresse' => 'A',
+            'statut' => 'disponible',
+            'mode_gestion' => 'mandat',
+            'taux_commission' => 20,
+        ]);
+
+        Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-08-10',
+            'date_depart' => '2026-08-15',
+            'nom_voyageur' => 'Jean Dupont',
+            'statut' => 'termine',
+            'montant_mad' => 1000,
+        ]);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2026-08");
+
+        $response->assertOk();
+        $response->assertJsonPath('sejours_sans_montant', 0);
+    }
+
+    /**
+     * Historical séjours imported without montant_mad (data unavailable in
+     * the source file) must never be silently reported as "0 MAD earned" --
+     * the API must say explicitly how many séjours are missing that figure,
+     * so the frontend can warn instead of showing a bare, misleading total.
+     */
+    public function test_sejours_without_montant_mad_are_counted_and_excluded_from_revenus_bruts(): void
+    {
+        $appartement = Appartement::create([
+            'nom' => 'Loft Bastille',
+            'adresse' => 'A',
+            'statut' => 'disponible',
+            'mode_gestion' => 'mandat',
+            'taux_commission' => 20,
+        ]);
+
+        Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-08-01',
+            'date_depart' => '2026-08-05',
+            'nom_voyageur' => 'Séjour historique 1',
+            'statut' => 'termine',
+            'montant_mad' => null,
+        ]);
+        Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-08-10',
+            'date_depart' => '2026-08-12',
+            'nom_voyageur' => 'Séjour historique 2',
+            'statut' => 'termine',
+            'montant_mad' => null,
+        ]);
+        Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-08-20',
+            'date_depart' => '2026-08-22',
+            'nom_voyageur' => 'Séjour normal',
+            'statut' => 'termine',
+            'montant_mad' => 500,
+        ]);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2026-08");
+
+        $response->assertOk();
+        $response->assertJsonPath('sejours_sans_montant', 2);
+        // The two historical séjours contribute nothing -- only the 500 from
+        // the normal one -- rather than being invented or skipped entirely.
+        $response->assertJsonPath('revenus_bruts', 500);
+        $response->assertJsonCount(3, 'sejours');
+        // Per-séjour montant_mad stays null (not coerced to 0) so a
+        // detailed breakdown -- e.g. the PDF invoice -- can tell "unknown"
+        // apart from "genuinely free."
+        $response->assertJsonPath('sejours.0.montant_mad', null);
+        $response->assertJsonPath('sejours.2.montant_mad', 500);
+    }
+
     public function test_a_sous_location_appartement_still_pays_the_fixed_rent_in_a_month_with_no_sejour(): void
     {
         $appartement = Appartement::create([
@@ -376,6 +457,33 @@ class AppartementReleveTest extends TestCase
             'montant_mad' => 1000,
         ]);
         MissionMenage::create(['sejour_id' => $sejour->id, 'statut' => 'conforme', 'frais_forfait' => 80]);
+
+        $response = $this->get("/api/appartements/{$appartement->id}/releve/pdf?mois=2026-08");
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+        $this->assertNotEmpty($response->getContent());
+    }
+
+    public function test_pdf_renders_without_error_when_a_sejour_has_no_montant_mad(): void
+    {
+        $appartement = Appartement::create([
+            'nom' => 'Loft Bastille',
+            'adresse' => 'A',
+            'statut' => 'disponible',
+            'proprietaire_id' => $this->proprietaire()->id,
+            'mode_gestion' => 'mandat',
+            'taux_commission' => 20,
+        ]);
+
+        Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-08-10',
+            'date_depart' => '2026-08-15',
+            'nom_voyageur' => 'Séjour historique',
+            'statut' => 'termine',
+            'montant_mad' => null,
+        ]);
 
         $response = $this->get("/api/appartements/{$appartement->id}/releve/pdf?mois=2026-08");
 
