@@ -69,6 +69,7 @@ services:
     restart: unless-stopped
     volumes:
       - .:/var/www:ro
+      - ./storage/app/public:/var/www/storage/app/public:ro
     depends_on:
       app:
         condition: service_healthy
