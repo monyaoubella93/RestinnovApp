@@ -57,6 +57,9 @@ export function MissionValidationDetail({
     (produit) => produit.statut === 'en_attente',
   )
   const photosPreuve = mission.photos_preuve ?? []
+  const photosAvant = photosPreuve.filter((photo) => photo.type === 'avant')
+  const photosApres = photosPreuve.filter((photo) => photo.type === 'apres')
+  const photosAutres = photosPreuve.filter((photo) => photo.type !== 'avant' && photo.type !== 'apres')
   const produitsUtilises = mission.produits ?? []
   const catalogueActif = (catalogue ?? []).filter((p) => p.actif)
 
@@ -114,13 +117,78 @@ export function MissionValidationDetail({
             )}
           </div>
 
-          {photosPreuve.length > 0 && (
+          {(photosAvant.length > 0 || photosApres.length > 0) && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">Avant / après ménage</p>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                <div>
+                  <p className="mb-1 text-xs font-semibold text-ink-tertiary">Avant</p>
+                  {photosAvant.length === 0 ? (
+                    <p className="text-xs text-ink-tertiary">Aucune photo</p>
+                  ) : (
+                    <ul className="flex flex-wrap gap-2">
+                      {photosAvant.map((photo) => (
+                        <li key={photo.id}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setLightboxPhoto({ src: resolveStorageUrl(photo.photo_url), alt: 'Photo avant ménage' })
+                            }
+                            aria-label="Agrandir la photo avant ménage"
+                            className="overflow-hidden rounded-[8px] transition hover:opacity-80"
+                          >
+                            <img
+                              src={resolveStorageUrl(photo.photo_url)}
+                              alt="Photo avant ménage"
+                              className="h-24 w-24 object-cover"
+                            />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-semibold text-ink-tertiary">Après</p>
+                  {photosApres.length === 0 ? (
+                    <p className="text-xs text-ink-tertiary">Aucune photo</p>
+                  ) : (
+                    <ul className="flex flex-wrap gap-2">
+                      {photosApres.map((photo) => (
+                        <li key={photo.id}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setLightboxPhoto({ src: resolveStorageUrl(photo.photo_url), alt: 'Photo après ménage' })
+                            }
+                            aria-label="Agrandir la photo après ménage"
+                            className="overflow-hidden rounded-[8px] transition hover:opacity-80"
+                          >
+                            <img
+                              src={resolveStorageUrl(photo.photo_url)}
+                              alt="Photo après ménage"
+                              className="h-24 w-24 object-cover"
+                            />
+                          </button>
+                          {photo.note && (
+                            <p className="mt-1 max-w-[6rem] truncate text-xs text-ink-tertiary">{photo.note}</p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {photosAutres.length > 0 && (
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">
                 Photos de preuve du travail
               </p>
               <ul className="mt-2 flex flex-wrap gap-3">
-                {photosPreuve.map((photo) => (
+                {photosAutres.map((photo) => (
                   <li key={photo.id}>
                     <button
                       type="button"

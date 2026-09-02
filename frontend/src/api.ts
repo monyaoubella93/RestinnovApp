@@ -150,6 +150,7 @@ export interface NewSejourInput {
 export interface NewAppartementInput {
   nom: string
   adresse: string
+  lien_airbnb?: string | null
   photo: File | null
   checklist_modele_ids: number[]
   agent_habituel_id: number | null
@@ -411,6 +412,7 @@ export async function updateAppartement(id: number, input: NewAppartementInput):
   const formData = new FormData()
   formData.append('nom', input.nom)
   formData.append('adresse', input.adresse)
+  if (input.lien_airbnb) formData.append('lien_airbnb', input.lien_airbnb)
   if (input.photo) formData.append('photo', input.photo)
   input.checklist_modele_ids.forEach((id) => formData.append('checklist_modele_ids[]', String(id)))
   if (input.agent_habituel_id) formData.append('agent_habituel_id', String(input.agent_habituel_id))
@@ -431,6 +433,7 @@ export async function createAppartement(input: NewAppartementInput): Promise<App
   const formData = new FormData()
   formData.append('nom', input.nom)
   formData.append('adresse', input.adresse)
+  if (input.lien_airbnb) formData.append('lien_airbnb', input.lien_airbnb)
   if (input.photo) formData.append('photo', input.photo)
   input.checklist_modele_ids.forEach((id) => formData.append('checklist_modele_ids[]', String(id)))
   if (input.agent_habituel_id) formData.append('agent_habituel_id', String(input.agent_habituel_id))
@@ -803,6 +806,13 @@ export async function ouvrirMissionMenage(missionMenageId: number): Promise<Miss
   })
 
   return parseJsonOrThrow(response)
+}
+
+export async function commencerMissionMenage(missionMenageId: number, photo: File): Promise<MissionMenage> {
+  const formData = new FormData()
+  formData.append('photo', photo)
+
+  return postFormDataOrQueue(`${API_BASE_URL}/api/mission-menages/${missionMenageId}/commencer`, formData)
 }
 
 export async function terminerMissionMenage(missionMenageId: number): Promise<MissionMenage> {

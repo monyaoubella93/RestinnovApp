@@ -72,6 +72,23 @@ class MissionMenagePhotoPreuveTest extends TestCase
         ]);
     }
 
+    public function test_it_tags_uploaded_photos_de_preuve_as_apres(): void
+    {
+        Storage::fake('public');
+        $mission = $this->mission();
+
+        $response = $this->post("/api/mission-menages/{$mission->id}/photos-preuve", [
+            'photos' => [UploadedFile::fake()->image('preuve.jpg')],
+        ], ['Accept' => 'application/json']);
+
+        $response->assertCreated();
+        $response->assertJsonPath('0.type', 'apres');
+        $this->assertDatabaseHas('mission_menage_photos_preuve', [
+            'mission_menage_id' => $mission->id,
+            'type' => 'apres',
+        ]);
+    }
+
     public function test_it_uploads_multiple_photos_de_preuve_in_one_request(): void
     {
         Storage::fake('public');

@@ -10,12 +10,19 @@ class MissionMenagePhotoPreuve extends Model
 {
     use HasFactory;
 
+    /** Documents the apartment's state before the agent starts the mission. */
+    public const TYPE_AVANT = 'avant';
+
+    /** Documents the finished (or re-corrected) work -- the "preuve de travail". */
+    public const TYPE_APRES = 'apres';
+
     protected $table = 'mission_menage_photos_preuve';
 
     protected $fillable = [
         'mission_menage_id',
         'photo_url',
         'note',
+        'type',
     ];
 
     public function missionMenage(): BelongsTo

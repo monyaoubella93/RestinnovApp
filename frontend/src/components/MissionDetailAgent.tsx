@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ajouterPhotosPreuveMission,
+  commencerMissionMenage,
   detacherProduitUtilise,
   isOfflineQueuedError,
   marquerMissionMenageRefusVu,
@@ -24,6 +25,7 @@ import { checklistIcon } from '../utils/checklistIcons'
 import { resolveLocalizedLabel } from '../utils/localization'
 import { playConfirmSound } from '../utils/sound'
 import { FraisMenageSection } from './FraisMenageSection'
+import { PhotoAvantSection } from './PhotoAvantSection'
 import { PhotoPreuveSection } from './PhotoPreuveSection'
 import { SignalerProblemeSection } from './SignalerProblemeSection'
 
@@ -171,6 +173,8 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
   const totalItems = checklistItems.length
   const doneItems = checklistItems.filter((item) => item.coche).length
   const progressPct = totalItems === 0 ? 100 : Math.round((doneItems / totalItems) * 100)
+  const hasPhotoApres = (mission?.photos_preuve ?? []).some((photo) => photo.type === 'apres')
+  const peutTerminer = toutesCochees && hasPhotoApres
 
   const applyChecklistPatch = (itemId: number, patch: Partial<ChecklistItem>) => {
     setMission((current) =>
@@ -227,6 +231,18 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
 
   const handleSignalerProbleme = async (missionMenageId: number, input: SignalerProblemeInput) => {
     await signalerProbleme(missionMenageId, input)
+  }
+
+  const handleCommencer = async (missionMenageId: number, photo: File) => {
+    try {
+      const updated = await commencerMissionMenage(missionMenageId, photo)
+      setMission(updated)
+    } catch (err) {
+      // Offline: the mission is queued to start for real once back online,
+      // but the agent still needs to see the checklist right away.
+      if (!isOfflineQueuedError(err)) throw err
+      setMission((current) => (current ? { ...current, statut: 'en_cours' } : current))
+    }
   }
 
   const handleAjouterPhotosPreuve = async (missionMenageId: number, input: AjouterPhotosPreuveInput) => {
@@ -289,88 +305,106 @@ export function MissionDetailAgent({ missionId, catalogue, onBack, onMissionTerm
             </div>
           )}
 
-          <PhotoPreuveSection
-            missionMenageId={mission.id}
-            onAjouter={handleAjouterPhotosPreuve}
-            misEnAvant={mission.statut === 'non_conforme'}
-          />
-
-          {totalItems > 0 && (
-            <div>
-              <div
-                role="progressbar"
-                aria-label={t('menage.detail.progressLabel')}
-                aria-valuenow={doneItems}
-                aria-valuemin={0}
-                aria-valuemax={totalItems}
-                className="flex h-4 w-full overflow-hidden rounded-full bg-table-header-bg"
-              >
-                <div
-                  className="h-full rounded-full bg-success"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-              <p className="mt-1 text-end font-mono text-xs text-ink-tertiary">
-                {doneItems}/{totalItems}
-              </p>
-            </div>
-          )}
-
-          <div>
-            <h4 className="text-base font-bold text-ink">{t('menage.detail.checklistTitle')}</h4>
-            {checklistItems.length === 0 ? (
-              <p className="mt-2 text-sm text-ink-tertiary">{t('menage.detail.emptyChecklist')}</p>
-            ) : (
-              <div className="mt-2 space-y-4">
-                {groupChecklistItems(checklistItems).map((group, index) => (
-                  <div key={group.nom ?? `groupe-${index}`}>
-                    {group.nom && (
-                      <p className="mb-2 text-sm font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">{group.nom}</p>
-                    )}
-                    <ul className="space-y-2">
-                      {group.items.map((item) => (
-                        <ChecklistItemRow key={item.id} item={item} onToggle={handleToggle} onPhoto={handlePhoto} />
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <FraisMenageSection
-            missionMenage={mission}
-            catalogue={catalogue}
-            onUpdateProduits={handleUpdateMissionProduits}
-            onUpdateProduitUtilise={handleUpdateProduitUtilise}
-            onDetacherProduit={handleDetacherProduit}
-            onSignalerProduit={handleSignalerProduit}
-          />
-
-          <SignalerProblemeSection missionMenageId={mission.id} onSignaler={handleSignalerProbleme} />
-
-          {terminerError && <p className="text-sm text-danger">{terminerError}</p>}
-
-          {mission.statut === 'en_attente_validation' ? (
-            <p className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-success-bg px-4 py-4 text-center text-base font-semibold text-success-text">
-              <span aria-hidden="true" className="text-xl">
-                ✅
-              </span>
-              {t('menage.detail.sentForValidation')}
-            </p>
+          {mission.statut === 'a_faire' ? (
+            <PhotoAvantSection missionMenageId={mission.id} onCommencer={handleCommencer} />
           ) : (
-            <button
-              type="button"
-              disabled={!toutesCochees || terminating}
-              onClick={handleTerminer}
-              title={!toutesCochees ? t('menage.detail.checkAllToFinish') : undefined}
-              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-success px-4 py-4 text-lg font-bold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:bg-border-default disabled:text-ink-disabled"
-            >
-              <span aria-hidden="true" className="text-xl">
-                ✓
-              </span>
-              {terminating ? t('menage.detail.finishing') : t('menage.detail.finish')}
-            </button>
+            <>
+              {totalItems > 0 && (
+                <div>
+                  <div
+                    role="progressbar"
+                    aria-label={t('menage.detail.progressLabel')}
+                    aria-valuenow={doneItems}
+                    aria-valuemin={0}
+                    aria-valuemax={totalItems}
+                    className="flex h-4 w-full overflow-hidden rounded-full bg-table-header-bg"
+                  >
+                    <div
+                      className="h-full rounded-full bg-success"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-end font-mono text-xs text-ink-tertiary">
+                    {doneItems}/{totalItems}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <h4 className="text-base font-bold text-ink">{t('menage.detail.checklistTitle')}</h4>
+                {checklistItems.length === 0 ? (
+                  <p className="mt-2 text-sm text-ink-tertiary">{t('menage.detail.emptyChecklist')}</p>
+                ) : (
+                  <div className="mt-2 space-y-4">
+                    {groupChecklistItems(checklistItems).map((group, index) => (
+                      <div key={group.nom ?? `groupe-${index}`}>
+                        {group.nom && (
+                          <p className="mb-2 text-sm font-bold uppercase tracking-[0.06em] text-ink-tertiary-2">{group.nom}</p>
+                        )}
+                        <ul className="space-y-2">
+                          {group.items.map((item) => (
+                            <ChecklistItemRow key={item.id} item={item} onToggle={handleToggle} onPhoto={handlePhoto} />
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <FraisMenageSection
+                missionMenage={mission}
+                catalogue={catalogue}
+                onUpdateProduits={handleUpdateMissionProduits}
+                onUpdateProduitUtilise={handleUpdateProduitUtilise}
+                onDetacherProduit={handleDetacherProduit}
+                onSignalerProduit={handleSignalerProduit}
+              />
+
+              <SignalerProblemeSection missionMenageId={mission.id} onSignaler={handleSignalerProbleme} />
+
+              <div>
+                <h4 className="text-base font-bold text-ink">{t('menage.detail.photoApresTitle')}</h4>
+                <p className="mt-1 text-sm text-ink-tertiary">{t('menage.detail.photoApresHint')}</p>
+                <div className="mt-2">
+                  <PhotoPreuveSection
+                    missionMenageId={mission.id}
+                    onAjouter={handleAjouterPhotosPreuve}
+                    misEnAvant={mission.statut === 'non_conforme'}
+                  />
+                </div>
+              </div>
+
+              {terminerError && <p className="text-sm text-danger">{terminerError}</p>}
+
+              {mission.statut === 'en_attente_validation' ? (
+                <p className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-success-bg px-4 py-4 text-center text-base font-semibold text-success-text">
+                  <span aria-hidden="true" className="text-xl">
+                    ✅
+                  </span>
+                  {t('menage.detail.sentForValidation')}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!peutTerminer || terminating}
+                  onClick={handleTerminer}
+                  title={
+                    !toutesCochees
+                      ? t('menage.detail.checkAllToFinish')
+                      : !hasPhotoApres
+                        ? t('menage.detail.photoApresRequiredToFinish')
+                        : undefined
+                  }
+                  className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-success px-4 py-4 text-lg font-bold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:bg-border-default disabled:text-ink-disabled"
+                >
+                  <span aria-hidden="true" className="text-xl">
+                    ✓
+                  </span>
+                  {terminating ? t('menage.detail.finishing') : t('menage.detail.finish')}
+                </button>
+              )}
+            </>
           )}
         </div>
       )}

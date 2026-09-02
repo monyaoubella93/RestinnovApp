@@ -221,27 +221,50 @@ class MissionMenageController extends Controller
 
     /**
      * The agent opening a mission's detail: dismisses its "Nouveau" badge
-     * (vue -> true) and, the first time, starts the clock on it
-     * (a_faire -> en_cours). Idempotent -- reopening an already-seen,
-     * already-en_cours mission is a no-op beyond returning its detail.
+     * (vue -> true). Idempotent. Does NOT advance the statut -- moving a
+     * mission out of "a_faire" requires the mandatory "photo avant ménage",
+     * see commencer().
      */
     public function ouvrir(Request $request, MissionMenage $missionMenage): JsonResponse
     {
         $this->authorizeMissionAccess($request, $missionMenage);
 
-        $updates = [];
-
         if (! $missionMenage->vue) {
-            $updates['vue'] = true;
+            $missionMenage->update(['vue' => true]);
         }
 
-        if ($missionMenage->statut === MissionMenage::STATUT_A_FAIRE) {
-            $updates['statut'] = MissionMenage::STATUT_EN_COURS;
+        return response()->json($missionMenage->fresh(self::DETAIL_RELATIONS));
+    }
+
+    /**
+     * The agent actually starting the job: requires a "photo avant ménage"
+     * documenting the apartment's state before any work is done, then moves
+     * the mission a_faire -> en_cours. This is the only way out of
+     * "a_faire" -- terminer() refuses anything still in that statut, so
+     * there is no way to reach en_attente_validation without first
+     * attaching this photo.
+     */
+    public function commencer(Request $request, MissionMenage $missionMenage): JsonResponse
+    {
+        $this->authorizeMissionAccess($request, $missionMenage);
+
+        if ($missionMenage->statut !== MissionMenage::STATUT_A_FAIRE) {
+            return response()->json([
+                'message' => 'Cette mission a déjà été commencée.',
+            ], 422);
         }
 
-        if ($updates) {
-            $missionMenage->update($updates);
-        }
+        $validated = $request->validate([
+            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:10240'],
+        ], $this->uploadValidationMessages());
+
+        MissionMenagePhotoPreuve::create([
+            'mission_menage_id' => $missionMenage->id,
+            'photo_url' => $validated['photo']->store('missions-menage-photos-preuve', 'public'),
+            'type' => MissionMenagePhotoPreuve::TYPE_AVANT,
+        ]);
+
+        $missionMenage->update(['statut' => MissionMenage::STATUT_EN_COURS, 'vue' => true]);
 
         return response()->json($missionMenage->fresh(self::DETAIL_RELATIONS));
     }
@@ -253,16 +276,38 @@ class MissionMenageController extends Controller
      * and validates it (see valider()). A mission with no checklist items
      * at all (no checklist_modele was assigned to the appartement) has
      * nothing to block on, so it can always be marked terminee.
+     *
+     * Also requires at least one "photo après ménage" (a photo_preuve of
+     * type "apres", attached via ajouterPhotosPreuve()) -- the agent's
+     * evidence of the finished work, shown side by side with the "avant"
+     * photo on the Manager's validation screen. Refusing a mission still
+     * in "a_faire" (i.e. commencer() was never called) is implied by this
+     * same check, since a mission can only reach "en_cours" or
+     * "non_conforme" through commencer()/refuser().
      */
     public function terminer(Request $request, MissionMenage $missionMenage): JsonResponse
     {
         $this->authorizeMissionAccess($request, $missionMenage);
+
+        if ($missionMenage->statut === MissionMenage::STATUT_A_FAIRE) {
+            return response()->json([
+                'message' => 'La photo avant ménage doit être prise avant de commencer cette mission.',
+            ], 422);
+        }
 
         $resteACocher = $missionMenage->checklistItems()->where('coche', false)->exists();
 
         if ($resteACocher) {
             return response()->json([
                 'message' => 'Tous les éléments de la checklist doivent être cochés avant de marquer la mission terminée.',
+            ], 422);
+        }
+
+        $aUnePhotoApres = $missionMenage->photosPreuve()->where('type', MissionMenagePhotoPreuve::TYPE_APRES)->exists();
+
+        if (! $aUnePhotoApres) {
+            return response()->json([
+                'message' => 'Une photo après ménage est requise avant de marquer la mission terminée.',
             ], 422);
         }
 
@@ -489,12 +534,13 @@ class MissionMenageController extends Controller
     }
 
     /**
-     * Attach one or more "photo de preuve de travail" to a mission -- proof
-     * the agent has (re)done the job, independent of the "Signaler un
-     * probleme" flow (which reports a new issue, not evidence of finished
-     * work) and of a checklist item's own photo_url (scoped to a single
-     * item). Particularly useful after a Manager refus, to show the
-     * corrected work without re-checking every checklist item's photo.
+     * Attach one or more "photo après ménage" to a mission -- the agent's
+     * proof the job is (re)done, independent of the "Signaler un probleme"
+     * flow (which reports a new issue, not evidence of finished work) and
+     * of a checklist item's own photo_url (scoped to a single item). Used
+     * both for the initial "Marquer terminé" (see terminer(), which
+     * requires at least one) and, unchanged, after a Manager refus to show
+     * the corrected work without re-checking every checklist item's photo.
      */
     public function ajouterPhotosPreuve(Request $request, MissionMenage $missionMenage): JsonResponse
     {
@@ -511,6 +557,7 @@ class MissionMenageController extends Controller
                 'mission_menage_id' => $missionMenage->id,
                 'photo_url' => $photo->store('missions-menage-photos-preuve', 'public'),
                 'note' => $validated['note'] ?? null,
+                'type' => MissionMenagePhotoPreuve::TYPE_APRES,
             ]);
         });
 
