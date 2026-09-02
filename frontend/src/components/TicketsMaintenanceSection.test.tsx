@@ -543,6 +543,20 @@ describe('TicketsMaintenanceSection', () => {
     })
   })
 
+  it('le champ photo du motif de refus propose caméra et galerie (pas de restriction forcée)', async () => {
+    const user = userEvent.setup()
+    const ticket = ticketFixture({ statut: 'resolu_en_attente_validation' })
+    globalThis.fetch = mockFetch([ticket], []) as typeof fetch
+    render(<TicketsMaintenanceSection appartements={APPARTEMENTS} />)
+
+    await expandTicket(user, 'Le robinet fuit.')
+    await user.click(screen.getByRole('button', { name: /^refuser$/i }))
+
+    const input = screen.getByLabelText(/photo du motif de refus/i)
+    expect(input).toHaveAttribute('accept', 'image/*')
+    expect(input).not.toHaveAttribute('capture')
+  })
+
   it('filtre les tickets par urgence', async () => {
     const user = userEvent.setup()
     renderSection([

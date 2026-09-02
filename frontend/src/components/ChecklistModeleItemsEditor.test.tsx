@@ -96,6 +96,21 @@ describe('ChecklistModeleItemsEditor', () => {
     expect(onAddItem).toHaveBeenCalledWith(1, 'Nettoyer la salle de bain', 'تنظيف الحمام', null)
   })
 
+  it('la photo de référence propose caméra et galerie -- accept="image/*", pas de capture forcée', () => {
+    render(
+      <ChecklistModeleItemsEditor
+        checklistModele={modeleFixture()}
+        onAddItem={vi.fn()}
+        onDeplacerItem={vi.fn()}
+        onDeleteItem={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByLabelText(/photo de référence pour le nouvel item/i)
+    expect(input).toHaveAttribute('accept', 'image/*')
+    expect(input).not.toHaveAttribute('capture')
+  })
+
   it('inclut la photo de référence sélectionnée à l\'ajout', async () => {
     const user = userEvent.setup()
     const onAddItem = vi.fn().mockResolvedValue(undefined)

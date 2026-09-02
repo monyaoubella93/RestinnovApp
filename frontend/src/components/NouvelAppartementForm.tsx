@@ -343,7 +343,7 @@ export function NouvelAppartementForm({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png"
+            accept="image/*"
             className="hidden"
             aria-label="Photo principale"
             onChange={(e) => acceptFile(e.target.files?.[0])}

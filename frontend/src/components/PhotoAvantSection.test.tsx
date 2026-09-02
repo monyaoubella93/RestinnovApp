@@ -32,6 +32,12 @@ describe('PhotoAvantSection', () => {
     expect(screen.getByLabelText(/photo avant ménage/i)).not.toHaveAttribute('capture')
   })
 
+  it('propose caméra et galerie -- accept="image/*", pas de restriction MIME plus étroite', () => {
+    render(<PhotoAvantSection missionMenageId={10} onCommencer={vi.fn()} />)
+
+    expect(screen.getByLabelText(/photo avant ménage/i)).toHaveAttribute('accept', 'image/*')
+  })
+
   it('affiche un message clair quand la photo est trop lourde', async () => {
     const user = userEvent.setup()
     const onCommencer = vi.fn().mockRejectedValue(new ApiError('Le fichier envoyé est trop volumineux.', 413))

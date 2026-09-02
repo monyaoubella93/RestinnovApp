@@ -112,7 +112,7 @@ export function RefuserModal({ title, onCancel, onConfirm }: RefuserModalProps) 
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png"
+              accept="image/*"
               className="hidden"
               aria-label="Photo du motif de refus"
               onChange={(e) => handlePhotoChange(e.target.files?.[0])}

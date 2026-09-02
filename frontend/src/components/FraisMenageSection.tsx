@@ -303,7 +303,7 @@ export function FraisMenageSection({
                       <input
                         id={`rachete_photo_${produit.id}`}
                         type="file"
-                        accept="image/jpeg,image/png"
+                        accept="image/*"
                         onChange={(e) => setRachetePhoto(e.target.files?.[0] ?? null)}
                         className="block w-full text-sm"
                       />
@@ -381,7 +381,7 @@ export function FraisMenageSection({
             <input
               id={`signaler_photo_${missionMenage.id}`}
               type="file"
-              accept="image/jpeg,image/png"
+              accept="image/*"
               onChange={(e) => setSignalerPhoto(e.target.files?.[0] ?? null)}
               className="block w-full text-sm"
             />
@@ -407,7 +407,7 @@ export function FraisMenageSection({
             <input
               id={`signaler_photo_ticket_${missionMenage.id}`}
               type="file"
-              accept="image/jpeg,image/png"
+              accept="image/*"
               onChange={(e) => setSignalerPhotoTicket(e.target.files?.[0] ?? null)}
               className="block w-full text-sm"
             />

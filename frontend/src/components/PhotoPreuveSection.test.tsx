@@ -20,6 +20,17 @@ describe('PhotoPreuveSection', () => {
     expect(screen.getByRole('heading', { name: /ajouter une photo de mon travail/i })).toBeInTheDocument()
   })
 
+  it('propose caméra et galerie -- accept="image/*", pas de capture forcée', async () => {
+    const user = userEvent.setup()
+    render(<PhotoPreuveSection missionMenageId={10} onAjouter={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /ajouter une photo de mon travail/i }))
+
+    const input = screen.getByLabelText(/photos de preuve de travail/i)
+    expect(input).toHaveAttribute('accept', 'image/*')
+    expect(input).not.toHaveAttribute('capture')
+  })
+
   it('permet de sélectionner plusieurs photos et affiche un aperçu de chacune', async () => {
     const user = userEvent.setup()
     render(<PhotoPreuveSection missionMenageId={10} onAjouter={vi.fn()} />)
