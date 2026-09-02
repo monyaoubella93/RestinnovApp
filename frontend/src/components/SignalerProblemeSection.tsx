@@ -139,7 +139,7 @@ export function SignalerProblemeSection({ missionMenageId, onSignaler }: Signale
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png"
+            accept="image/*"
             multiple
             className="hidden"
             aria-label={t('menage.signalerProbleme.photoAlt')}

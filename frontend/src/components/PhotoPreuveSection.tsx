@@ -131,7 +131,7 @@ export function PhotoPreuveSection({ missionMenageId, onAjouter, misEnAvant = fa
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png"
+          accept="image/*"
           multiple
           className="hidden"
           aria-label={t('menage.photoPreuve.inputLabel')}

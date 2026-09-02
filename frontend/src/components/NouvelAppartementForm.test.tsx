@@ -84,6 +84,14 @@ describe('NouvelAppartementForm', () => {
     expect(await screen.findByText('photo.jpg')).toBeInTheDocument()
   })
 
+  it('la photo principale propose caméra et galerie -- accept="image/*", pas de capture forcée', () => {
+    render(<NouvelAppartementForm {...baseProps()} />)
+
+    const input = screen.getByLabelText('Photo principale', { selector: 'input' })
+    expect(input).toHaveAttribute('accept', 'image/*')
+    expect(input).not.toHaveAttribute('capture')
+  })
+
   it('permet de créer un nouveau modèle de checklist à la volée et le sélectionne', async () => {
     const user = userEvent.setup()
     const onCreateChecklistModele = vi.fn().mockResolvedValue({ id: 99, nom: 'Checklist studio' })

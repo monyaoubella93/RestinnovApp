@@ -116,7 +116,7 @@ export function CatalogueProduitsSection({ catalogue, onCreate }: CatalogueProdu
             ref={fileInputRef}
             id="nouveau_produit_photo"
             type="file"
-            accept="image/jpeg,image/png"
+            accept="image/*"
             onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
             className="mt-1 block text-sm"
           />

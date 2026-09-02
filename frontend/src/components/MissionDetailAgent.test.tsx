@@ -228,6 +228,17 @@ describe('MissionDetailAgent', () => {
     expect(screen.getByRole('checkbox', { name: "Passer l'aspirateur" })).toHaveAttribute('aria-checked', 'false')
   })
 
+  it('la photo d\'un item de checklist propose caméra et galerie -- accept="image/*", pas de capture forcée', async () => {
+    globalThis.fetch = mockFetch(missionFixture()) as typeof fetch
+
+    render(<MissionDetailAgent missionId={10} catalogue={[]} onBack={vi.fn()} onMissionTerminee={vi.fn()} />)
+
+    await screen.findByText("Passer l'aspirateur")
+    const input = screen.getByLabelText('Photo pour "Passer l\'aspirateur"')
+    expect(input).toHaveAttribute('accept', 'image/*')
+    expect(input).not.toHaveAttribute('capture')
+  })
+
   it("affiche le libellé arabe d'un item quand l'agent a choisi l'arabe et qu'il est renseigné", async () => {
     await i18n.changeLanguage('ar')
     globalThis.fetch = mockFetch(
