@@ -114,6 +114,7 @@ describe('NouvelAppartementForm', () => {
     expect(onSubmit).toHaveBeenCalledWith({
       nom: 'Zenith 3ème étage',
       adresse: '10 avenue Hassan II',
+      lien_airbnb: null,
       photo,
       checklist_modele_ids: [1],
       agent_habituel_id: 2,
@@ -123,6 +124,22 @@ describe('NouvelAppartementForm', () => {
       loyer_fixe_mensuel: null,
       charges: [],
     })
+  })
+
+  it('inclut le lien Airbnb saisi dans le payload', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(<NouvelAppartementForm {...baseProps()} onSubmit={onSubmit} />)
+
+    await user.type(screen.getByLabelText(/nom d'appartement/i), 'Zenith 3ème étage')
+    await user.type(screen.getByLabelText(/adresse complète/i), '10 avenue Hassan II')
+    await user.type(screen.getByLabelText(/lien airbnb/i), 'https://www.airbnb.com/rooms/12345')
+
+    await user.click(screen.getByRole('button', { name: /enregistrer l'appartement/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ lien_airbnb: 'https://www.airbnb.com/rooms/12345' }),
+    )
   })
 
   it('refuse un fichier qui n\'est pas au format JPG/PNG', async () => {
@@ -269,6 +286,7 @@ describe('NouvelAppartementForm', () => {
       id: 3,
       nom: 'Loft Bastille',
       adresse: '12 rue de la Roquette',
+      lien_airbnb: 'https://www.airbnb.com/rooms/999',
       statut: 'occupe',
       photo_principale: null,
       checklist_modeles: [{ id: 1, nom: 'Checklist standard' }],
@@ -288,6 +306,7 @@ describe('NouvelAppartementForm', () => {
       expect(screen.getByRole('heading', { name: "Modifier l'appartement" })).toBeInTheDocument()
       expect(screen.getByLabelText(/nom d'appartement/i)).toHaveValue('Loft Bastille')
       expect(screen.getByLabelText(/adresse complète/i)).toHaveValue('12 rue de la Roquette')
+      expect(screen.getByLabelText(/lien airbnb/i)).toHaveValue('https://www.airbnb.com/rooms/999')
       expect(screen.getByRole('checkbox', { name: 'Checklist standard' })).toBeChecked()
       expect(screen.getByRole('combobox', { name: /agent de ménage habituel/i })).toHaveValue('2')
       expect(screen.getByRole('combobox', { name: /propriétaire/i })).toHaveValue('5')

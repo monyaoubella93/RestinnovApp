@@ -223,7 +223,19 @@ export function RelevesProprietairesSection() {
                         </span>
                       )}
                     </td>
-                    <td className="py-2 pr-4 text-right font-mono text-ink-secondary">{formatMontant(releve?.revenus_bruts)}</td>
+                    <td className="py-2 pr-4 text-right font-mono text-ink-secondary">
+                      {formatMontant(releve?.revenus_bruts)}
+                      {!!releve?.sejours_sans_montant && (
+                        <span
+                          role="img"
+                          aria-label={`Montant non renseigné pour ${releve.sejours_sans_montant} séjour(s) historique(s) ce mois-ci -- revenus probablement sous-évalués`}
+                          title={`Montant non renseigné pour ${releve.sejours_sans_montant} séjour(s) historique(s) ce mois-ci -- revenus probablement sous-évalués`}
+                          className="ml-1"
+                        >
+                          ⚠️
+                        </span>
+                      )}
+                    </td>
                     <td className="py-2 pr-4 text-right font-mono text-danger">{formatMontant(frais)}</td>
                     <td className="py-2 pr-4 text-right font-mono font-bold text-ink">
                       {formatMontant(releve?.montant_proprietaire)}

@@ -39,6 +39,14 @@ class ReleveService
 
         $revenusBruts = (float) $sejours->sum('montant_mad');
 
+        // Séjours imported from the pre-app historical data deliberately
+        // have no montant_mad (the source file never had it) -- they still
+        // count towards nuitées/checklist history, but contribute 0 to
+        // revenus_bruts, silently understating it. The UI must say so
+        // explicitly rather than showing a plain "0,00 MAD" that reads as
+        // "this apartment earned nothing," which would be wrong.
+        $sejoursSansMontant = $sejours->whereNull('montant_mad')->count();
+
         $fraisMenageTotal = 0.0;
         $fraisMenageDetail = [];
         foreach ($sejours as $sejour) {
@@ -135,6 +143,7 @@ class ReleveService
             'resultat_net' => round($resultatNet, 2),
             'montant_proprietaire' => round($montantProprietaire, 2),
             'commission_restinnov' => round($commissionRestinnov, 2),
+            'sejours_sans_montant' => $sejoursSansMontant,
             'sejours' => $sejours->map(fn (Sejour $sejour) => [
                 'id' => $sejour->id,
                 'nom_voyageur' => $sejour->nom_voyageur,
@@ -142,7 +151,7 @@ class ReleveService
                 'date_depart' => $sejour->date_depart->toDateString(),
                 'nuitees' => $sejour->date_arrivee->diffInDays($sejour->date_depart),
                 'periode' => $this->periodeSejour($sejour->date_arrivee, $sejour->date_depart),
-                'montant_mad' => round((float) $sejour->montant_mad, 2),
+                'montant_mad' => $sejour->montant_mad !== null ? round((float) $sejour->montant_mad, 2) : null,
             ])->values(),
             'frais_menage_detail' => $fraisMenageDetail,
             'frais_maintenance_detail' => $fraisMaintenanceDetail,

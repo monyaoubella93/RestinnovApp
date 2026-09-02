@@ -37,6 +37,7 @@ function releveFixture(overrides: Partial<Releve> = {}): Releve {
     resultat_net: 850,
     montant_proprietaire: 680,
     commission_restinnov: 170,
+    sejours_sans_montant: 0,
     sejours: [],
     frais_menage_detail: [],
     frais_maintenance_detail: [],
@@ -118,6 +119,27 @@ describe('RelevesProprietairesSection', () => {
 
     expect(await screen.findByText('Loft Bastille')).toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /mois déjà facturé au propriétaire/i })).not.toBeInTheDocument()
+  })
+
+  it('affiche un avertissement sur les revenus quand des séjours historiques sans montant sont inclus', async () => {
+    globalThis.fetch = mockFetch(
+      [appartementFixture()],
+      { 1: releveFixture({ sejours_sans_montant: 3 }) },
+    ) as typeof fetch
+
+    render(<RelevesProprietairesSection />)
+
+    expect(await screen.findByText('Loft Bastille')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /montant non renseigné pour 3 séjour/i })).toBeInTheDocument()
+  })
+
+  it("n'affiche aucun avertissement sur les revenus quand tous les séjours du mois ont un montant", async () => {
+    globalThis.fetch = mockFetch([appartementFixture()], { 1: releveFixture({ sejours_sans_montant: 0 }) }) as typeof fetch
+
+    render(<RelevesProprietairesSection />)
+
+    expect(await screen.findByText('Loft Bastille')).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /montant non renseigné/i })).not.toBeInTheDocument()
   })
 
   it('inclut les charges à la charge de RestInnov dans la colonne Frais', async () => {
