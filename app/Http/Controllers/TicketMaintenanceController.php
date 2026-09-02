@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\AuthorizesTicketAccess;
 use App\Http\Controllers\Concerns\HasFriendlyUploadMessages;
+use App\Models\MaintenanceAlerte;
 use App\Models\MessageAgentMaintenance;
 use App\Models\MessageAgentMaintenancePhoto;
 use App\Models\TicketMaintenance;
@@ -85,7 +86,7 @@ class TicketMaintenanceController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'statut' => ['sometimes', 'in:ouvert,assigne,resolu_en_attente_validation,resolu,a_refaire'],
+            'statut' => ['sometimes', 'in:ouvert,assigne,en_cours,resolu_en_attente_validation,resolu,a_refaire'],
             'appartement_id' => ['sometimes', 'integer', 'exists:appartements,id'],
             'date_debut' => ['sometimes', 'date'],
             'date_fin' => ['sometimes', 'date'],
@@ -118,7 +119,7 @@ class TicketMaintenanceController extends Controller
     public function parAppartement(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'statut' => ['sometimes', 'in:ouvert,assigne,resolu_en_attente_validation,resolu,a_refaire'],
+            'statut' => ['sometimes', 'in:ouvert,assigne,en_cours,resolu_en_attente_validation,resolu,a_refaire'],
             'appartement_id' => ['sometimes', 'integer', 'exists:appartements,id'],
             'date_debut' => ['sometimes', 'date'],
             'date_fin' => ['sometimes', 'date'],
@@ -187,6 +188,9 @@ class TicketMaintenanceController extends Controller
             // ménage agent's original signalement photo down to
             // maintenance -- never automatic.
             'photo_transferee' => ['sometimes', 'boolean'],
+            // Optional deadline the Manager sets alongside the agent --
+            // powers the "En retard" badge and the daily retard-alert job.
+            'date_limite_intervention' => ['nullable', 'date'],
         ], $this->uploadValidationMessages());
 
         $validator->after(function ($validator) use ($request) {
@@ -211,6 +215,7 @@ class TicketMaintenanceController extends Controller
             'description_manager' => $validated['description_manager'] ?? null,
             'description_manager_audio_url' => $audioUrl,
             'photo_transferee' => filter_var($validated['photo_transferee'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'date_limite_intervention' => $validated['date_limite_intervention'] ?? null,
             'statut' => TicketMaintenance::STATUT_ASSIGNE,
         ]);
 
@@ -243,6 +248,7 @@ class TicketMaintenanceController extends Controller
         $tickets = TicketMaintenance::where('agent_id', $agentId)
             ->whereIn('statut', [
                 TicketMaintenance::STATUT_ASSIGNE,
+                TicketMaintenance::STATUT_EN_COURS,
                 TicketMaintenance::STATUT_A_REFAIRE,
                 TicketMaintenance::STATUT_RESOLU_EN_ATTENTE_VALIDATION,
             ])
@@ -254,6 +260,8 @@ class TicketMaintenanceController extends Controller
                 'reference' => $ticket->reference,
                 'statut' => $ticket->statut,
                 'urgence' => $ticket->urgence,
+                'date_limite_intervention' => $ticket->date_limite_intervention?->toDateString(),
+                'est_en_retard' => $ticket->est_en_retard,
                 'description_manager' => $ticket->description_manager,
                 'description_manager_audio_url' => $ticket->description_manager_audio_url,
                 // The ménage agent's original signalement photo only
@@ -366,6 +374,39 @@ class TicketMaintenanceController extends Controller
     }
 
     /**
+     * The assigned maintenance agent signals they've actually started the
+     * repair -- "assigne" only means the Manager handed it off, not that
+     * work is under way. This is the one statut transition the agent
+     * triggers themselves without submitting anything, and it's what
+     * unlocks resoudre(): a resolution can no longer be submitted straight
+     * from "assigne". Notifies the Manager via the same alerts feed the
+     * daily retard job writes to.
+     */
+    public function commencer(Request $request, TicketMaintenance $ticketMaintenance): JsonResponse
+    {
+        $this->authorizeTicketAccess($request, $ticketMaintenance);
+
+        if ($ticketMaintenance->statut !== TicketMaintenance::STATUT_ASSIGNE) {
+            return response()->json([
+                'message' => 'Ce ticket n\'est pas assigné.',
+            ], 422);
+        }
+
+        $ticketMaintenance->update(['statut' => TicketMaintenance::STATUT_EN_COURS]);
+
+        $agentNom = $ticketMaintenance->agent?->nom ?? 'Un agent';
+        $appartementNom = $ticketMaintenance->appartement?->nom ?? "l'appartement";
+
+        MaintenanceAlerte::create([
+            'ticket_maintenance_id' => $ticketMaintenance->id,
+            'niveau' => MaintenanceAlerte::NIVEAU_INFO,
+            'message' => "{$agentNom} a commencé le ticket {$ticketMaintenance->reference} - {$appartementNom}",
+        ]);
+
+        return response()->json($ticketMaintenance->fresh(self::DETAIL_RELATIONS));
+    }
+
+    /**
      * The assigned maintenance agent sends an intermediate photo/audio/note
      * message to the Manager on a ticket they're currently working --
      * distinct from resoudre()'s final proof-of-work: this is for
@@ -386,7 +427,7 @@ class TicketMaintenanceController extends Controller
             throw new AuthorizationException('Accès refusé.');
         }
 
-        if (! in_array($ticketMaintenance->statut, [TicketMaintenance::STATUT_ASSIGNE, TicketMaintenance::STATUT_A_REFAIRE], true)) {
+        if (! in_array($ticketMaintenance->statut, [TicketMaintenance::STATUT_ASSIGNE, TicketMaintenance::STATUT_EN_COURS, TicketMaintenance::STATUT_A_REFAIRE], true)) {
             return response()->json([
                 'message' => 'Ce ticket n\'est pas en cours.',
             ], 422);
@@ -432,16 +473,18 @@ class TicketMaintenanceController extends Controller
      * and repair cost are mandatory, a note is optional. This moves the
      * ticket to "resolu_en_attente_validation" -- the appartement stays
      * blocked in "maintenance" statut until the Manager validates it.
-     * Works both the first time (from "assigne") and after a Manager
-     * refusal sent it back (from "a_refaire").
+     * Works both once work has actually started ("en_cours", via
+     * commencer()) and after a Manager refusal sent it back
+     * ("a_refaire") -- a reopened ticket doesn't need a second
+     * "commencer" click, the agent is already back on it.
      */
     public function resoudre(Request $request, TicketMaintenance $ticketMaintenance): JsonResponse
     {
         $this->authorizeTicketAccess($request, $ticketMaintenance);
 
-        if (! in_array($ticketMaintenance->statut, [TicketMaintenance::STATUT_ASSIGNE, TicketMaintenance::STATUT_A_REFAIRE], true)) {
+        if (! in_array($ticketMaintenance->statut, [TicketMaintenance::STATUT_EN_COURS, TicketMaintenance::STATUT_A_REFAIRE], true)) {
             return response()->json([
-                'message' => 'Ce ticket n\'est pas assigné.',
+                'message' => 'Ce ticket n\'est pas en cours.',
             ], 422);
         }
 

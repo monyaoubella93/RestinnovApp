@@ -467,6 +467,193 @@ class TicketMaintenanceManagementTest extends TestCase
         ]);
     }
 
+    public function test_assigner_persists_the_date_limite_intervention(): void
+    {
+        $ticket = $this->ticket();
+        $agent = $this->agentMaintenance();
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/assigner", [
+            'agent_id' => $agent->id,
+            'description_manager' => 'Changer le joint du robinet.',
+            'date_limite_intervention' => '2026-09-10',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('date_limite_intervention', '2026-09-10');
+        $this->assertDatabaseHas('tickets_maintenance', [
+            'id' => $ticket->id,
+            'date_limite_intervention' => '2026-09-10',
+        ]);
+    }
+
+    public function test_assigner_leaves_date_limite_intervention_null_when_not_provided(): void
+    {
+        $ticket = $this->ticket();
+        $agent = $this->agentMaintenance();
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/assigner", [
+            'agent_id' => $agent->id,
+            'description_manager' => 'Changer le joint du robinet.',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('date_limite_intervention', null);
+    }
+
+    public function test_assigner_rejects_an_invalid_date_limite_intervention(): void
+    {
+        $ticket = $this->ticket();
+        $agent = $this->agentMaintenance();
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/assigner", [
+            'agent_id' => $agent->id,
+            'description_manager' => 'Changer le joint du robinet.',
+            'date_limite_intervention' => 'pas-une-date',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('date_limite_intervention');
+    }
+
+    // --- est_en_retard / badge "En retard" ---
+
+    public function test_est_en_retard_is_false_when_no_deadline_is_set(): void
+    {
+        $ticket = $this->ticket(['statut' => 'assigne']);
+
+        $response = $this->getJson('/api/tickets-maintenance');
+
+        $response->assertOk();
+        $response->assertJsonPath('0.est_en_retard', false);
+    }
+
+    public function test_est_en_retard_is_false_before_the_deadline(): void
+    {
+        $this->ticket(['statut' => 'assigne', 'date_limite_intervention' => now()->addDays(3)->toDateString()]);
+
+        $response = $this->getJson('/api/tickets-maintenance');
+
+        $response->assertOk();
+        $response->assertJsonPath('0.est_en_retard', false);
+    }
+
+    public function test_est_en_retard_is_false_on_the_deadline_day_itself(): void
+    {
+        $this->ticket(['statut' => 'assigne', 'date_limite_intervention' => now()->toDateString()]);
+
+        $response = $this->getJson('/api/tickets-maintenance');
+
+        $response->assertOk();
+        $response->assertJsonPath('0.est_en_retard', false);
+    }
+
+    public function test_est_en_retard_is_true_once_the_deadline_has_passed(): void
+    {
+        $this->ticket(['statut' => 'assigne', 'date_limite_intervention' => now()->subDay()->toDateString()]);
+
+        $response = $this->getJson('/api/tickets-maintenance');
+
+        $response->assertOk();
+        $response->assertJsonPath('0.est_en_retard', true);
+    }
+
+    public function test_est_en_retard_is_false_once_the_ticket_is_resolu_even_past_the_deadline(): void
+    {
+        $this->ticket(['statut' => 'resolu', 'date_limite_intervention' => now()->subDays(5)->toDateString()]);
+
+        $response = $this->getJson('/api/tickets-maintenance');
+
+        $response->assertOk();
+        $response->assertJsonPath('0.est_en_retard', false);
+    }
+
+    // --- commencer() ---
+
+    public function test_commencer_moves_an_assigne_ticket_to_en_cours(): void
+    {
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/commencer");
+
+        $response->assertOk();
+        $response->assertJsonPath('statut', 'en_cours');
+        $this->assertDatabaseHas('tickets_maintenance', ['id' => $ticket->id, 'statut' => 'en_cours']);
+    }
+
+    public function test_commencer_notifies_the_manager_via_maintenance_alertes(): void
+    {
+        $agent = $this->agentMaintenance(['nom' => 'Karim B.']);
+        $appartement = $this->appartement();
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id, 'appartement_id' => $appartement->id]);
+        Sanctum::actingAs($agent, ['*']);
+
+        $this->patchJson("/api/tickets-maintenance/{$ticket->id}/commencer")->assertOk();
+
+        $this->assertDatabaseHas('maintenance_alertes', [
+            'ticket_maintenance_id' => $ticket->id,
+            'niveau' => 'info',
+            'message' => "Karim B. a commencé le ticket {$ticket->reference} - Loft Bastille",
+        ]);
+    }
+
+    public function test_commencer_is_rejected_when_the_ticket_is_not_assigne(): void
+    {
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'resolu_en_attente_validation', 'agent_id' => $agent->id]);
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/commencer");
+
+        $response->assertStatus(422);
+    }
+
+    public function test_commencer_is_rejected_when_already_en_cours(): void
+    {
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'en_cours', 'agent_id' => $agent->id]);
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/commencer");
+
+        $response->assertStatus(422);
+    }
+
+    public function test_an_agent_cannot_commencer_a_ticket_assigned_to_another_agent(): void
+    {
+        $agentA = $this->agentMaintenance(['nom' => 'Karim B.']);
+        $agentB = $this->agentMaintenance(['nom' => 'Yassine T.']);
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agentB->id]);
+        Sanctum::actingAs($agentA, ['*']);
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/commencer");
+
+        $response->assertStatus(403);
+        $this->assertDatabaseHas('tickets_maintenance', ['id' => $ticket->id, 'statut' => 'assigne']);
+    }
+
+    public function test_commencer_is_forbidden_for_a_menage_account(): void
+    {
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        $this->actingAsMenage();
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/commencer");
+
+        $response->assertStatus(403);
+    }
+
+    public function test_manager_can_commencer_any_ticket(): void
+    {
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/commencer");
+
+        $response->assertOk();
+    }
+
     // --- mesTickets() ---
 
     public function test_mes_tickets_lists_only_tickets_assigned_to_the_authenticated_agent(): void
@@ -486,11 +673,12 @@ class TicketMaintenanceManagementTest extends TestCase
         $response->assertJsonPath('0.description_manager', 'Réparer la fuite.');
     }
 
-    public function test_mes_tickets_includes_assigne_a_refaire_and_resolu_en_attente_validation_but_not_resolu(): void
+    public function test_mes_tickets_includes_assigne_en_cours_a_refaire_and_resolu_en_attente_validation_but_not_resolu(): void
     {
         $agent = $this->agentMaintenance();
         $this->ticket(['statut' => 'ouvert', 'agent_id' => null]);
         $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        $this->ticket(['statut' => 'en_cours', 'agent_id' => $agent->id]);
         $this->ticket(['statut' => 'resolu_en_attente_validation', 'agent_id' => $agent->id]);
         $this->ticket(['statut' => 'resolu', 'agent_id' => $agent->id]);
 
@@ -499,11 +687,30 @@ class TicketMaintenanceManagementTest extends TestCase
         $response = $this->getJson('/api/tickets-maintenance/mes-tickets');
 
         $response->assertOk();
-        $response->assertJsonCount(2);
+        $response->assertJsonCount(3);
         $statuts = collect($response->json())->pluck('statut')->all();
         $this->assertContains('assigne', $statuts);
+        $this->assertContains('en_cours', $statuts);
         $this->assertContains('resolu_en_attente_validation', $statuts);
         $this->assertNotContains('resolu', $statuts);
+    }
+
+    public function test_mes_tickets_exposes_date_limite_intervention_and_est_en_retard(): void
+    {
+        $agent = $this->agentMaintenance();
+        $this->ticket([
+            'statut' => 'assigne',
+            'agent_id' => $agent->id,
+            'date_limite_intervention' => now()->subDay()->toDateString(),
+        ]);
+
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->getJson('/api/tickets-maintenance/mes-tickets');
+
+        $response->assertOk();
+        $response->assertJsonPath('0.date_limite_intervention', now()->subDay()->toDateString());
+        $response->assertJsonPath('0.est_en_retard', true);
     }
 
     public function test_mes_tickets_never_exposes_the_menage_agent_description_and_audio(): void
@@ -650,7 +857,7 @@ class TicketMaintenanceManagementTest extends TestCase
         Storage::fake('public');
 
         $agent = $this->agentMaintenance();
-        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        $ticket = $this->ticket(['statut' => 'en_cours', 'agent_id' => $agent->id]);
         Sanctum::actingAs($agent, ['*']);
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
@@ -676,7 +883,7 @@ class TicketMaintenanceManagementTest extends TestCase
         Storage::fake('public');
 
         $agent = $this->agentMaintenance();
-        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        $ticket = $this->ticket(['statut' => 'en_cours', 'agent_id' => $agent->id]);
         Sanctum::actingAs($agent, ['*']);
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
@@ -721,7 +928,7 @@ class TicketMaintenanceManagementTest extends TestCase
         Storage::fake('public');
 
         $agent = $this->agentMaintenance();
-        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        $ticket = $this->ticket(['statut' => 'en_cours', 'agent_id' => $agent->id]);
         Sanctum::actingAs($agent, ['*']);
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
@@ -738,7 +945,7 @@ class TicketMaintenanceManagementTest extends TestCase
         Storage::fake('public');
 
         $agent = $this->agentMaintenance();
-        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        $ticket = $this->ticket(['statut' => 'en_cours', 'agent_id' => $agent->id]);
         Sanctum::actingAs($agent, ['*']);
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
@@ -749,13 +956,13 @@ class TicketMaintenanceManagementTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonFragment(['photos_apres.0' => ['Photo trop lourde, réessayez avec une photo plus légère (10 Mo maximum).']]);
-        $this->assertDatabaseHas('tickets_maintenance', ['id' => $ticket->id, 'statut' => 'assigne']);
+        $this->assertDatabaseHas('tickets_maintenance', ['id' => $ticket->id, 'statut' => 'en_cours']);
     }
 
     public function test_resoudre_requires_photo_apres_and_cout_reparation(): void
     {
         $agent = $this->agentMaintenance();
-        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        $ticket = $this->ticket(['statut' => 'en_cours', 'agent_id' => $agent->id]);
         Sanctum::actingAs($agent, ['*']);
 
         $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/resoudre", []);
@@ -781,13 +988,31 @@ class TicketMaintenanceManagementTest extends TestCase
         $response->assertStatus(422);
     }
 
+    public function test_resoudre_is_rejected_while_still_assigne_the_agent_must_commencer_first(): void
+    {
+        Storage::fake('public');
+
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        Sanctum::actingAs($agent, ['*']);
+
+        $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
+            '_method' => 'PATCH',
+            'photos_apres' => [UploadedFile::fake()->image('reparation.jpg')],
+            'cout_reparation' => '10',
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertDatabaseHas('tickets_maintenance', ['id' => $ticket->id, 'statut' => 'assigne']);
+    }
+
     public function test_an_agent_cannot_resoudre_a_ticket_assigned_to_another_agent(): void
     {
         Storage::fake('public');
 
         $agentA = $this->agentMaintenance(['nom' => 'Karim B.']);
         $agentB = $this->agentMaintenance(['nom' => 'Yassine T.']);
-        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agentB->id]);
+        $ticket = $this->ticket(['statut' => 'en_cours', 'agent_id' => $agentB->id]);
         Sanctum::actingAs($agentA, ['*']);
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
@@ -797,7 +1022,7 @@ class TicketMaintenanceManagementTest extends TestCase
         ]);
 
         $response->assertStatus(403);
-        $this->assertDatabaseHas('tickets_maintenance', ['id' => $ticket->id, 'statut' => 'assigne']);
+        $this->assertDatabaseHas('tickets_maintenance', ['id' => $ticket->id, 'statut' => 'en_cours']);
     }
 
     public function test_resoudre_is_forbidden_for_a_menage_account(): void
@@ -816,7 +1041,7 @@ class TicketMaintenanceManagementTest extends TestCase
         Storage::fake('public');
 
         $agent = $this->agentMaintenance();
-        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        $ticket = $this->ticket(['statut' => 'en_cours', 'agent_id' => $agent->id]);
 
         $response = $this->post("/api/tickets-maintenance/{$ticket->id}/resoudre", [
             '_method' => 'PATCH',

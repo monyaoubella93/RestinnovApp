@@ -119,6 +119,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/tickets-maintenance/mes-tickets', [TicketMaintenanceController::class, 'mesTickets']);
         Route::get('/tickets-maintenance/mes-tickets/historique', [TicketMaintenanceController::class, 'mesTicketsHistorique']);
         Route::post('/tickets-maintenance/{ticketMaintenance}/message', [TicketMaintenanceController::class, 'envoyerMessage']);
+        Route::patch('/tickets-maintenance/{ticketMaintenance}/commencer', [TicketMaintenanceController::class, 'commencer']);
         Route::patch('/tickets-maintenance/{ticketMaintenance}/resoudre', [TicketMaintenanceController::class, 'resoudre']);
         Route::patch('/tickets-maintenance/{ticketMaintenance}/refus-vu', [TicketMaintenanceController::class, 'marquerRefusVu']);
     });
