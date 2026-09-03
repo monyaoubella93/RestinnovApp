@@ -25,12 +25,12 @@ describe('CatalogueProduitsSection', () => {
     expect(screen.queryByAltText('Photo de "Javel"')).not.toBeInTheDocument()
   })
 
-  it('la photo du nouveau produit propose caméra et galerie -- accept="image/*", pas de capture forcée', () => {
+  it('la photo du nouveau produit force la caméra -- accept="image/*" capture="environment"', () => {
     render(<CatalogueProduitsSection catalogue={catalogue} onCreate={vi.fn()} />)
 
     const input = screen.getByLabelText(/photo \(optionnel\)/i)
     expect(input).toHaveAttribute('accept', 'image/*')
-    expect(input).not.toHaveAttribute('capture')
+    expect(input).toHaveAttribute('capture', 'environment')
   })
 
   it('soumet le formulaire d\'ajout rapide avec nom, prix et sans photo ni nom arabe', async () => {

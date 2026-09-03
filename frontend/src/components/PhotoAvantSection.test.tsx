@@ -29,10 +29,10 @@ describe('PhotoAvantSection', () => {
   it('ne permet pas la capture caméra uniquement -- pas d\'attribut capture sur l\'input', () => {
     render(<PhotoAvantSection missionMenageId={10} onCommencer={vi.fn()} />)
 
-    expect(screen.getByLabelText(/photo avant ménage/i)).not.toHaveAttribute('capture')
+    expect(screen.getByLabelText(/photo avant ménage/i)).toHaveAttribute('capture', 'environment')
   })
 
-  it('propose caméra et galerie -- accept="image/*", pas de restriction MIME plus étroite', () => {
+  it('force la caméra -- accept="image/*" capture="environment"', () => {
     render(<PhotoAvantSection missionMenageId={10} onCommencer={vi.fn()} />)
 
     expect(screen.getByLabelText(/photo avant ménage/i)).toHaveAttribute('accept', 'image/*')

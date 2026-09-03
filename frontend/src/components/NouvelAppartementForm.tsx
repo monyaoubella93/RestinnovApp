@@ -344,6 +344,7 @@ export function NouvelAppartementForm({
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            capture="environment"
             className="hidden"
             aria-label="Photo principale"
             onChange={(e) => acceptFile(e.target.files?.[0])}

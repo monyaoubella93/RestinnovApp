@@ -60,6 +60,7 @@ export function PhotoAvantSection({ missionMenageId, onCommencer }: PhotoAvantSe
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          capture="environment"
           className="hidden"
           aria-label={t('menage.photoAvant.inputLabel')}
           onChange={(e) => {

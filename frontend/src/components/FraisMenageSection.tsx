@@ -304,6 +304,7 @@ export function FraisMenageSection({
                         id={`rachete_photo_${produit.id}`}
                         type="file"
                         accept="image/*"
+                        capture="environment"
                         onChange={(e) => setRachetePhoto(e.target.files?.[0] ?? null)}
                         className="block w-full text-sm"
                       />
@@ -382,6 +383,7 @@ export function FraisMenageSection({
               id={`signaler_photo_${missionMenage.id}`}
               type="file"
               accept="image/*"
+              capture="environment"
               onChange={(e) => setSignalerPhoto(e.target.files?.[0] ?? null)}
               className="block w-full text-sm"
             />
@@ -408,6 +410,7 @@ export function FraisMenageSection({
               id={`signaler_photo_ticket_${missionMenage.id}`}
               type="file"
               accept="image/*"
+              capture="environment"
               onChange={(e) => setSignalerPhotoTicket(e.target.files?.[0] ?? null)}
               className="block w-full text-sm"
             />

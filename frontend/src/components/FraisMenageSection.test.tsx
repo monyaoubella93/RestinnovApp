@@ -144,7 +144,7 @@ describe('FraisMenageSection', () => {
     expect(onUpdateProduitUtilise).not.toHaveBeenCalled()
   })
 
-  it('la photo "racheté" propose caméra et galerie -- accept="image/*", pas de capture forcée', async () => {
+  it('la photo "racheté" force la caméra -- accept="image/*" capture="environment"', async () => {
     const user = userEvent.setup()
     renderSection()
 
@@ -152,7 +152,7 @@ describe('FraisMenageSection', () => {
 
     const input = screen.getByLabelText(/photo du produit ou du ticket de caisse/i)
     expect(input).toHaveAttribute('accept', 'image/*')
-    expect(input).not.toHaveAttribute('capture')
+    expect(input).toHaveAttribute('capture', 'environment')
   })
 
   it('valide un produit "racheté" avec photo et prix réel', async () => {
@@ -244,11 +244,11 @@ describe('FraisMenageSection', () => {
 
     const photoInput = screen.getByLabelText(/photo du produit$/i)
     expect(photoInput).toHaveAttribute('accept', 'image/*')
-    expect(photoInput).not.toHaveAttribute('capture')
+    expect(photoInput).toHaveAttribute('capture', 'environment')
 
     const ticketInput = screen.getByLabelText(/photo du ticket de caisse/i)
     expect(ticketInput).toHaveAttribute('accept', 'image/*')
-    expect(ticketInput).not.toHaveAttribute('capture')
+    expect(ticketInput).toHaveAttribute('capture', 'environment')
   })
 
   it('affiche le formulaire "Signaler un nouveau produit" et envoie photo + prix + note', async () => {
