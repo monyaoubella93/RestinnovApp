@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   assignerTicketMaintenance,
+  envoyerRappelTicketMaintenance,
   fetchTicketsMaintenance,
   fetchTicketsMaintenanceParAppartement,
   fetchUtilisateurs,
@@ -56,16 +57,26 @@ function AssignerForm({
   ticket,
   agents,
   onAssigner,
+  actionLabel = 'Assigner',
+  onCancel,
 }: {
   ticket: TicketMaintenance
   agents: Agent[]
   onAssigner: (ticketId: number, values: AssignerValues) => Promise<void>
+  actionLabel?: string
+  onCancel?: () => void
 }) {
   const [agentId, setAgentId] = useState('')
   const [expressionMode, setExpressionMode] = useState<ExpressionMode>('texte')
-  const [descriptionManager, setDescriptionManager] = useState('')
+  // Pre-filled from the ticket's own current values -- a no-op for a fresh
+  // "ouvert" ticket (both are always null there), but on a reassignment
+  // this is what carries the Manager's already-written description/deadline
+  // forward without them having to retype it, and lets the "sans perdre
+  // l'historique" guarantee (see TicketMaintenanceController::assigner())
+  // hold even if they submit without touching either field.
+  const [descriptionManager, setDescriptionManager] = useState(ticket.description_manager ?? '')
   const [photoTransferee, setPhotoTransferee] = useState(false)
-  const [dateLimiteIntervention, setDateLimiteIntervention] = useState('')
+  const [dateLimiteIntervention, setDateLimiteIntervention] = useState(ticket.date_limite_intervention ?? '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -106,6 +117,7 @@ function AssignerForm({
         photoTransferee,
         dateLimiteIntervention,
       })
+      onCancel?.()
     } catch (err) {
       setError(
         friendlyUploadErrorMessage(err, {
@@ -248,8 +260,18 @@ function AssignerForm({
           disabled={submitting || !hasExpression}
           className="rounded-field bg-brand px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
         >
-          {submitting ? 'Assignation...' : 'Assigner'}
+          {submitting ? 'Assignation...' : actionLabel}
         </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={submitting}
+            className="rounded-field border border-border-default px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
+          >
+            Annuler
+          </button>
+        )}
       </div>
       {(error || micError) && <p className="mt-1 text-sm text-danger">{error || micError}</p>}
     </>
@@ -301,6 +323,114 @@ function MessagesAgentHistorique({ ticket }: { ticket: TicketMaintenance }) {
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+function RappelsHistorique({ ticket }: { ticket: TicketMaintenance }) {
+  if (!ticket.rappels || ticket.rappels.length === 0) return null
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-ink-secondary">Rappels envoyés</p>
+      <ul className="mt-1 space-y-2">
+        {ticket.rappels.map((rappel) => (
+          <li key={rappel.id} className="space-y-1 rounded-field bg-table-header-bg p-2 text-sm text-ink-secondary">
+            <p className="font-mono text-xs text-ink-tertiary">{formatDate(rappel.created_at)}</p>
+            <p>{rappel.message}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * The Manager's side of a short text-only nudge to the agent already
+ * working a ticket -- the other direction from AssignerForm's
+ * description_manager (which is set once, at assignation). Collapsed to a
+ * single button until clicked, same interaction pattern as the "Réassigner"
+ * toggle right next to it.
+ */
+function RappelForm({
+  ticketId,
+  onEnvoyer,
+}: {
+  ticketId: number
+  onEnvoyer: (ticketId: number, message: string) => Promise<void>
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="rounded-field border border-border-default px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-table-header-bg"
+      >
+        📣 Envoyer un rappel
+      </button>
+    )
+  }
+
+  const handleEnvoyer = async () => {
+    if (!message.trim()) {
+      setError("Écrivez un message pour l'agent.")
+      return
+    }
+
+    setError(null)
+    setSubmitting(true)
+    try {
+      await onEnvoyer(ticketId, message.trim())
+      setMessage('')
+      setExpanded(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="w-full space-y-2">
+      <label htmlFor={`ticket_rappel_${ticketId}`} className="block text-xs font-semibold text-ink-secondary">
+        Rappel pour l'agent
+      </label>
+      <textarea
+        id={`ticket_rappel_${ticketId}`}
+        aria-label="Message du rappel"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        rows={2}
+        placeholder="Ex. : Merci de faire avancer ce ticket rapidement."
+        className="block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
+      />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={handleEnvoyer}
+          disabled={submitting}
+          className="rounded-field bg-brand px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
+        >
+          {submitting ? 'Envoi...' : 'Envoyer'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setExpanded(false)
+            setError(null)
+          }}
+          disabled={submitting}
+          className="rounded-field border border-border-default px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-table-header-bg disabled:opacity-50"
+        >
+          Annuler
+        </button>
+      </div>
+      {error && <p className="text-sm text-danger">{error}</p>}
     </div>
   )
 }
@@ -419,6 +549,7 @@ function TicketMaintenanceCard({
   onAssigner,
   onValider,
   onRefuser,
+  onRappel,
   defaultExpanded,
 }: {
   ticket: TicketMaintenance
@@ -426,9 +557,11 @@ function TicketMaintenanceCard({
   onAssigner: (ticketId: number, values: AssignerValues) => Promise<void>
   onValider: (ticketId: number) => Promise<void>
   onRefuser: (ticketId: number, input: RefuserInput) => Promise<void>
+  onRappel: (ticketId: number, message: string) => Promise<void>
   defaultExpanded?: boolean
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded ?? false)
+  const [showReassignForm, setShowReassignForm] = useState(false)
 
   return (
     <li id={`ticket-maintenance-${ticket.id}`} className="rounded-field border border-border-default">
@@ -530,6 +663,37 @@ function TicketMaintenanceCard({
               {ticket.statut === 'resolu' && ticket.cout_reparation != null && (
                 <p className="font-mono text-sm font-bold text-ink">Coût : {ticket.cout_reparation} MAD</p>
               )}
+
+              {ticket.est_en_retard && ticket.statut !== 'resolu' && (
+                <div className="space-y-3 rounded-field border border-danger-bg bg-danger-bg/40 p-3">
+                  <p className="text-xs font-semibold text-danger">
+                    Ce ticket est en retard -- relancez l'agent ou réassignez-le.
+                  </p>
+                  <div className="flex flex-wrap items-start gap-2">
+                    <RappelForm ticketId={ticket.id} onEnvoyer={onRappel} />
+                    {!showReassignForm && (
+                      <button
+                        type="button"
+                        onClick={() => setShowReassignForm(true)}
+                        className="rounded-field border border-border-default px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-table-header-bg"
+                      >
+                        🔁 Réassigner
+                      </button>
+                    )}
+                  </div>
+                  {showReassignForm && (
+                    <AssignerForm
+                      ticket={ticket}
+                      agents={agents.filter((agent) => agent.id !== ticket.agent?.id)}
+                      onAssigner={onAssigner}
+                      actionLabel="Réassigner"
+                      onCancel={() => setShowReassignForm(false)}
+                    />
+                  )}
+                  <RappelsHistorique ticket={ticket} />
+                </div>
+              )}
+
               <RefusHistorique ticket={ticket} />
             </div>
           )}
@@ -545,12 +709,14 @@ function AppartementGroupeCard({
   onAssigner,
   onValider,
   onRefuser,
+  onRappel,
 }: {
   groupe: TicketMaintenanceParAppartement
   agents: Agent[]
   onAssigner: (ticketId: number, values: AssignerValues) => Promise<void>
   onValider: (ticketId: number) => Promise<void>
   onRefuser: (ticketId: number, input: RefuserInput) => Promise<void>
+  onRappel: (ticketId: number, message: string) => Promise<void>
 }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -589,6 +755,7 @@ function AppartementGroupeCard({
               onAssigner={onAssigner}
               onValider={onValider}
               onRefuser={onRefuser}
+              onRappel={onRappel}
             />
           ))}
         </ul>
@@ -694,6 +861,11 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter, i
 
   const handleRefuser = async (ticketId: number, input: RefuserInput) => {
     await refuserResolutionTicketMaintenance(ticketId, input)
+    load()
+  }
+
+  const handleRappel = async (ticketId: number, message: string) => {
+    await envoyerRappelTicketMaintenance(ticketId, message)
     load()
   }
 
@@ -864,6 +1036,7 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter, i
               onAssigner={handleAssigner}
               onValider={handleValider}
               onRefuser={handleRefuser}
+              onRappel={handleRappel}
               defaultExpanded={ticket.id === initialTicketId}
             />
           ))}
@@ -884,6 +1057,7 @@ export function TicketsMaintenanceSection({ appartements, initialStatutFilter, i
               onAssigner={handleAssigner}
               onValider={handleValider}
               onRefuser={handleRefuser}
+              onRappel={handleRappel}
             />
           ))}
         </ul>

@@ -57,7 +57,6 @@ import type {
   Proprietaire,
   Sejour,
   SejourStatut,
-  TicketMaintenanceStatut,
 } from './types'
 
 type Tab =
@@ -166,7 +165,6 @@ function App() {
   const [pendingSejourId, setPendingSejourId] = useState<number | null>(null)
   const [pendingAppartementDetail, setPendingAppartementDetail] = useState<Appartement | null>(null)
   const [pendingStatutFilter, setPendingStatutFilter] = useState<SejourStatut | ''>('')
-  const [pendingTicketStatutFilter, setPendingTicketStatutFilter] = useState<TicketMaintenanceStatut | ''>('')
   const [pendingTicketId, setPendingTicketId] = useState<number | null>(null)
   const { user, logout } = useAuth()
 
@@ -178,7 +176,6 @@ function App() {
     setPendingSejourId(null)
     setPendingAppartementDetail(null)
     setPendingStatutFilter('')
-    setPendingTicketStatutFilter('')
     setPendingTicketId(null)
   }
 
@@ -195,11 +192,6 @@ function App() {
   const handleNavigateToSejoursListe = (statut?: SejourStatut) => {
     navigateTo('sejour-liste')
     if (statut) setPendingStatutFilter(statut)
-  }
-
-  const handleNavigateToTicketsMaintenance = (statut?: TicketMaintenanceStatut) => {
-    navigateTo('maintenance-tickets')
-    if (statut) setPendingTicketStatutFilter(statut)
   }
 
   const handleNavigateToTicketDetail = (ticketId: number) => {
@@ -669,7 +661,7 @@ function App() {
             />
             <NotificationBell
               onNavigateToSejour={handleNavigateToSejourDetail}
-              onNavigateToTicketsMaintenance={() => handleNavigateToTicketsMaintenance('ouvert')}
+              onNavigateToTicketDetail={handleNavigateToTicketDetail}
             />
           </div>
         </header>
@@ -687,8 +679,7 @@ function App() {
               onNavigateToSejour={handleNavigateToSejourDetail}
               onNavigateToSejoursListe={handleNavigateToSejoursListe}
               onCheckout={handleDashboardCheckout}
-              onNavigateToTicketsMaintenance={() => handleNavigateToTicketsMaintenance('ouvert')}
-              onNavigateToResolutionsAValider={() => handleNavigateToTicketsMaintenance('resolu_en_attente_validation')}
+              onNavigateToTicketDetail={handleNavigateToTicketDetail}
             />
           )}
           {activeTab === 'calendrier' && (
@@ -775,11 +766,7 @@ function App() {
             <TicketsMaintenanceSection appartements={appartements} initialStatutFilter="resolu_en_attente_validation" />
           )}
           {activeTab === 'maintenance-tickets' && (
-            <TicketsMaintenanceSection
-              appartements={appartements}
-              initialStatutFilter={pendingTicketStatutFilter}
-              initialTicketId={pendingTicketId}
-            />
+            <TicketsMaintenanceSection appartements={appartements} initialTicketId={pendingTicketId} />
           )}
           </div>
         </main>

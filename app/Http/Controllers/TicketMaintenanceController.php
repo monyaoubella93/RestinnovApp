@@ -9,6 +9,7 @@ use App\Models\MessageAgentMaintenance;
 use App\Models\MessageAgentMaintenancePhoto;
 use App\Models\TicketMaintenance;
 use App\Models\TicketMaintenancePhoto;
+use App\Models\TicketMaintenanceRappel;
 use App\Models\TicketMaintenanceRefus;
 use App\Models\Utilisateur;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -29,6 +30,7 @@ class TicketMaintenanceController extends Controller
         'agent',
         'refus.manager',
         'messagesAgent.photosSupplementaires',
+        'rappels.manager',
         'photosSignalement',
         'photosResolution',
     ];
@@ -162,14 +164,26 @@ class TicketMaintenanceController extends Controller
     }
 
     /**
-     * Manager assigns an open ticket to an active maintenance agent. The
-     * agent's own workspace (built separately) picks it up from there.
+     * Manager assigns an open ticket to an active maintenance agent, or
+     * reassigns one already on an agent's plate (assigne/en_cours/a_refaire
+     * -- e.g. a late ticket that needs a different agent) to someone else.
+     * The agent's own workspace (built separately) picks it up from there;
+     * a reassigned ticket goes back to "assigne" so the new agent starts
+     * with their own "commencer" click, regardless of how far the previous
+     * agent had gotten. Reassignment never touches the ticket's messages,
+     * rappels, or refus history -- only agent_id/statut and whatever the
+     * Manager explicitly resubmits.
      */
     public function assigner(Request $request, TicketMaintenance $ticketMaintenance): JsonResponse
     {
-        if ($ticketMaintenance->statut !== TicketMaintenance::STATUT_OUVERT) {
+        if (! in_array($ticketMaintenance->statut, [
+            TicketMaintenance::STATUT_OUVERT,
+            TicketMaintenance::STATUT_ASSIGNE,
+            TicketMaintenance::STATUT_EN_COURS,
+            TicketMaintenance::STATUT_A_REFAIRE,
+        ], true)) {
             return response()->json([
-                'message' => 'Ce ticket a déjà été assigné ou résolu.',
+                'message' => 'Ce ticket ne peut pas être (ré)assigné dans son statut actuel.',
             ], 422);
         }
 
@@ -181,7 +195,10 @@ class TicketMaintenanceController extends Controller
             // The instruction the maintenance agent will actually see on
             // their ticket detail -- the ménage agent's own description/
             // photo/audio stay Manager-only, never shown to maintenance.
-            // Either written or spoken works, at least one is required.
+            // Either written or spoken works, at least one is required --
+            // unless this is a reassignment and the ticket already carries
+            // one from the original assignation, see hasExistingDescription
+            // below.
             'description_manager' => ['nullable', 'string', 'max:1000'],
             'description_manager_audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,webm,m4a,aac', 'max:5120'],
             // The Manager's explicit, opt-in decision to also hand the
@@ -193,10 +210,12 @@ class TicketMaintenanceController extends Controller
             'date_limite_intervention' => ['nullable', 'date'],
         ], $this->uploadValidationMessages());
 
-        $validator->after(function ($validator) use ($request) {
+        $validator->after(function ($validator) use ($request, $ticketMaintenance) {
             $hasDescription = trim((string) $request->input('description_manager', '')) !== '';
+            $hasExistingDescription = $ticketMaintenance->description_manager !== null
+                || $ticketMaintenance->description_manager_audio_url !== null;
 
-            if (! $request->hasFile('description_manager_audio') && ! $hasDescription) {
+            if (! $request->hasFile('description_manager_audio') && ! $hasDescription && ! $hasExistingDescription) {
                 $validator->errors()->add(
                     'description_manager',
                     'Fournissez une description écrite ou un message audio pour l\'agent.',
@@ -206,14 +225,28 @@ class TicketMaintenanceController extends Controller
 
         $validated = $validator->validate();
 
-        $audioUrl = $request->hasFile('description_manager_audio')
-            ? $request->file('description_manager_audio')->store('tickets-maintenance', 'public')
-            : null;
+        // A reassignment where the Manager didn't retype anything keeps the
+        // description already on record instead of wiping it -- the
+        // "sans perdre l'historique de la description" requirement.
+        // Retyping (or re-recording) replaces both fields together, same as
+        // a first assignation.
+        $hasNewDescription = trim((string) ($validated['description_manager'] ?? '')) !== '';
+        $hasNewAudio = $request->hasFile('description_manager_audio');
+
+        $descriptionManager = $ticketMaintenance->description_manager;
+        $descriptionManagerAudioUrl = $ticketMaintenance->description_manager_audio_url;
+
+        if ($hasNewDescription || $hasNewAudio) {
+            $descriptionManager = $validated['description_manager'] ?? null;
+            $descriptionManagerAudioUrl = $hasNewAudio
+                ? $request->file('description_manager_audio')->store('tickets-maintenance', 'public')
+                : null;
+        }
 
         $ticketMaintenance->update([
             'agent_id' => $validated['agent_id'],
-            'description_manager' => $validated['description_manager'] ?? null,
-            'description_manager_audio_url' => $audioUrl,
+            'description_manager' => $descriptionManager,
+            'description_manager_audio_url' => $descriptionManagerAudioUrl,
             'photo_transferee' => filter_var($validated['photo_transferee'] ?? false, FILTER_VALIDATE_BOOLEAN),
             'date_limite_intervention' => $validated['date_limite_intervention'] ?? null,
             'statut' => TicketMaintenance::STATUT_ASSIGNE,
@@ -252,7 +285,7 @@ class TicketMaintenanceController extends Controller
                 TicketMaintenance::STATUT_A_REFAIRE,
                 TicketMaintenance::STATUT_RESOLU_EN_ATTENTE_VALIDATION,
             ])
-            ->with(['appartement:id,nom,adresse', 'refus', 'messagesAgent.photosSupplementaires'])
+            ->with(['appartement:id,nom,adresse', 'refus', 'messagesAgent.photosSupplementaires', 'rappels'])
             ->latest()
             ->get()
             ->map(fn (TicketMaintenance $ticket) => [
@@ -288,6 +321,11 @@ class TicketMaintenanceController extends Controller
                     'audio_url' => $message->audio_url,
                     'note' => $message->note,
                     'created_at' => $message->created_at,
+                ])->values(),
+                'rappels' => $ticket->rappels->map(fn (TicketMaintenanceRappel $rappel) => [
+                    'id' => $rappel->id,
+                    'message' => $rappel->message,
+                    'created_at' => $rappel->created_at,
                 ])->values(),
             ]);
 
@@ -463,6 +501,40 @@ class TicketMaintenanceController extends Controller
         foreach ($photos->slice(1) as $photoUrl) {
             $message->photosSupplementaires()->create(['photo_url' => $photoUrl]);
         }
+
+        return response()->json($ticketMaintenance->fresh(self::DETAIL_RELATIONS));
+    }
+
+    /**
+     * The other direction from envoyerMessage(): the Manager sends the
+     * currently assigned agent a short text-only reminder on a ticket
+     * that's already on their plate -- typically once it's "en retard",
+     * to nudge them without waiting for the next statut change. No
+     * photo/audio, just words. Requires an agent actually assigned and
+     * still actively working the ticket (assigne/en_cours/a_refaire) --
+     * a rappel makes no sense on an "ouvert" ticket nobody has yet, nor
+     * once the Manager has moved on to validating/refusing the résolution.
+     */
+    public function envoyerRappel(Request $request, TicketMaintenance $ticketMaintenance): JsonResponse
+    {
+        if ($ticketMaintenance->agent_id === null || ! in_array($ticketMaintenance->statut, [
+            TicketMaintenance::STATUT_ASSIGNE,
+            TicketMaintenance::STATUT_EN_COURS,
+            TicketMaintenance::STATUT_A_REFAIRE,
+        ], true)) {
+            return response()->json([
+                'message' => 'Ce ticket n\'a pas d\'agent assigné actif.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'message' => ['required', 'string', 'max:500'],
+        ]);
+
+        $ticketMaintenance->rappels()->create([
+            'manager_id' => $request->user()->id,
+            'message' => $validated['message'],
+        ]);
 
         return response()->json($ticketMaintenance->fresh(self::DETAIL_RELATIONS));
     }

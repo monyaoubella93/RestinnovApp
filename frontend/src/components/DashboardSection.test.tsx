@@ -130,9 +130,9 @@ describe('DashboardSection', () => {
     expect(screen.getByRole('cell', { name: 'Maintenance' })).toBeInTheDocument()
   })
 
-  it('affiche les problèmes signalés avec adresse et badge d\'urgence, cliquable', async () => {
+  it('affiche les problèmes signalés avec adresse et badge d\'urgence, navigue directement vers le ticket', async () => {
     const user = userEvent.setup()
-    const onNavigateToTicketsMaintenance = vi.fn()
+    const onNavigateToTicketDetail = vi.fn()
 
     render(
       <DashboardSection
@@ -140,7 +140,7 @@ describe('DashboardSection', () => {
           ...data,
           problemes_signales: [
             {
-              id: 1,
+              id: 3,
               photo_url: 'tickets-maintenance/photo.jpg',
               description: 'La chasse d\'eau ne fonctionne plus.',
               urgence: 'haute',
@@ -151,7 +151,7 @@ describe('DashboardSection', () => {
         }}
         loading={false}
         error={null}
-        onNavigateToTicketsMaintenance={onNavigateToTicketsMaintenance}
+        onNavigateToTicketDetail={onNavigateToTicketDetail}
       />,
     )
 
@@ -159,7 +159,40 @@ describe('DashboardSection', () => {
     expect(screen.getByText('Haute')).toBeInTheDocument()
 
     await user.click(screen.getByText('12 rue de la Roquette'))
-    expect(onNavigateToTicketsMaintenance).toHaveBeenCalledTimes(1)
+    expect(onNavigateToTicketDetail).toHaveBeenCalledWith(3)
+  })
+
+  // Régression : ce snapshot du Dashboard peut être un peu ancien au moment
+  // du clic -- le ticket peut avoir été assigné entre-temps. La navigation
+  // doit mener au ticket lui-même, jamais à une liste filtrée par son
+  // ancien statut ("ouvert") qui le masquerait silencieusement.
+  it('navigue vers le problème signalé même si son statut a changé depuis le chargement du Dashboard', async () => {
+    const user = userEvent.setup()
+    const onNavigateToTicketDetail = vi.fn()
+
+    render(
+      <DashboardSection
+        data={{
+          ...data,
+          problemes_signales: [
+            {
+              id: 8,
+              photo_url: null,
+              description: 'Fuite au robinet.',
+              urgence: 'haute',
+              statut: 'assigne',
+              appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' },
+            },
+          ],
+        }}
+        loading={false}
+        error={null}
+        onNavigateToTicketDetail={onNavigateToTicketDetail}
+      />,
+    )
+
+    await user.click(screen.getByText('12 rue de la Roquette'))
+    expect(onNavigateToTicketDetail).toHaveBeenCalledWith(8)
   })
 
   it('affiche un message quand aucun problème n\'est signalé', () => {
@@ -204,9 +237,9 @@ describe('DashboardSection', () => {
     expect(screen.getByText('Aucun ménage en attente.')).toBeInTheDocument()
   })
 
-  it('affiche les résolutions à valider avec adresse et coût, cliquable', async () => {
+  it('affiche les résolutions à valider avec adresse et coût, navigue directement vers le ticket', async () => {
     const user = userEvent.setup()
-    const onNavigateToResolutionsAValider = vi.fn()
+    const onNavigateToTicketDetail = vi.fn()
 
     render(
       <DashboardSection
@@ -214,7 +247,7 @@ describe('DashboardSection', () => {
           ...data,
           resolutions_a_valider: [
             {
-              id: 1,
+              id: 6,
               photo_apres: 'tickets-maintenance/apres.jpg',
               cout_reparation: '45.50',
               description_manager: 'Changer le joint du robinet.',
@@ -225,7 +258,7 @@ describe('DashboardSection', () => {
         }}
         loading={false}
         error={null}
-        onNavigateToResolutionsAValider={onNavigateToResolutionsAValider}
+        onNavigateToTicketDetail={onNavigateToTicketDetail}
       />,
     )
 
@@ -233,7 +266,40 @@ describe('DashboardSection', () => {
     expect(screen.getByText('45.50 MAD')).toBeInTheDocument()
 
     await user.click(screen.getByText('12 rue de la Roquette'))
-    expect(onNavigateToResolutionsAValider).toHaveBeenCalledTimes(1)
+    expect(onNavigateToTicketDetail).toHaveBeenCalledWith(6)
+  })
+
+  // Régression : le Manager (ou un autre) peut avoir déjà validé/refusé
+  // cette résolution depuis un autre écran juste avant le clic -- la
+  // navigation doit mener au ticket, pas à une liste filtrée par
+  // "resolu_en_attente_validation" qui ne le contiendrait plus.
+  it('navigue vers la résolution à valider même si son statut a changé depuis le chargement du Dashboard', async () => {
+    const user = userEvent.setup()
+    const onNavigateToTicketDetail = vi.fn()
+
+    render(
+      <DashboardSection
+        data={{
+          ...data,
+          resolutions_a_valider: [
+            {
+              id: 9,
+              photo_apres: 'tickets-maintenance/apres.jpg',
+              cout_reparation: '20',
+              description_manager: null,
+              statut: 'resolu',
+              appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' },
+            },
+          ],
+        }}
+        loading={false}
+        error={null}
+        onNavigateToTicketDetail={onNavigateToTicketDetail}
+      />,
+    )
+
+    await user.click(screen.getByText('12 rue de la Roquette'))
+    expect(onNavigateToTicketDetail).toHaveBeenCalledWith(9)
   })
 
   it('affiche un message quand aucune résolution n\'est à valider', () => {

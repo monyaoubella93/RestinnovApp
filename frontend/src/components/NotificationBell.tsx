@@ -25,10 +25,15 @@ const ALERTE_NIVEAU_STYLES: Record<MaintenanceAlerteNiveau, string> = {
 
 interface NotificationBellProps {
   onNavigateToSejour: (sejourId: number) => void
-  onNavigateToTicketsMaintenance: () => void
+  // Goes straight to the specific ticket, not a statut-filtered list: a
+  // "problème signalé" or maintenance alerte may no longer be in the
+  // statut it had when the notification was raised (e.g. the agent has
+  // since taken it "en cours"), and a fixed statut filter would otherwise
+  // hide it entirely, leaving an unexplained empty list.
+  onNavigateToTicketDetail: (ticketId: number) => void
 }
 
-export function NotificationBell({ onNavigateToSejour, onNavigateToTicketsMaintenance }: NotificationBellProps) {
+export function NotificationBell({ onNavigateToSejour, onNavigateToTicketDetail }: NotificationBellProps) {
   const [data, setData] = useState<NotificationsData | null>(null)
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -162,7 +167,7 @@ export function NotificationBell({ onNavigateToSejour, onNavigateToTicketsMainte
                           type="button"
                           onClick={() => {
                             setOpen(false)
-                            onNavigateToTicketsMaintenance()
+                            onNavigateToTicketDetail(probleme.id)
                           }}
                           className="w-full rounded-md px-1 py-2 text-left text-sm text-red-900 hover:bg-red-100"
                         >
@@ -191,7 +196,7 @@ export function NotificationBell({ onNavigateToSejour, onNavigateToTicketsMainte
                           type="button"
                           onClick={() => {
                             setOpen(false)
-                            onNavigateToTicketsMaintenance()
+                            onNavigateToTicketDetail(alerte.ticket_maintenance_id)
                           }}
                           className="w-full rounded-md px-1 py-2 text-left text-sm text-gray-900 hover:bg-gray-100"
                         >

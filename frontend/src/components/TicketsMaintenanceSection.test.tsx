@@ -185,6 +185,18 @@ function mockFetch(tickets: TicketMaintenance[], agents: Agent[]) {
       return new Response(JSON.stringify(currentTickets.find((t) => t.id === id)), { status: 200 })
     }
 
+    const rappelMatch = url.pathname.match(/^\/api\/tickets-maintenance\/(\d+)\/rappel$/)
+    if (rappelMatch && method === 'POST') {
+      const id = Number(rappelMatch[1])
+      const body = JSON.parse(init!.body as string) as { message: string }
+      currentTickets = currentTickets.map((t) =>
+        t.id === id
+          ? { ...t, rappels: [...(t.rappels ?? []), { id: (t.rappels?.length ?? 0) + 1, message: body.message, created_at: '2026-08-12T09:00:00Z' }] }
+          : t,
+      )
+      return new Response(JSON.stringify(currentTickets.find((t) => t.id === id)), { status: 200 })
+    }
+
     throw new Error(`Unhandled request: ${method} ${url.pathname}`)
   })
 }
@@ -806,5 +818,146 @@ describe('TicketsMaintenanceSection', () => {
     await user.selectOptions(screen.getByLabelText(/^statut$/i), 'resolu')
 
     await waitFor(() => expect(screen.getByText('1 ticket')).toBeInTheDocument())
+  })
+
+  // --- Ticket en retard : rappel + réassignation ---
+
+  it('ne propose ni rappel ni réassignation pour un ticket assigné dans les temps', async () => {
+    const user = userEvent.setup()
+    const ticket = ticketFixture({ statut: 'assigne', agent_id: 5, agent: agentFixture(), est_en_retard: false })
+    renderSection([ticket], [agentFixture()])
+
+    await expandTicket(user, 'Le robinet fuit.')
+
+    expect(screen.queryByRole('button', { name: /envoyer un rappel/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /réassigner/i })).not.toBeInTheDocument()
+  })
+
+  it('propose "Envoyer un rappel" et "Réassigner" pour un ticket assigné en retard', async () => {
+    const user = userEvent.setup()
+    const ticket = ticketFixture({ statut: 'assigne', agent_id: 5, agent: agentFixture(), est_en_retard: true })
+    renderSection([ticket], [agentFixture()])
+
+    await expandTicket(user, 'Le robinet fuit.')
+
+    expect(screen.getByRole('button', { name: /envoyer un rappel/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /réassigner/i })).toBeInTheDocument()
+  })
+
+  it('propose le rappel et la réassignation pour un ticket en_cours ou a_refaire en retard, pas pour un ticket résolu', async () => {
+    const user = userEvent.setup()
+    renderSection(
+      [
+        ticketFixture({ id: 1, statut: 'en_cours', agent_id: 5, agent: agentFixture(), est_en_retard: true, description: 'Ticket en cours' }),
+        ticketFixture({ id: 2, statut: 'a_refaire', agent_id: 5, agent: agentFixture(), est_en_retard: true, description: 'Ticket à refaire' }),
+        ticketFixture({ id: 3, statut: 'resolu', agent_id: 5, agent: agentFixture(), est_en_retard: false, description: 'Ticket résolu' }),
+      ],
+      [agentFixture()],
+    )
+
+    await expandTicket(user, 'Ticket en cours')
+    expect(screen.getByRole('button', { name: /envoyer un rappel/i })).toBeInTheDocument()
+    await expandTicket(user, 'Ticket en cours')
+
+    await expandTicket(user, 'Ticket à refaire')
+    expect(screen.getByRole('button', { name: /envoyer un rappel/i })).toBeInTheDocument()
+    await expandTicket(user, 'Ticket à refaire')
+
+    await expandTicket(user, 'Ticket résolu')
+    expect(screen.queryByRole('button', { name: /envoyer un rappel/i })).not.toBeInTheDocument()
+  })
+
+  it('envoie un rappel à l\'agent et l\'affiche dans l\'historique des rappels', async () => {
+    const user = userEvent.setup()
+    const ticket = ticketFixture({ statut: 'assigne', agent_id: 5, agent: agentFixture(), est_en_retard: true })
+    globalThis.fetch = mockFetch([ticket], [agentFixture()]) as typeof fetch
+    render(<TicketsMaintenanceSection appartements={APPARTEMENTS} />)
+    const fetchMock = globalThis.fetch as ReturnType<typeof mockFetch>
+
+    await expandTicket(user, 'Le robinet fuit.')
+    await user.click(screen.getByRole('button', { name: /envoyer un rappel/i }))
+    await user.type(screen.getByLabelText(/message du rappel/i), 'Merci de faire avancer ce ticket.')
+    await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input]) => String(input).includes('/rappel'))
+      expect(call).toBeDefined()
+      const body = JSON.parse(call![1]!.body as string)
+      expect(body).toEqual({ message: 'Merci de faire avancer ce ticket.' })
+    })
+
+    expect(await screen.findByText('Rappels envoyés')).toBeInTheDocument()
+    expect(screen.getByText('Merci de faire avancer ce ticket.')).toBeInTheDocument()
+  })
+
+  it('affiche l\'historique des rappels déjà envoyés', async () => {
+    const user = userEvent.setup()
+    const ticket = ticketFixture({
+      statut: 'assigne',
+      agent_id: 5,
+      agent: agentFixture(),
+      est_en_retard: true,
+      rappels: [{ id: 1, message: 'Premier rappel.', created_at: '2026-08-11T09:00:00Z' }],
+    })
+    renderSection([ticket], [agentFixture()])
+
+    await expandTicket(user, 'Le robinet fuit.')
+
+    expect(screen.getByText('Rappels envoyés')).toBeInTheDocument()
+    expect(screen.getByText('Premier rappel.')).toBeInTheDocument()
+  })
+
+  it('réassigne un ticket en retard à un autre agent, sans perdre la description déjà rédigée', async () => {
+    const user = userEvent.setup()
+    const agentActuel = agentFixture({ id: 5, nom: 'Karim B.' })
+    const nouvelAgent = agentFixture({ id: 6, nom: 'Yassine T.' })
+    const ticket = ticketFixture({
+      statut: 'assigne',
+      agent_id: 5,
+      agent: agentActuel,
+      est_en_retard: true,
+      description_manager: 'Changer le joint du robinet.',
+    })
+    globalThis.fetch = mockFetch([ticket], [agentActuel, nouvelAgent]) as typeof fetch
+    render(<TicketsMaintenanceSection appartements={APPARTEMENTS} />)
+    const fetchMock = globalThis.fetch as ReturnType<typeof mockFetch>
+
+    await expandTicket(user, 'Le robinet fuit.')
+    await user.click(screen.getByRole('button', { name: /réassigner/i }))
+
+    // The currently assigned agent is not offered again as a target.
+    const agentSelect = screen.getByLabelText(/^agent de maintenance$/i)
+    expect(within(agentSelect).queryByRole('option', { name: 'Karim B.' })).not.toBeInTheDocument()
+    expect(within(agentSelect).getByRole('option', { name: 'Yassine T.' })).toBeInTheDocument()
+
+    // The existing description is pre-filled -- submitting without
+    // retyping it still carries it forward (never sent blank).
+    expect(screen.getByLabelText(/instruction écrite pour l'agent/i)).toHaveValue('Changer le joint du robinet.')
+
+    await user.selectOptions(agentSelect, String(nouvelAgent.id))
+    await user.click(screen.getByRole('button', { name: /^réassigner$/i }))
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input]) => String(input).includes('/assigner'))
+      expect(call).toBeDefined()
+      const body = call![1]!.body as FormData
+      expect(body.get('agent_id')).toBe(String(nouvelAgent.id))
+      expect(body.get('description_manager')).toBe('Changer le joint du robinet.')
+    })
+  })
+
+  it('annule la réassignation sans rien envoyer', async () => {
+    const user = userEvent.setup()
+    const ticket = ticketFixture({ statut: 'assigne', agent_id: 5, agent: agentFixture(), est_en_retard: true })
+    renderSection([ticket], [agentFixture(), agentFixture({ id: 6, nom: 'Yassine T.' })])
+
+    await expandTicket(user, 'Le robinet fuit.')
+    await user.click(screen.getByRole('button', { name: /réassigner/i }))
+    expect(screen.getByLabelText(/^agent de maintenance$/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^annuler$/i }))
+
+    expect(screen.queryByLabelText(/^agent de maintenance$/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /réassigner/i })).toBeInTheDocument()
   })
 })

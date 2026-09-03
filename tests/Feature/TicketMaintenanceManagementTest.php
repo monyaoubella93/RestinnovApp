@@ -279,18 +279,125 @@ class TicketMaintenanceManagementTest extends TestCase
         ]);
     }
 
-    public function test_assigner_is_rejected_when_the_ticket_is_already_assigned(): void
+    public function test_assigner_reassigns_an_already_assigned_ticket_to_a_different_agent(): void
     {
         $agent = $this->agentMaintenance();
-        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id]);
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id, 'description_manager' => 'Changer le joint.']);
         $autreAgent = $this->agentMaintenance(['nom' => 'Yassine T.']);
 
         $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/assigner", [
             'agent_id' => $autreAgent->id,
         ]);
 
+        $response->assertOk();
+        $response->assertJsonPath('statut', 'assigne');
+        $response->assertJsonPath('agent.id', $autreAgent->id);
+        $this->assertDatabaseHas('tickets_maintenance', ['id' => $ticket->id, 'agent_id' => $autreAgent->id, 'statut' => 'assigne']);
+    }
+
+    public function test_assigner_reassignment_preserves_the_existing_description_when_none_is_resubmitted(): void
+    {
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket([
+            'statut' => 'assigne',
+            'agent_id' => $agent->id,
+            'description_manager' => 'Changer le joint du robinet.',
+        ]);
+        $autreAgent = $this->agentMaintenance(['nom' => 'Yassine T.']);
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/assigner", [
+            'agent_id' => $autreAgent->id,
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('tickets_maintenance', [
+            'id' => $ticket->id,
+            'agent_id' => $autreAgent->id,
+            'description_manager' => 'Changer le joint du robinet.',
+        ]);
+    }
+
+    public function test_assigner_reassignment_replaces_the_description_when_a_new_one_is_submitted(): void
+    {
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket([
+            'statut' => 'assigne',
+            'agent_id' => $agent->id,
+            'description_manager' => 'Ancienne description.',
+        ]);
+        $autreAgent = $this->agentMaintenance(['nom' => 'Yassine T.']);
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/assigner", [
+            'agent_id' => $autreAgent->id,
+            'description_manager' => 'Nouvelle description pour le nouvel agent.',
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('tickets_maintenance', [
+            'id' => $ticket->id,
+            'description_manager' => 'Nouvelle description pour le nouvel agent.',
+        ]);
+    }
+
+    public function test_assigner_reassigns_an_en_cours_ticket_back_to_assigne_for_the_new_agent(): void
+    {
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'en_cours', 'agent_id' => $agent->id, 'description_manager' => 'Description.']);
+        $autreAgent = $this->agentMaintenance(['nom' => 'Yassine T.']);
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/assigner", [
+            'agent_id' => $autreAgent->id,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('statut', 'assigne');
+    }
+
+    public function test_assigner_reassigns_an_a_refaire_ticket(): void
+    {
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'a_refaire', 'agent_id' => $agent->id, 'description_manager' => 'Description.']);
+        $autreAgent = $this->agentMaintenance(['nom' => 'Yassine T.']);
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/assigner", [
+            'agent_id' => $autreAgent->id,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('statut', 'assigne');
+        $response->assertJsonPath('agent.id', $autreAgent->id);
+    }
+
+    public function test_reassigning_a_ticket_removes_it_from_the_previous_agents_mes_tickets(): void
+    {
+        $agent = $this->agentMaintenance();
+        $ticket = $this->ticket(['statut' => 'assigne', 'agent_id' => $agent->id, 'description_manager' => 'Description.']);
+        $autreAgent = $this->agentMaintenance(['nom' => 'Yassine T.']);
+
+        $this->patchJson("/api/tickets-maintenance/{$ticket->id}/assigner", ['agent_id' => $autreAgent->id])->assertOk();
+
+        Sanctum::actingAs($agent, ['*']);
+        $ancienAgentResponse = $this->getJson('/api/tickets-maintenance/mes-tickets');
+        $ancienAgentResponse->assertOk();
+        $ancienAgentResponse->assertJsonCount(0);
+
+        Sanctum::actingAs($autreAgent, ['*']);
+        $nouvelAgentResponse = $this->getJson('/api/tickets-maintenance/mes-tickets');
+        $nouvelAgentResponse->assertOk();
+        $nouvelAgentResponse->assertJsonCount(1);
+        $nouvelAgentResponse->assertJsonPath('0.id', $ticket->id);
+    }
+
+    public function test_assigner_is_rejected_when_the_ticket_is_pending_validation(): void
+    {
+        $ticket = $this->ticket(['statut' => 'resolu_en_attente_validation']);
+        $agent = $this->agentMaintenance();
+
+        $response = $this->patchJson("/api/tickets-maintenance/{$ticket->id}/assigner", [
+            'agent_id' => $agent->id,
+        ]);
+
         $response->assertStatus(422);
-        $this->assertDatabaseHas('tickets_maintenance', ['id' => $ticket->id, 'agent_id' => $agent->id]);
     }
 
     public function test_assigner_is_rejected_when_the_ticket_is_already_resolu(): void
