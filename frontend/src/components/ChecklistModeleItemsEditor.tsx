@@ -148,6 +148,7 @@ export function ChecklistModeleItemsEditor({
             id={`nouvel_item_photo_${checklistModele.id}`}
             type="file"
             accept="image/*"
+            capture="environment"
             aria-label={`Photo de référence pour le nouvel item de ${checklistModele.nom}`}
             onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
             className="block text-sm"

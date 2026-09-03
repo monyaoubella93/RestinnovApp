@@ -543,7 +543,7 @@ describe('TicketsMaintenanceSection', () => {
     })
   })
 
-  it('le champ photo du motif de refus propose caméra et galerie (pas de restriction forcée)', async () => {
+  it('le champ photo du motif de refus force la caméra -- accept="image/*" capture="environment"', async () => {
     const user = userEvent.setup()
     const ticket = ticketFixture({ statut: 'resolu_en_attente_validation' })
     globalThis.fetch = mockFetch([ticket], []) as typeof fetch
@@ -554,7 +554,7 @@ describe('TicketsMaintenanceSection', () => {
 
     const input = screen.getByLabelText(/photo du motif de refus/i)
     expect(input).toHaveAttribute('accept', 'image/*')
-    expect(input).not.toHaveAttribute('capture')
+    expect(input).toHaveAttribute('capture', 'environment')
   })
 
   it('filtre les tickets par urgence', async () => {

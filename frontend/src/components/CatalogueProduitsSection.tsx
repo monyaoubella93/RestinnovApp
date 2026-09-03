@@ -117,6 +117,7 @@ export function CatalogueProduitsSection({ catalogue, onCreate }: CatalogueProdu
             id="nouveau_produit_photo"
             type="file"
             accept="image/*"
+            capture="environment"
             onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
             className="mt-1 block text-sm"
           />

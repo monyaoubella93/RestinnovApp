@@ -96,7 +96,7 @@ describe('ChecklistModeleItemsEditor', () => {
     expect(onAddItem).toHaveBeenCalledWith(1, 'Nettoyer la salle de bain', 'تنظيف الحمام', null)
   })
 
-  it('la photo de référence propose caméra et galerie -- accept="image/*", pas de capture forcée', () => {
+  it('la photo de référence force la caméra -- accept="image/*" capture="environment"', () => {
     render(
       <ChecklistModeleItemsEditor
         checklistModele={modeleFixture()}
@@ -108,7 +108,7 @@ describe('ChecklistModeleItemsEditor', () => {
 
     const input = screen.getByLabelText(/photo de référence pour le nouvel item/i)
     expect(input).toHaveAttribute('accept', 'image/*')
-    expect(input).not.toHaveAttribute('capture')
+    expect(input).toHaveAttribute('capture', 'environment')
   })
 
   it('inclut la photo de référence sélectionnée à l\'ajout', async () => {

@@ -20,7 +20,7 @@ describe('PhotoPreuveSection', () => {
     expect(screen.getByRole('heading', { name: /ajouter une photo de mon travail/i })).toBeInTheDocument()
   })
 
-  it('propose caméra et galerie -- accept="image/*", pas de capture forcée', async () => {
+  it('force la caméra -- accept="image/*" capture="environment"', async () => {
     const user = userEvent.setup()
     render(<PhotoPreuveSection missionMenageId={10} onAjouter={vi.fn()} />)
 
@@ -28,7 +28,7 @@ describe('PhotoPreuveSection', () => {
 
     const input = screen.getByLabelText(/photos de preuve de travail/i)
     expect(input).toHaveAttribute('accept', 'image/*')
-    expect(input).not.toHaveAttribute('capture')
+    expect(input).toHaveAttribute('capture', 'environment')
   })
 
   it('permet de sélectionner plusieurs photos et affiche un aperçu de chacune', async () => {

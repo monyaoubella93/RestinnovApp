@@ -84,12 +84,12 @@ describe('NouvelAppartementForm', () => {
     expect(await screen.findByText('photo.jpg')).toBeInTheDocument()
   })
 
-  it('la photo principale propose caméra et galerie -- accept="image/*", pas de capture forcée', () => {
+  it('la photo principale force la caméra -- accept="image/*" capture="environment"', () => {
     render(<NouvelAppartementForm {...baseProps()} />)
 
     const input = screen.getByLabelText('Photo principale', { selector: 'input' })
     expect(input).toHaveAttribute('accept', 'image/*')
-    expect(input).not.toHaveAttribute('capture')
+    expect(input).toHaveAttribute('capture', 'environment')
   })
 
   it('permet de créer un nouveau modèle de checklist à la volée et le sélectionne', async () => {

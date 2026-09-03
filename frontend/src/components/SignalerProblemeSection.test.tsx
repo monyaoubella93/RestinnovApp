@@ -54,7 +54,7 @@ describe('SignalerProblemeSection', () => {
     expect(screen.getByRole('heading', { name: /signaler un problème/i })).toBeInTheDocument()
   })
 
-  it('propose caméra et galerie -- accept="image/*", pas de capture forcée', async () => {
+  it('force la caméra -- accept="image/*" capture="environment"', async () => {
     const user = userEvent.setup()
     render(<SignalerProblemeSection missionMenageId={10} onSignaler={vi.fn()} />)
 
@@ -62,7 +62,7 @@ describe('SignalerProblemeSection', () => {
 
     const input = screen.getByLabelText(/photo du problème/i)
     expect(input).toHaveAttribute('accept', 'image/*')
-    expect(input).not.toHaveAttribute('capture')
+    expect(input).toHaveAttribute('capture', 'environment')
   })
 
   it('affiche un aperçu après avoir pris une photo', async () => {
