@@ -11,8 +11,13 @@ interface DashboardSectionProps {
   onNavigateToSejour?: (sejourId: number) => void
   onNavigateToSejoursListe?: (statut?: SejourStatut) => void
   onCheckout?: (sejourId: number) => Promise<void>
-  onNavigateToTicketsMaintenance?: () => void
-  onNavigateToResolutionsAValider?: () => void
+  // Goes straight to the specific ticket, not a statut-filtered list: by
+  // the time the Manager clicks, the ticket may no longer be in the
+  // statut it had when this Dashboard snapshot was fetched (e.g. an
+  // "ouvert" problème already assigned, or a résolution already
+  // validated/refusée from another screen) -- a fixed statut filter would
+  // otherwise hide it entirely, leaving an unexplained empty list.
+  onNavigateToTicketDetail?: (ticketId: number) => void
 }
 
 // Canonical séjour statut labels/colors, kept identical to SejourCard.tsx
@@ -161,8 +166,7 @@ export function DashboardSection({
   onNavigateToSejour,
   onNavigateToSejoursListe,
   onCheckout,
-  onNavigateToTicketsMaintenance,
-  onNavigateToResolutionsAValider,
+  onNavigateToTicketDetail,
 }: DashboardSectionProps) {
   if (loading) {
     return <p className="text-sm text-ink-tertiary">Chargement du dashboard...</p>
@@ -243,7 +247,7 @@ export function DashboardSection({
                   <li key={probleme.id}>
                     <button
                       type="button"
-                      onClick={() => onNavigateToTicketsMaintenance?.()}
+                      onClick={() => onNavigateToTicketDetail?.(probleme.id)}
                       className="flex w-full items-center justify-between gap-3 rounded-[10px] border border-danger-border bg-[#FDF4F3] px-2.5 py-2.5 text-left transition-colors hover:bg-danger-bg"
                     >
                       <p className="truncate text-[13px] font-semibold text-ink">
@@ -274,7 +278,7 @@ export function DashboardSection({
                   <li key={resolution.id}>
                     <button
                       type="button"
-                      onClick={() => onNavigateToResolutionsAValider?.()}
+                      onClick={() => onNavigateToTicketDetail?.(resolution.id)}
                       className="flex w-full items-center gap-2.5 rounded-[10px] border border-violet-border bg-[#F8F5FD] px-2.5 py-2.5 text-left transition-colors hover:bg-violet-bg"
                     >
                       <span className="h-9 w-9 shrink-0 rounded-lg bg-violet-border" aria-hidden="true" />

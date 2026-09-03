@@ -36,7 +36,7 @@ describe('NotificationBell', () => {
   it("n'affiche aucun badge quand il n'y a rien en attente", async () => {
     globalThis.fetch = mockFetch(notificationsFixture()) as typeof fetch
 
-    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketDetail={vi.fn()} />)
 
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
     expect(screen.queryByTestId('notification-badge')).not.toBeInTheDocument()
@@ -53,7 +53,7 @@ describe('NotificationBell', () => {
       }),
     ) as typeof fetch
 
-    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketDetail={vi.fn()} />)
 
     const badge = await screen.findByTestId('notification-badge')
     expect(badge).toHaveTextContent('2')
@@ -74,7 +74,7 @@ describe('NotificationBell', () => {
       }),
     ) as typeof fetch
 
-    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketDetail={vi.fn()} />)
 
     const badge = await screen.findByTestId('notification-badge')
     expect(badge).toHaveTextContent('2')
@@ -91,7 +91,7 @@ describe('NotificationBell', () => {
       }),
     ) as typeof fetch
 
-    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketDetail={vi.fn()} />)
 
     const badge = await screen.findByTestId('notification-badge')
     expect(badge).toHaveTextContent('1')
@@ -108,7 +108,7 @@ describe('NotificationBell', () => {
       }),
     ) as typeof fetch
 
-    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketDetail={vi.fn()} />)
 
     const badge = await screen.findByTestId('notification-badge')
     expect(badge).toHaveClass('bg-warning')
@@ -124,7 +124,7 @@ describe('NotificationBell', () => {
       }),
     ) as typeof fetch
 
-    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketDetail={vi.fn()} />)
 
     const badge = await screen.findByTestId('notification-badge')
     expect(badge).toHaveClass('bg-danger')
@@ -143,7 +143,7 @@ describe('NotificationBell', () => {
       }),
     ) as typeof fetch
 
-    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketDetail={vi.fn()} />)
 
     await screen.findByTestId('notification-badge')
     await user.click(screen.getByRole('button', { name: 'Notifications' }))
@@ -161,25 +161,32 @@ describe('NotificationBell', () => {
     expect(rappelLabel).toHaveClass('bg-brand-pale', 'text-brand')
   })
 
-  it('le clic sur une alerte de maintenance navigue vers les tickets de maintenance et ferme le panneau', async () => {
+  it('le clic sur une alerte de maintenance navigue directement vers le ticket concerné et ferme le panneau', async () => {
     const user = userEvent.setup()
-    const onNavigateToTicketsMaintenance = vi.fn()
+    const onNavigateToTicketDetail = vi.fn()
     globalThis.fetch = mockFetch(
       notificationsFixture({
         alertes_maintenance_count: 1,
+        // The alerte's own id (99) is deliberately distinct from
+        // ticket_maintenance_id (7) -- this asserts the navigation uses
+        // the ticket's id, not the alerte's.
         alertes_maintenance: [
-          { id: 1, niveau: 'urgente', message: 'Le ticket MNT-0001 est en retard.', ticket_maintenance_id: 1, appartement: null },
+          { id: 99, niveau: 'urgente', message: 'Le ticket MNT-0001 est en retard.', ticket_maintenance_id: 7, appartement: null },
         ],
       }),
     ) as typeof fetch
 
-    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={onNavigateToTicketsMaintenance} />)
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketDetail={onNavigateToTicketDetail} />)
 
     await screen.findByTestId('notification-badge')
     await user.click(screen.getByRole('button', { name: 'Notifications' }))
     await user.click(screen.getByText('Le ticket MNT-0001 est en retard.'))
 
-    expect(onNavigateToTicketsMaintenance).toHaveBeenCalledTimes(1)
+    // Direct navigation to the ticket itself, regardless of its current
+    // statut -- not a statut-filtered list that could hide it if its
+    // statut changed since the alerte was raised.
+    expect(onNavigateToTicketDetail).toHaveBeenCalledWith(7)
+    expect(onNavigateToTicketDetail).toHaveBeenCalledTimes(1)
     expect(screen.queryByText('Alertes de maintenance')).not.toBeInTheDocument()
   })
 
@@ -198,7 +205,7 @@ describe('NotificationBell', () => {
       }),
     ) as typeof fetch
 
-    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketDetail={vi.fn()} />)
 
     await screen.findByTestId('notification-badge')
     await user.click(screen.getByRole('button', { name: 'Notifications' }))
@@ -226,7 +233,7 @@ describe('NotificationBell', () => {
       }),
     ) as typeof fetch
 
-    render(<NotificationBell onNavigateToSejour={onNavigateToSejour} onNavigateToTicketsMaintenance={vi.fn()} />)
+    render(<NotificationBell onNavigateToSejour={onNavigateToSejour} onNavigateToTicketDetail={vi.fn()} />)
 
     await screen.findByTestId('notification-badge')
     await user.click(screen.getByRole('button', { name: 'Notifications' }))
@@ -236,32 +243,62 @@ describe('NotificationBell', () => {
     expect(screen.queryByText('Ménages à valider')).not.toBeInTheDocument()
   })
 
-  it('le clic sur une ligne "problème signalé" navigue vers les tickets de maintenance', async () => {
+  it('le clic sur une ligne "problème signalé" navigue directement vers ce ticket', async () => {
     const user = userEvent.setup()
-    const onNavigateToTicketsMaintenance = vi.fn()
+    const onNavigateToTicketDetail = vi.fn()
     globalThis.fetch = mockFetch(
       notificationsFixture({
         problemes_signales_count: 1,
         problemes_signales: [
-          { id: 1, urgence: 'haute', statut: 'ouvert', appartement: { id: 2, nom: 'Zenith', adresse: '5 avenue de la Paix' } },
+          { id: 5, urgence: 'haute', statut: 'ouvert', appartement: { id: 2, nom: 'Zenith', adresse: '5 avenue de la Paix' } },
         ],
       }),
     ) as typeof fetch
 
-    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={onNavigateToTicketsMaintenance} />)
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketDetail={onNavigateToTicketDetail} />)
 
     await screen.findByTestId('notification-badge')
     await user.click(screen.getByRole('button', { name: 'Notifications' }))
     await user.click(screen.getByText('Zenith — 5 avenue de la Paix'))
 
-    expect(onNavigateToTicketsMaintenance).toHaveBeenCalledTimes(1)
+    expect(onNavigateToTicketDetail).toHaveBeenCalledWith(5)
+  })
+
+  // Régression : le ticket peut avoir changé de statut entre le moment où
+  // la notification a été émise et le clic (ex. l'agent l'a pris en
+  // cours) -- la navigation doit toujours mener au ticket, jamais à une
+  // liste filtrée par l'ancien statut qui le masquerait silencieusement.
+  it("navigue vers le ticket même si son statut a changé depuis l'émission de la notification", async () => {
+    const user = userEvent.setup()
+    const onNavigateToTicketDetail = vi.fn()
+    globalThis.fetch = mockFetch(
+      notificationsFixture({
+        problemes_signales_count: 1,
+        // "Problèmes signalés" only ever lists "ouvert" tickets at fetch
+        // time, but by the time the user clicks, the same ticket may well
+        // have already been assigned -- the notification payload here is
+        // stale relative to `statut`, exactly like it would be in
+        // production between two fetch cycles.
+        problemes_signales: [
+          { id: 12, urgence: 'haute', statut: 'assigne', appartement: { id: 2, nom: 'Zenith', adresse: '5 avenue de la Paix' } },
+        ],
+      }),
+    ) as typeof fetch
+
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketDetail={onNavigateToTicketDetail} />)
+
+    await screen.findByTestId('notification-badge')
+    await user.click(screen.getByRole('button', { name: 'Notifications' }))
+    await user.click(screen.getByText('Zenith — 5 avenue de la Paix'))
+
+    expect(onNavigateToTicketDetail).toHaveBeenCalledWith(12)
   })
 
   it('affiche un état vide simple quand rien n\'est en attente', async () => {
     const user = userEvent.setup()
     globalThis.fetch = mockFetch(notificationsFixture()) as typeof fetch
 
-    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />)
+    render(<NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketDetail={vi.fn()} />)
 
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
     await user.click(screen.getByRole('button', { name: 'Notifications' }))
@@ -275,7 +312,7 @@ describe('NotificationBell', () => {
 
     render(
       <div>
-        <NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketsMaintenance={vi.fn()} />
+        <NotificationBell onNavigateToSejour={vi.fn()} onNavigateToTicketDetail={vi.fn()} />
         <div data-testid="outside">Ailleurs</div>
       </div>,
     )
