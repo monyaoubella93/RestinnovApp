@@ -165,6 +165,16 @@ class TicketMaintenance extends Model
     }
 
     /**
+     * The Manager's own short text reminders to the assigned agent -- the
+     * other direction from messagesAgent(). Chronological, oldest first,
+     * same reasoning as messagesAgent(): a conversation reads top-to-bottom.
+     */
+    public function rappels(): HasMany
+    {
+        return $this->hasMany(TicketMaintenanceRappel::class)->orderBy('created_at');
+    }
+
+    /**
      * photo_url stays the primary/first signalement photo (everything that
      * already reads it -- the "photo transférée" flow, the Dashboard
      * thumbnail -- keeps working unchanged); any further photos the agent

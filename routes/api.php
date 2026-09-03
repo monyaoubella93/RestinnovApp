@@ -86,6 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/tickets-maintenance', [TicketMaintenanceController::class, 'index']);
         Route::get('/tickets-maintenance/par-appartement', [TicketMaintenanceController::class, 'parAppartement']);
         Route::patch('/tickets-maintenance/{ticketMaintenance}/assigner', [TicketMaintenanceController::class, 'assigner']);
+        Route::post('/tickets-maintenance/{ticketMaintenance}/rappel', [TicketMaintenanceController::class, 'envoyerRappel']);
         Route::patch('/tickets-maintenance/{ticketMaintenance}/valider-resolution', [TicketMaintenanceController::class, 'validerResolution']);
         Route::patch('/tickets-maintenance/{ticketMaintenance}/refuser-resolution', [TicketMaintenanceController::class, 'refuserResolution']);
     });

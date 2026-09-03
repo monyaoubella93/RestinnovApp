@@ -185,6 +185,7 @@
       "prixRequis": "Indiquez le prix de la réparation.",
       "resoudre": "Marquer résolu",
       "photoTooLarge": "Photo trop lourde, réessayez avec une photo plus légère.",
+      "rappelBanner": "Rappel du Manager",
       "message": {
         "button": "Envoyer un message au Manager",
         "openCamera": "Ouvrir l'appareil photo",

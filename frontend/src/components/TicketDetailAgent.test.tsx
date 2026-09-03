@@ -18,6 +18,7 @@ const TICKET: MonTicketMaintenance = {
   appartement: { id: 1, nom: 'Loft Bastille', adresse: '12 rue de la Roquette' },
   refus: [],
   messages_agent: [],
+  rappels: [],
 }
 
 function mockFetch() {
@@ -154,6 +155,25 @@ describe('TicketDetailAgent', () => {
 
     expect(document.querySelector('audio')).not.toBeInTheDocument()
     expect(screen.queryByAltText(/photo du problème signalé/i)).not.toBeInTheDocument()
+  })
+
+  it('affiche de façon visible le rappel envoyé par le Manager', () => {
+    render(
+      <TicketDetailAgent
+        ticket={{ ...TICKET, rappels: [{ id: 1, message: 'Merci de faire avancer ce ticket.', created_at: '2026-08-11T09:00:00Z' }] }}
+        onBack={vi.fn()}
+        onResolu={vi.fn()}
+        onCommence={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('rappel-banner')).toHaveTextContent('Merci de faire avancer ce ticket.')
+  })
+
+  it('n\'affiche pas de bannière de rappel en l\'absence de rappel', () => {
+    render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
+
+    expect(screen.queryByTestId('rappel-banner')).not.toBeInTheDocument()
   })
 
   it('affiche le message audio du Manager quand présent', () => {

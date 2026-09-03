@@ -1020,6 +1020,16 @@ export async function assignerTicketMaintenance(
   return parseJsonOrThrow(response)
 }
 
+export async function envoyerRappelTicketMaintenance(id: number, message: string): Promise<TicketMaintenance> {
+  const response = await fetch(`${API_BASE_URL}/api/tickets-maintenance/${id}/rappel`, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ message }),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
 export async function fetchMesTicketsMaintenance(): Promise<MonTicketMaintenance[]> {
   const response = await fetch(`${API_BASE_URL}/api/tickets-maintenance/mes-tickets`, {
     headers: authHeaders(),

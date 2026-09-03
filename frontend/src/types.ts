@@ -226,6 +226,17 @@ export interface MessageAgentMaintenance {
   created_at: string
 }
 
+/**
+ * The other direction from MessageAgentMaintenance: a short text-only
+ * reminder the Manager sends the assigned agent on a ticket already on
+ * their plate -- no photo/audio, just words.
+ */
+export interface TicketMaintenanceRappel {
+  id: number
+  message: string
+  created_at: string
+}
+
 export interface TicketMaintenanceParAppartement {
   appartement: { id: number; nom: string; adresse: string } | null
   tickets_count: number
@@ -259,6 +270,7 @@ export interface TicketMaintenance {
   mission_origine?: (Omit<MissionMenage, 'sejour'> & { sejour?: Sejour | null }) | null
   refus?: TicketMaintenanceRefus[]
   messages_agent?: MessageAgentMaintenance[]
+  rappels?: TicketMaintenanceRappel[]
   photos_signalement?: PhotoSupplementaire[]
   photos_resolution?: PhotoSupplementaire[]
 }
@@ -285,6 +297,7 @@ export interface MonTicketMaintenance {
   appartement: { id: number; nom: string; adresse: string } | null
   refus: { motif: string | null; motif_audio_url: string | null; motif_photo_url: string | null; vu: boolean; date: string }[]
   messages_agent: MessageAgentMaintenance[]
+  rappels: TicketMaintenanceRappel[]
 }
 
 export type VoyageurType = 'adulte' | 'enfant'

@@ -450,6 +450,20 @@ export function TicketDetailAgent({ ticket, onBack, onResolu, onCommence }: Tick
           </div>
         )}
 
+        {ticket.rappels && ticket.rappels.length > 0 && (
+          <div data-testid="rappel-banner" className="mt-3 space-y-2 rounded-field bg-warning-bg px-3 py-2 text-sm text-warning-text">
+            {ticket.rappels.map((rappel) => (
+              <p key={rappel.id} className="flex items-start gap-2">
+                <span aria-hidden="true">📣</span>
+                <span>
+                  <span className="font-semibold">{t('maintenance.detail.rappelBanner')} : </span>
+                  {rappel.message}
+                </span>
+              </p>
+            ))}
+          </div>
+        )}
+
         {ticket.description_manager && (
           <p className="mt-3 text-sm text-ink-secondary">{ticket.description_manager}</p>
         )}
