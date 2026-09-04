@@ -24,6 +24,7 @@ function releveFixture(overrides: Partial<Releve> = {}): Releve {
     resultat_net: 850,
     montant_proprietaire: 680,
     commission_restinnov: 170,
+    donnees_historiques: false,
     sejours_sans_montant: 0,
     sejours: [],
     frais_menage_detail: [],

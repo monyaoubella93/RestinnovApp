@@ -520,6 +520,8 @@ export interface Releve {
   resultat_net: number
   montant_proprietaire: number
   commission_restinnov: number
+  /** True quand ce mois provient d'un relevé historique importé (releves_mensuels_historiques) plutôt que du calcul en temps réel à partir des séjours. */
+  donnees_historiques: boolean
   /** Séjours historiques importés sans montant_mad connu, inclus dans ce mois -- 0 pour un mois normal. */
   sejours_sans_montant: number
   sejours: ReleveSejour[]
