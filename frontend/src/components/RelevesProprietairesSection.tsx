@@ -225,6 +225,14 @@ export function RelevesProprietairesSection() {
                     </td>
                     <td className="py-2 pr-4 text-right font-mono text-ink-secondary">
                       {formatMontant(releve?.revenus_bruts)}
+                      {releve?.donnees_historiques && (
+                        <span
+                          className="ml-1.5 inline-block rounded-badge bg-brand-pale px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand"
+                          title="Données historiques importées -- ce mois provient du relevé réel importé, pas du calcul en temps réel à partir des séjours"
+                        >
+                          Historique
+                        </span>
+                      )}
                       {!!releve?.sejours_sans_montant && (
                         <span
                           role="img"

@@ -37,6 +37,7 @@ function releveFixture(overrides: Partial<Releve> = {}): Releve {
     resultat_net: 850,
     montant_proprietaire: 680,
     commission_restinnov: 170,
+    donnees_historiques: false,
     sejours_sans_montant: 0,
     sejours: [],
     frais_menage_detail: [],
@@ -140,6 +141,32 @@ describe('RelevesProprietairesSection', () => {
 
     expect(await screen.findByText('Loft Bastille')).toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /montant non renseigné/i })).not.toBeInTheDocument()
+  })
+
+  it('affiche une mention "Historique" quand le mois provient d\'un relevé historique importé', async () => {
+    globalThis.fetch = mockFetch(
+      [appartementFixture()],
+      { 1: releveFixture({ mois: '2025-01', revenus_bruts: 10987.02, donnees_historiques: true, sejours_sans_montant: 0 }) },
+    ) as typeof fetch
+
+    render(<RelevesProprietairesSection />)
+
+    expect(await screen.findByText('Loft Bastille')).toBeInTheDocument()
+    const badge = screen.getByText('Historique')
+    expect(badge).toBeInTheDocument()
+    expect(badge).toHaveAttribute('title', expect.stringContaining('Données historiques importées'))
+    expect(within(screen.getByRole('table')).getByText('10987.02 MAD')).toBeInTheDocument()
+    // The real historical total is known -- no "montant non renseigné" warning alongside it.
+    expect(screen.queryByRole('img', { name: /montant non renseigné/i })).not.toBeInTheDocument()
+  })
+
+  it("n'affiche aucune mention \"Historique\" pour un mois calculé en temps réel", async () => {
+    globalThis.fetch = mockFetch([appartementFixture()], { 1: releveFixture({ donnees_historiques: false }) }) as typeof fetch
+
+    render(<RelevesProprietairesSection />)
+
+    expect(await screen.findByText('Loft Bastille')).toBeInTheDocument()
+    expect(screen.queryByText('Historique')).not.toBeInTheDocument()
   })
 
   it('inclut les charges à la charge de RestInnov dans la colonne Frais', async () => {

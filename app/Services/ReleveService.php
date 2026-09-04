@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Appartement;
 use App\Models\ChargeAppartement;
+use App\Models\ReleveMensuelHistorique;
 use App\Models\ReleveVerrouillage;
 use App\Models\Sejour;
 use Carbon\Carbon;
@@ -124,6 +125,32 @@ class ReleveService
             $montantProprietaire = $resultatNet - $commissionRestinnov;
         }
 
+        // Pre-app months have real, authoritative totals imported from the
+        // DG's own historical spreadsheet (see ReleveHistoriqueImportService)
+        // -- these override the live, séjour-based computation above rather
+        // than combining with it, since the underlying séjours for that
+        // period were imported without a montant_mad and can no longer be
+        // trusted to reconstruct an accurate CA. frais_menage_total/
+        // frais_maintenance_total are zeroed out because the single
+        // historical "charges" figure already stands for everything that
+        // reduced the propriétaire's payout that month.
+        $donneesHistoriques = false;
+        $historique = ReleveMensuelHistorique::where('appartement_id', $appartement->id)
+            ->where('mois', $mois)
+            ->first();
+
+        if ($historique) {
+            $donneesHistoriques = true;
+            $revenusBruts = (float) $historique->ca;
+            $fraisMenageTotal = 0.0;
+            $fraisMaintenanceTotal = 0.0;
+            $chargesRestinnovTotal = round((float) $historique->charges, 2);
+            $resultatNet = $revenusBruts - $chargesRestinnovTotal;
+            $montantProprietaire = (float) $historique->revenu_proprietaire;
+            $commissionRestinnov = (float) $historique->notre_commission;
+            $sejoursSansMontant = 0;
+        }
+
         return [
             'appartement' => [
                 'id' => $appartement->id,
@@ -143,6 +170,7 @@ class ReleveService
             'resultat_net' => round($resultatNet, 2),
             'montant_proprietaire' => round($montantProprietaire, 2),
             'commission_restinnov' => round($commissionRestinnov, 2),
+            'donnees_historiques' => $donneesHistoriques,
             'sejours_sans_montant' => $sejoursSansMontant,
             'sejours' => $sejours->map(fn (Sejour $sejour) => [
                 'id' => $sejour->id,

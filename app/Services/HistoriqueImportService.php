@@ -6,6 +6,7 @@ use App\Models\Appartement;
 use App\Models\Proprietaire;
 use App\Models\Sejour;
 use App\Models\Voyageur;
+use App\Services\Concerns\NormaliseCodeAppartement;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -25,6 +26,8 @@ use Illuminate\Support\Facades\DB;
  */
 class HistoriqueImportService
 {
+    use NormaliseCodeAppartement;
+
     public function __construct(private readonly string $importPath) {}
 
     /**
@@ -301,11 +304,6 @@ class HistoriqueImportService
     // ------------------------------------------------------------------
     // Classification / helpers
     // ------------------------------------------------------------------
-
-    private function normaliserCode(string $code): string
-    {
-        return preg_replace('/\s+/', '', strtoupper(trim($code)));
-    }
 
     /**
      * @return string[] empty when the sejour is safe to import automatically

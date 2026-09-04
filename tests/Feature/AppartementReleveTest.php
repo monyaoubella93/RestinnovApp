@@ -8,6 +8,7 @@ use App\Models\FraisMaintenance;
 use App\Models\MissionMenage;
 use App\Models\ProduitMenageCatalogue;
 use App\Models\Proprietaire;
+use App\Models\ReleveMensuelHistorique;
 use App\Models\ReleveVerrouillage;
 use App\Models\Sejour;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -358,6 +359,104 @@ class AppartementReleveTest extends TestCase
         // apart from "genuinely free."
         $response->assertJsonPath('sejours.0.montant_mad', null);
         $response->assertJsonPath('sejours.2.montant_mad', 500);
+    }
+
+    // --- Historical releve override (releves_mensuels_historiques) ---
+
+    public function test_a_historical_releve_overrides_the_live_sejour_based_computation(): void
+    {
+        $appartement = Appartement::create([
+            'nom' => 'Adrar 2',
+            'adresse' => 'A',
+            'statut' => 'disponible',
+            'mode_gestion' => 'mandat',
+            'taux_commission' => 20,
+        ]);
+
+        // A historical séjour with no montant_mad -- would otherwise
+        // contribute 0 to revenus_bruts and raise sejours_sans_montant.
+        Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2025-01-05',
+            'date_depart' => '2025-01-10',
+            'nom_voyageur' => 'Séjour historique',
+            'statut' => 'termine',
+            'montant_mad' => null,
+        ]);
+
+        ReleveMensuelHistorique::create([
+            'appartement_id' => $appartement->id,
+            'mois' => '2025-01',
+            'ca' => 10987.02,
+            'charges' => 2479.40,
+            'revenu_proprietaire' => 5650.99,
+            'notre_commission' => 2856.63,
+        ]);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2025-01");
+
+        $response->assertOk();
+        $response->assertJsonPath('donnees_historiques', true);
+        $response->assertJsonPath('revenus_bruts', 10987.02);
+        $response->assertJsonPath('charges_restinnov_total', 2479.4);
+        $response->assertJsonPath('resultat_net', 8507.62); // 10987.02 - 2479.40
+        $response->assertJsonPath('montant_proprietaire', 5650.99);
+        $response->assertJsonPath('commission_restinnov', 2856.63);
+        $response->assertJsonPath('frais_menage_total', 0);
+        $response->assertJsonPath('frais_maintenance_total', 0);
+        // The real historical total is now known -- no more "unknown
+        // montant" warning for this month, even though the underlying
+        // séjour still has no montant_mad of its own.
+        $response->assertJsonPath('sejours_sans_montant', 0);
+    }
+
+    public function test_a_month_with_no_historical_releve_still_computes_live_from_sejours(): void
+    {
+        $appartement = Appartement::create([
+            'nom' => 'Loft Bastille',
+            'adresse' => 'A',
+            'statut' => 'disponible',
+            'mode_gestion' => 'mandat',
+            'taux_commission' => 20,
+        ]);
+
+        Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-08-10',
+            'date_depart' => '2026-08-15',
+            'nom_voyageur' => 'Jean Dupont',
+            'statut' => 'termine',
+            'montant_mad' => 1000,
+        ]);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2026-08");
+
+        $response->assertOk();
+        $response->assertJsonPath('donnees_historiques', false);
+        $response->assertJsonPath('revenus_bruts', 1000);
+    }
+
+    public function test_a_historical_releve_is_scoped_to_its_own_appartement_and_month(): void
+    {
+        $appartement = Appartement::create(['nom' => 'Adrar 2', 'adresse' => 'A', 'statut' => 'disponible']);
+        $autreAppartement = Appartement::create(['nom' => 'HM4', 'adresse' => 'B', 'statut' => 'disponible']);
+
+        ReleveMensuelHistorique::create([
+            'appartement_id' => $appartement->id,
+            'mois' => '2025-01',
+            'ca' => 10987.02,
+            'charges' => 2479.40,
+            'revenu_proprietaire' => 5650.99,
+            'notre_commission' => 2856.63,
+        ]);
+
+        // Same appartement, different month.
+        $responseAutreMois = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2025-02");
+        $responseAutreMois->assertJsonPath('donnees_historiques', false);
+
+        // Different appartement, same month.
+        $responseAutreAppartement = $this->getJson("/api/appartements/{$autreAppartement->id}/releve?mois=2025-01");
+        $responseAutreAppartement->assertJsonPath('donnees_historiques', false);
     }
 
     public function test_a_sous_location_appartement_still_pays_the_fixed_rent_in_a_month_with_no_sejour(): void
