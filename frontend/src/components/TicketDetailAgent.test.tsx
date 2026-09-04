@@ -259,7 +259,7 @@ describe('TicketDetailAgent', () => {
     expect(await screen.findByText('Ce ticket n\'est pas assigné.')).toBeInTheDocument()
   })
 
-  it('n\'affiche pas "Envoyer un message au Manager" avant que le ticket soit commencé ou refusé', () => {
+  it('n\'affiche pas "Prévenir le Manager" avant que le ticket soit commencé ou refusé', () => {
     render(
       <TicketDetailAgent
         ticket={{ ...TICKET, statut: 'resolu_en_attente_validation' }}
@@ -269,10 +269,10 @@ describe('TicketDetailAgent', () => {
       />,
     )
 
-    expect(screen.queryByRole('button', { name: /envoyer un message au manager/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /prévenir le manager/i })).not.toBeInTheDocument()
   })
 
-  it('affiche "Envoyer un message au Manager" quand le ticket est assigne (avant de commencer)', () => {
+  it('affiche "Prévenir le Manager" quand le ticket est assigne (avant de commencer)', () => {
     render(
       <TicketDetailAgent
         ticket={{ ...TICKET, statut: 'assigne' }}
@@ -282,7 +282,7 @@ describe('TicketDetailAgent', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: /envoyer un message au manager/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /prévenir le manager/i })).toBeInTheDocument()
   })
 
   it('affiche le badge "En retard" à la place du badge d\'urgence quand est_en_retard est vrai', () => {
@@ -390,16 +390,16 @@ describe('TicketDetailAgent', () => {
     expect(await screen.findByText(/photo trop lourde, réessayez avec une photo plus légère/i)).toBeInTheDocument()
   })
 
-  it('propose d\'envoyer un message au Manager quand le ticket est en cours (assigne)', () => {
+  it('propose de prévenir le Manager quand le ticket est en cours (assigne)', () => {
     render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
-    expect(screen.getByRole('button', { name: /envoyer un message au manager/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /prévenir le manager/i })).toBeInTheDocument()
   })
 
-  it('ne propose pas d\'envoyer un message au Manager une fois le ticket résolu', () => {
+  it('ne propose pas de prévenir le Manager une fois le ticket résolu', () => {
     render(<TicketDetailAgent ticket={{ ...TICKET, statut: 'resolu' }} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
-    expect(screen.queryByRole('button', { name: /envoyer un message au manager/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /prévenir le manager/i })).not.toBeInTheDocument()
   })
 
   it('envoie un message texte au Manager, distinct de la résolution finale, et affiche une confirmation', async () => {
@@ -408,7 +408,7 @@ describe('TicketDetailAgent', () => {
 
     render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    await user.click(screen.getByRole('button', { name: /prévenir le manager/i }))
     // Both this form and the (always-visible) resolution form below have a
     // "Note (optionnel)" field -- this one is the first in DOM order.
     await user.type(screen.getAllByLabelText(/note \(optionnel\)/i)[0], 'Une précision.')
@@ -423,7 +423,7 @@ describe('TicketDetailAgent', () => {
     const user = userEvent.setup()
     render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    await user.click(screen.getByRole('button', { name: /prévenir le manager/i }))
     await user.click(screen.getByRole('button', { name: /^envoyer$/i }))
 
     expect(screen.getByText(/ajoutez une photo, un audio ou une note/i)).toBeInTheDocument()
@@ -433,7 +433,7 @@ describe('TicketDetailAgent', () => {
     const user = userEvent.setup()
     render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    await user.click(screen.getByRole('button', { name: /prévenir le manager/i }))
     const input = screen.getByLabelText(/photo du message/i)
     expect(input).toHaveAttribute('accept', 'image/*')
     expect(input).toHaveAttribute('capture', 'environment')
@@ -446,7 +446,7 @@ describe('TicketDetailAgent', () => {
 
     render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    await user.click(screen.getByRole('button', { name: /prévenir le manager/i }))
     const photoA = new File(['a'], 'a.jpg', { type: 'image/jpeg' })
     const photoB = new File(['b'], 'b.jpg', { type: 'image/jpeg' })
     await user.upload(screen.getByLabelText(/photo du message/i), [photoA, photoB])
@@ -468,7 +468,7 @@ describe('TicketDetailAgent', () => {
 
     render(<TicketDetailAgent ticket={TICKET} onBack={vi.fn()} onResolu={vi.fn()} onCommence={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: /envoyer un message au manager/i }))
+    await user.click(screen.getByRole('button', { name: /prévenir le manager/i }))
     await user.upload(
       screen.getByLabelText(/photo du message/i),
       new File(['x'], 'photo.jpg', { type: 'image/jpeg' }),
