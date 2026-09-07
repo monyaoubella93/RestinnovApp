@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Appartement;
 use App\Models\MissionMenage;
 use App\Models\Sejour;
+use App\Models\TicketMaintenance;
 use App\Models\Utilisateur;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -92,6 +93,19 @@ class UtilisateurManagementTest extends TestCase
         $response->assertJsonCount(2);
     }
 
+    public function test_index_includes_tickets_maintenance_count_for_maintenance_agents(): void
+    {
+        $agent = $this->agent(['nom' => 'Karim', 'role' => 'maintenance']);
+        $appartement = $this->appartement();
+        TicketMaintenance::create(['appartement_id' => $appartement->id, 'agent_id' => $agent->id, 'statut' => 'assigne']);
+        TicketMaintenance::create(['appartement_id' => $appartement->id, 'agent_id' => $agent->id, 'statut' => 'resolu']);
+
+        $response = $this->getJson('/api/utilisateurs?role=maintenance');
+
+        $response->assertOk();
+        $response->assertJsonPath('0.tickets_maintenance_count', 2);
+    }
+
     // --- update() ---
 
     public function test_update_changes_nom_telephone_and_adresse(): void
@@ -137,6 +151,24 @@ class UtilisateurManagementTest extends TestCase
 
         $response->assertOk();
         $this->assertTrue(Hash::check('nouveau-mdp', $agent->fresh()->password));
+    }
+
+    public function test_update_changes_password_for_a_maintenance_agent_and_is_effective_on_next_login(): void
+    {
+        $agent = $this->agent(['role' => 'maintenance', 'telephone' => '0699999999', 'password' => Hash::make('ancien-mdp')]);
+
+        $response = $this->patchJson("/api/utilisateurs/{$agent->id}", [
+            'nom' => 'Karim Benali',
+            'password' => 'nouveau-mdp',
+        ]);
+        $response->assertOk();
+
+        $this->postJson('/api/login', ['telephone' => '0699999999', 'password' => 'ancien-mdp'])
+            ->assertStatus(401);
+
+        $this->postJson('/api/login', ['telephone' => '0699999999', 'password' => 'nouveau-mdp'])
+            ->assertOk()
+            ->assertJsonPath('role', 'maintenance');
     }
 
     public function test_update_never_exposes_the_password(): void
@@ -216,7 +248,7 @@ class UtilisateurManagementTest extends TestCase
         $response = $this->deleteJson("/api/utilisateurs/{$agent->id}");
 
         $response->assertStatus(422);
-        $response->assertJsonPath('message', 'Cet agent a un historique (missions ou appartements assignés) et ne peut pas être supprimé. Désactivez-le à la place.');
+        $response->assertJsonPath('message', 'Cet agent a un historique (missions, appartements ou tickets assignés) et ne peut pas être supprimé. Désactivez-le à la place.');
         $this->assertDatabaseHas('utilisateurs', ['id' => $agent->id]);
     }
 
@@ -229,5 +261,27 @@ class UtilisateurManagementTest extends TestCase
 
         $response->assertStatus(422);
         $this->assertDatabaseHas('utilisateurs', ['id' => $agent->id]);
+    }
+
+    public function test_destroy_is_rejected_when_the_maintenance_agent_has_a_ticket(): void
+    {
+        $agent = $this->agent(['nom' => 'Karim', 'role' => 'maintenance']);
+        $appartement = $this->appartement();
+        TicketMaintenance::create(['appartement_id' => $appartement->id, 'agent_id' => $agent->id, 'statut' => 'assigne']);
+
+        $response = $this->deleteJson("/api/utilisateurs/{$agent->id}");
+
+        $response->assertStatus(422);
+        $this->assertDatabaseHas('utilisateurs', ['id' => $agent->id]);
+    }
+
+    public function test_destroy_deletes_a_maintenance_agent_with_no_ticket_history(): void
+    {
+        $agent = $this->agent(['nom' => 'Karim', 'role' => 'maintenance']);
+
+        $response = $this->deleteJson("/api/utilisateurs/{$agent->id}");
+
+        $response->assertNoContent();
+        $this->assertDatabaseMissing('utilisateurs', ['id' => $agent->id]);
     }
 }

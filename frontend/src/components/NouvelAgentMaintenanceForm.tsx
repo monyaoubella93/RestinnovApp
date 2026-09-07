@@ -1,12 +1,14 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import type { NewUtilisateurInput } from '../api'
+import type { Agent } from '../types'
 
 interface NouvelAgentMaintenanceFormProps {
   onSubmit: (input: NewUtilisateurInput) => Promise<void>
   onCancel?: () => void
+  agentToEdit?: Agent | null
 }
 
-export function NouvelAgentMaintenanceForm({ onSubmit, onCancel }: NouvelAgentMaintenanceFormProps) {
+export function NouvelAgentMaintenanceForm({ onSubmit, onCancel, agentToEdit }: NouvelAgentMaintenanceFormProps) {
   const [nom, setNom] = useState('')
   const [telephone, setTelephone] = useState('')
   const [adresse, setAdresse] = useState('')
@@ -21,6 +23,19 @@ export function NouvelAgentMaintenanceForm({ onSubmit, onCancel }: NouvelAgentMa
     setPassword('')
     setError(null)
   }
+
+  useEffect(() => {
+    if (agentToEdit) {
+      setNom(agentToEdit.nom)
+      setTelephone(agentToEdit.telephone ?? '')
+      setAdresse(agentToEdit.adresse ?? '')
+      setPassword('')
+      setError(null)
+    } else {
+      resetForm()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentToEdit])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -50,7 +65,9 @@ export function NouvelAgentMaintenanceForm({ onSubmit, onCancel }: NouvelAgentMa
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 rounded-card-manager border border-border-default bg-surface p-6">
-      <h2 className="text-lg font-bold text-ink">Nouvel agent de maintenance</h2>
+      <h2 className="text-lg font-bold text-ink">
+        {agentToEdit ? "Modifier l'agent de maintenance" : 'Nouvel agent de maintenance'}
+      </h2>
 
       <div>
         <label htmlFor="agent_maintenance_nom" className="block text-sm font-semibold text-ink-secondary">
@@ -102,12 +119,17 @@ export function NouvelAgentMaintenanceForm({ onSubmit, onCancel }: NouvelAgentMa
         <input
           id="agent_maintenance_password"
           type="text"
-          required
+          required={!agentToEdit}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          placeholder={agentToEdit ? 'Laisser vide pour ne pas changer' : undefined}
           className="mt-1 block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
         />
-        <p className="mt-1 text-xs text-ink-tertiary">Vous pourrez communiquer ce mot de passe à l'agent</p>
+        <p className="mt-1 text-xs text-ink-tertiary">
+          {agentToEdit
+            ? "Laissez ce champ vide pour conserver le mot de passe actuel de l'agent"
+            : "Vous pourrez communiquer ce mot de passe à l'agent"}
+        </p>
       </div>
 
       {error && <p className="text-sm text-danger">{error}</p>}
@@ -128,7 +150,7 @@ export function NouvelAgentMaintenanceForm({ onSubmit, onCancel }: NouvelAgentMa
           disabled={submitting}
           className="rounded-field bg-brand px-4 py-2 text-sm font-bold text-white hover:bg-brand-light disabled:opacity-50"
         >
-          {submitting ? 'Enregistrement...' : 'Créer le compte'}
+          {submitting ? 'Enregistrement...' : agentToEdit ? 'Enregistrer les modifications' : 'Créer le compte'}
         </button>
       </div>
     </form>

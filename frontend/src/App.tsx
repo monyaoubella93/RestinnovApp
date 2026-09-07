@@ -29,7 +29,7 @@ import {
   type NewUtilisateurInput,
   type ValiderProduitSignaleInput,
 } from './api'
-import { AgentsMenageListeSection } from './components/AgentsMenageListeSection'
+import { AgentsListeSection } from './components/AgentsListeSection'
 import { AppartementsListeSection } from './components/AppartementsListeSection'
 import { CalendrierSection } from './components/CalendrierSection'
 import { CatalogueProduitsSection } from './components/CatalogueProduitsSection'
@@ -73,6 +73,7 @@ type Tab =
   | 'menage-a-valider'
   | 'menage-historique'
   | 'maintenance-agent'
+  | 'maintenance-agents-liste'
   | 'maintenance-a-valider'
   | 'maintenance-tickets'
 
@@ -119,6 +120,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Maintenance',
     tabs: [
       ['maintenance-agent', 'Ajouter un agent maintenance'],
+      ['maintenance-agents-liste', 'Liste des agents'],
       ['maintenance-a-valider', 'Maintenance à valider'],
       ['maintenance-tickets', 'Tickets de maintenance'],
     ],
@@ -139,6 +141,7 @@ const SECTION_TITLES: Record<Tab, string> = {
   'menage-a-valider': 'Ménage',
   'menage-historique': 'Ménage',
   'maintenance-agent': 'Maintenance',
+  'maintenance-agents-liste': 'Maintenance',
   'maintenance-a-valider': 'Maintenance',
   'maintenance-tickets': 'Maintenance',
 }
@@ -404,11 +407,13 @@ function App() {
         adresse: input.adresse ?? null,
         password: input.password ?? null,
       })
-      setAgentsMenage((current) =>
-        current.map((a) => (a.id === updated.id ? updated : a)).sort((a, b) => a.nom.localeCompare(b.nom)),
-      )
+      if (updated.role === 'menage') {
+        setAgentsMenage((current) =>
+          current.map((a) => (a.id === updated.id ? updated : a)).sort((a, b) => a.nom.localeCompare(b.nom)),
+        )
+      }
       setEditingUtilisateur(null)
-      navigateTo('menage-agents-liste')
+      navigateTo(updated.role === 'maintenance' ? 'maintenance-agents-liste' : 'menage-agents-liste')
     } else {
       await handleCreateUtilisateur(input)
     }
@@ -416,14 +421,15 @@ function App() {
 
   const handleCancelUtilisateurForm = () => {
     if (editingUtilisateur) {
+      const listeTab = editingUtilisateur.role === 'maintenance' ? 'maintenance-agents-liste' : 'menage-agents-liste'
       setEditingUtilisateur(null)
-      navigateTo('menage-agents-liste')
+      navigateTo(listeTab)
     }
   }
 
   const handleEditUtilisateur = (agent: Agent) => {
     setEditingUtilisateur(agent)
-    navigateTo('menage-agent')
+    navigateTo(agent.role === 'maintenance' ? 'maintenance-agent' : 'menage-agent')
   }
 
   const handleCreateProduitCatalogue = async (input: NewProduitCatalogueInput) => {
@@ -754,7 +760,7 @@ function App() {
             />
           )}
           {activeTab === 'menage-agents-liste' && (
-            <AgentsMenageListeSection onEditAgent={handleEditUtilisateur} onAgentsChanged={loadData} />
+            <AgentsListeSection role="menage" onEditAgent={handleEditUtilisateur} onAgentsChanged={loadData} />
           )}
           {activeTab === 'menage-catalogue' && (
             <>
@@ -769,7 +775,14 @@ function App() {
           {activeTab === 'menage-a-valider' && <MenageAValiderSection catalogue={produitsCatalogue} />}
           {activeTab === 'menage-historique' && <HistoriqueMenageSection appartements={appartements} />}
           {activeTab === 'maintenance-agent' && (
-            <NouvelAgentMaintenanceForm onSubmit={handleCreateUtilisateur} />
+            <NouvelAgentMaintenanceForm
+              onSubmit={handleSubmitUtilisateur}
+              onCancel={handleCancelUtilisateurForm}
+              agentToEdit={editingUtilisateur}
+            />
+          )}
+          {activeTab === 'maintenance-agents-liste' && (
+            <AgentsListeSection role="maintenance" onEditAgent={handleEditUtilisateur} onAgentsChanged={loadData} />
           )}
           {activeTab === 'maintenance-a-valider' && (
             <TicketsMaintenanceSection appartements={appartements} initialStatutFilter="resolu_en_attente_validation" />
