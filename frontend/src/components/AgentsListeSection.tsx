@@ -2,9 +2,41 @@ import { useEffect, useState } from 'react'
 import { deleteUtilisateur, desactiverUtilisateur, fetchUtilisateurs, reactiverUtilisateur } from '../api'
 import type { Agent } from '../types'
 
-interface AgentsMenageListeSectionProps {
+type AgentsRole = 'menage' | 'maintenance'
+
+interface AgentsListeSectionProps {
+  role: AgentsRole
   onEditAgent: (agent: Agent) => void
   onAgentsChanged: () => void
+}
+
+/**
+ * Per-role labels/columns/history-check -- the table, search, and
+ * actions (modifier/désactiver-réactiver/supprimer) are otherwise
+ * identical between Ménage and Maintenance, so this is the only thing
+ * that varies instead of duplicating the whole component.
+ */
+const ROLE_CONFIG: Record<
+  AgentsRole,
+  {
+    titre: string
+    countColumns: { label: string; value: (agent: Agent) => number }[]
+    hasHistory: (agent: Agent) => boolean
+  }
+> = {
+  menage: {
+    titre: 'Agents de ménage',
+    countColumns: [
+      { label: 'Nb appartements', value: (agent) => agent.appartements_habituel_count ?? 0 },
+      { label: 'Nb missions', value: (agent) => agent.mission_menages_count ?? 0 },
+    ],
+    hasHistory: (agent) => (agent.appartements_habituel_count ?? 0) > 0 || (agent.mission_menages_count ?? 0) > 0,
+  },
+  maintenance: {
+    titre: 'Agents de maintenance',
+    countColumns: [{ label: 'Nb tickets traités', value: (agent) => agent.tickets_maintenance_count ?? 0 }],
+    hasHistory: (agent) => (agent.tickets_maintenance_count ?? 0) > 0,
+  },
 }
 
 function PencilIcon() {
@@ -31,7 +63,8 @@ function StatutBadge({ actif }: { actif: boolean }) {
   )
 }
 
-export function AgentsMenageListeSection({ onEditAgent, onAgentsChanged }: AgentsMenageListeSectionProps) {
+export function AgentsListeSection({ role, onEditAgent, onAgentsChanged }: AgentsListeSectionProps) {
+  const config = ROLE_CONFIG[role]
   const [search, setSearch] = useState('')
   const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,7 +77,7 @@ export function AgentsMenageListeSection({ onEditAgent, onAgentsChanged }: Agent
     let cancelled = false
     setLoading(true)
     setError(null)
-    fetchUtilisateurs({ role: 'menage', search: search || undefined, inclure_inactifs: true })
+    fetchUtilisateurs({ role, search: search || undefined, inclure_inactifs: true })
       .then((data) => {
         if (!cancelled) setAgents(data)
       })
@@ -59,13 +92,13 @@ export function AgentsMenageListeSection({ onEditAgent, onAgentsChanged }: Agent
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search])
+  }, [role, search])
 
   // desactiver()/reactiver() return the bare utilisateur, without the
-  // appartements_habituel_count/mission_menages_count aggregates that only
-  // the index() listing computes -- merge in just the changed `actif` field
-  // rather than replacing the row, or those counts would be wiped from the
-  // table (and silently flip a "Désactiver" agent back to "Supprimer").
+  // count aggregates that only the index() listing computes -- merge in
+  // just the changed `actif` field rather than replacing the row, or
+  // those counts would be wiped from the table (and silently flip a
+  // "Désactiver" agent back to "Supprimer").
   const handleDesactiver = async (agent: Agent) => {
     setActionError(null)
     setBusyAgentId(agent.id)
@@ -112,7 +145,7 @@ export function AgentsMenageListeSection({ onEditAgent, onAgentsChanged }: Agent
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-xl font-bold tracking-\[-0.02em\] text-ink">Agents de ménage</h3>
+        <h3 className="text-xl font-bold tracking-\[-0.02em\] text-ink">{config.titre}</h3>
         <p className="text-[13px] text-ink-tertiary">{agents.length} agents trouvés</p>
       </div>
 
@@ -144,15 +177,18 @@ export function AgentsMenageListeSection({ onEditAgent, onAgentsChanged }: Agent
                 <th className="px-4 py-2">Nom</th>
                 <th className="px-4 py-2">Téléphone</th>
                 <th className="px-4 py-2">Adresse</th>
-                <th className="px-4 py-2">Nb appartements</th>
-                <th className="px-4 py-2">Nb missions</th>
+                {config.countColumns.map((column) => (
+                  <th key={column.label} className="px-4 py-2">
+                    {column.label}
+                  </th>
+                ))}
                 <th className="px-4 py-2">Statut</th>
                 <th className="px-4 py-2">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
               {agents.map((agent) => {
-                const hasHistory = (agent.appartements_habituel_count ?? 0) > 0 || (agent.mission_menages_count ?? 0) > 0
+                const hasHistory = config.hasHistory(agent)
                 const busy = busyAgentId === agent.id
 
                 return (
@@ -160,8 +196,11 @@ export function AgentsMenageListeSection({ onEditAgent, onAgentsChanged }: Agent
                     <td className="px-4 py-3 font-semibold text-ink">{agent.nom}</td>
                     <td className="px-4 py-3 text-ink-secondary">{agent.telephone ?? 'Aucun'}</td>
                     <td className="px-4 py-3 text-ink-secondary">{agent.adresse ?? 'Aucune'}</td>
-                    <td className="px-4 py-3 text-ink-secondary">{agent.appartements_habituel_count ?? 0}</td>
-                    <td className="px-4 py-3 text-ink-secondary">{agent.mission_menages_count ?? 0}</td>
+                    {config.countColumns.map((column) => (
+                      <td key={column.label} className="px-4 py-3 text-ink-secondary">
+                        {column.value(agent)}
+                      </td>
+                    ))}
                     <td className="px-4 py-3">
                       <StatutBadge actif={agent.actif ?? true} />
                     </td>

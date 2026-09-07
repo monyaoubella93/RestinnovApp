@@ -32,6 +32,7 @@ class UtilisateurController extends Controller
             ->withCount([
                 'appartementsHabituels as appartements_habituel_count',
                 'missionMenages as mission_menages_count',
+                'ticketsMaintenance as tickets_maintenance_count',
             ])
             ->orderBy('nom');
 
@@ -138,15 +139,19 @@ class UtilisateurController extends Controller
     /**
      * Permanently delete an utilisateur. Only allowed when it never had any
      * history (no mission_menage ever assigned, never set as an
-     * appartement's agent_habituel) -- an agent with history must be
-     * deactivated instead, so its past missions/appartements keep a valid
-     * reference.
+     * appartement's agent_habituel, no ticket_maintenance ever assigned) --
+     * an agent with history must be deactivated instead, so its past
+     * missions/appartements/tickets keep a valid reference.
      */
     public function destroy(Utilisateur $utilisateur): JsonResponse
     {
-        if ($utilisateur->missionMenages()->exists() || $utilisateur->appartementsHabituels()->exists()) {
+        if (
+            $utilisateur->missionMenages()->exists()
+            || $utilisateur->appartementsHabituels()->exists()
+            || $utilisateur->ticketsMaintenance()->exists()
+        ) {
             return response()->json([
-                'message' => 'Cet agent a un historique (missions ou appartements assignés) et ne peut pas être supprimé. Désactivez-le à la place.',
+                'message' => 'Cet agent a un historique (missions, appartements ou tickets assignés) et ne peut pas être supprimé. Désactivez-le à la place.',
             ], 422);
         }
 

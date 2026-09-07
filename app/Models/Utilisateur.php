@@ -43,4 +43,9 @@ class Utilisateur extends Authenticatable
     {
         return $this->hasMany(Appartement::class, 'agent_habituel_id');
     }
+
+    public function ticketsMaintenance(): HasMany
+    {
+        return $this->hasMany(TicketMaintenance::class, 'agent_id');
+    }
 }

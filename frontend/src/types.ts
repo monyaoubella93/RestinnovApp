@@ -112,6 +112,7 @@ export interface Agent {
   actif?: boolean
   appartements_habituel_count?: number
   mission_menages_count?: number
+  tickets_maintenance_count?: number
 }
 
 export interface ProduitCatalogue {
