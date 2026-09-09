@@ -55,7 +55,7 @@ const STATUT_BADGE_STYLES: Record<SejourStatut, string> = {
   a_venir: 'bg-brand-pale text-brand',
   en_cours: 'bg-warning-bg text-warning-text',
   termine: 'bg-table-header-bg text-ink-tertiary',
-  annule: 'bg-danger-bg text-danger',
+  annule: 'bg-table-header-bg text-ink-tertiary',
 }
 
 const PLATEFORME_LABELS: Record<PlateformeOrigine, string> = {
@@ -630,7 +630,7 @@ export function SejoursListeSection({
       {annulerSejourId != null && (
         <ConfirmModal
           title="Annuler ce séjour"
-          message="Êtes-vous sûr de vouloir annuler ce séjour ?"
+          message="Êtes-vous sûr de vouloir annuler ce séjour ? Cette action est irréversible."
           confirmLabel="Annuler le séjour"
           onCancel={() => setAnnulerSejourId(null)}
           onConfirm={async () => {

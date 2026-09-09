@@ -8,6 +8,7 @@ use App\Models\MissionMenage;
 use App\Models\Sejour;
 use App\Models\Utilisateur;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class MissionMenageAgentWorkspaceTest extends TestCase
@@ -527,5 +528,38 @@ class MissionMenageAgentWorkspaceTest extends TestCase
         $response = $this->getJson('/api/mes-missions/calendrier');
 
         $response->assertStatus(422);
+    }
+
+    public function test_calendrier_never_shows_a_cancelled_sejour_since_cancelling_never_creates_a_mission(): void
+    {
+        $appartement = $this->appartement();
+        $moi = $this->actingAsMenage();
+
+        $sejourAnnule = Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-08-01',
+            'date_depart' => '2026-08-05',
+            'nom_voyageur' => 'Jean Dupont',
+            'statut' => 'a_venir',
+        ]);
+
+        // Only a manager may cancel a sejour (see SejourAnnulationTest) --
+        // switch acting user, cancel, then switch back to the agent to read
+        // their own calendrier.
+        $this->actingAsManager();
+        $this->patchJson("/api/sejours/{$sejourAnnule->id}/annuler")->assertOk();
+        $this->assertDatabaseHas('sejours', ['id' => $sejourAnnule->id, 'statut' => 'annule']);
+
+        // Cancelling a sejour never creates a mission_menage row: the only
+        // place one is ever created is checkout() (see SejourCheckoutService),
+        // and a cancelled sejour never goes through checkout -- so there is
+        // nothing that could linger on the agent's calendrier to begin with.
+        $this->assertDatabaseCount('mission_menages', 0);
+
+        Sanctum::actingAs($moi, ['*']);
+        $response = $this->getJson('/api/mes-missions/calendrier');
+
+        $response->assertOk();
+        $response->assertJsonCount(0);
     }
 }

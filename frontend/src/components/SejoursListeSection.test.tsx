@@ -455,7 +455,11 @@ describe('SejoursListeSection', () => {
     expect(screen.queryByRole('button', { name: /annuler le séjour de marie curie/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /annuler le séjour de karim benali/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /annuler le séjour de fatima zahra/i })).not.toBeInTheDocument()
-    expect(within(screen.getAllByRole('row')[4]).getByText('Annulé')).toBeInTheDocument()
+    const badgeAnnule = within(screen.getAllByRole('row')[4]).getByText('Annulé')
+    expect(badgeAnnule).toBeInTheDocument()
+    // Neutral/gray, not red -- "annulé" isn't an error state, same color as "terminé".
+    expect(badgeAnnule.className).toContain('bg-table-header-bg')
+    expect(badgeAnnule.className).not.toContain('bg-danger')
   })
 
   it('annule un séjour depuis la liste après confirmation dans la modal', async () => {
@@ -469,7 +473,7 @@ describe('SejoursListeSection', () => {
     await screen.findByText('1 séjours trouvés')
     await user.click(screen.getByRole('button', { name: /annuler le séjour de jean dupont/i }))
 
-    expect(screen.getByText('Êtes-vous sûr de vouloir annuler ce séjour ?')).toBeInTheDocument()
+    expect(screen.getByText('Êtes-vous sûr de vouloir annuler ce séjour ? Cette action est irréversible.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /annuler le séjour$/i }))
 
     await waitFor(() =>
