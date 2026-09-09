@@ -14,6 +14,7 @@ import type {
   HistoriqueMissionAgent,
   HistoriqueMissionManager,
   HistoriqueTicketAgent,
+  MissionCalendrierEntry,
   MissionMenage,
   MissionMenagePhotoPreuve,
   ModeGestion,
@@ -794,6 +795,14 @@ export async function fetchMissionMenage(missionMenageId: number): Promise<Missi
 
 export async function fetchHistoriqueAgent(): Promise<HistoriqueMissionAgent[]> {
   const response = await fetch(`${API_BASE_URL}/api/mes-missions/historique`, {
+    headers: authHeaders(),
+  })
+
+  return parseJsonOrThrow(response)
+}
+
+export async function fetchCalendrierAgent(): Promise<MissionCalendrierEntry[]> {
+  const response = await fetch(`${API_BASE_URL}/api/mes-missions/calendrier`, {
     headers: authHeaders(),
   })
 

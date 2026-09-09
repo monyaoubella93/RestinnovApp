@@ -467,4 +467,65 @@ class MissionMenageAgentWorkspaceTest extends TestCase
         $response->assertJsonPath('0.checklist_items.0.coche', true);
         $response->assertJsonPath('0.checklist_modeles_utilises.0', 'Standard');
     }
+
+    // --- calendrier() ---
+
+    public function test_calendrier_lists_missions_of_every_statut(): void
+    {
+        $appartement = $this->appartement();
+        $moi = $this->actingAsMenage();
+
+        $missionAFaire = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $moi->id, 'statut' => 'a_faire']);
+        $missionEnCours = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $moi->id, 'statut' => 'en_cours']);
+        $missionEnAttente = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $moi->id, 'statut' => 'en_attente_validation']);
+        $missionConforme = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $moi->id, 'statut' => 'conforme']);
+        $missionNonConforme = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $moi->id, 'statut' => 'non_conforme']);
+
+        $response = $this->getJson('/api/mes-missions/calendrier');
+
+        $response->assertOk();
+        $response->assertJsonCount(5);
+        $ids = collect($response->json())->pluck('id');
+        foreach ([$missionAFaire, $missionEnCours, $missionEnAttente, $missionConforme, $missionNonConforme] as $mission) {
+            $this->assertTrue($ids->contains($mission->id));
+        }
+    }
+
+    public function test_calendrier_includes_date_statut_and_appartement(): void
+    {
+        $appartement = $this->appartement();
+        $moi = $this->actingAsMenage();
+        $mission = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $moi->id, 'statut' => 'a_faire']);
+
+        $response = $this->getJson('/api/mes-missions/calendrier');
+
+        $response->assertOk();
+        $response->assertJsonPath('0.date', '2026-08-05');
+        $response->assertJsonPath('0.statut', 'a_faire');
+        $response->assertJsonPath('0.appartement.nom', 'Loft Bastille');
+        $response->assertJsonPath('0.appartement.adresse', '12 rue de la Roquette');
+    }
+
+    public function test_a_menage_account_always_gets_its_own_calendrier_regardless_of_the_agent_id_query_param(): void
+    {
+        $appartement = $this->appartement();
+        $moi = $this->actingAsMenage();
+        $autreAgent = $this->agent();
+
+        $maMission = MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $moi->id, 'statut' => 'a_faire']);
+        MissionMenage::create(['sejour_id' => $this->sejour($appartement)->id, 'agent_id' => $autreAgent->id, 'statut' => 'a_faire']);
+
+        $response = $this->getJson("/api/mes-missions/calendrier?agent_id={$autreAgent->id}");
+
+        $response->assertOk();
+        $response->assertJsonCount(1);
+        $response->assertJsonPath('0.id', $maMission->id);
+    }
+
+    public function test_calendrier_agent_id_is_required_for_a_manager_account(): void
+    {
+        $response = $this->getJson('/api/mes-missions/calendrier');
+
+        $response->assertStatus(422);
+    }
 }

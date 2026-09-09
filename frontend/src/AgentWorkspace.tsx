@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from './auth/AuthContext'
 import { fetchMissionsAgent, fetchProduitsCatalogue } from './api'
+import { CalendrierMenageSection } from './components/CalendrierMenageSection'
 import { HistoriqueAgentSection } from './components/HistoriqueAgentSection'
 import { MesMissionsSection } from './components/MesMissionsSection'
 import { useMediaQuery } from './hooks/useMediaQuery'
@@ -13,10 +14,11 @@ import type { MissionMenage, ProduitCatalogue } from './types'
 
 const MOBILE_QUERY = '(max-width: 767px)'
 
-type Onglet = 'mes-missions' | 'en-attente' | 'refusees' | 'validees'
+type Onglet = 'mes-missions' | 'calendrier' | 'en-attente' | 'refusees' | 'validees'
 
 const ONGLET_ICONS: Record<Onglet, string> = {
   'mes-missions': '🧹',
+  calendrier: '📅',
   'en-attente': '⏳',
   refusees: '⚠️',
   validees: '🗂️',
@@ -53,6 +55,7 @@ export function AgentWorkspace() {
 
   const ONGLETS: { id: Onglet; label: string; icon: string }[] = [
     { id: 'mes-missions', label: t('menage.nav.mesMissions'), icon: ONGLET_ICONS['mes-missions'] },
+    { id: 'calendrier', label: t('menage.nav.calendrier'), icon: ONGLET_ICONS.calendrier },
     { id: 'en-attente', label: t('menage.nav.enAttente'), icon: ONGLET_ICONS['en-attente'] },
     { id: 'refusees', label: t('menage.nav.refusees'), icon: ONGLET_ICONS.refusees },
     { id: 'validees', label: t('menage.nav.validees'), icon: ONGLET_ICONS.validees },
@@ -254,13 +257,14 @@ export function AgentWorkspace() {
               onRefresh={chargerMissions}
             />
           )}
+          {onglet === 'calendrier' && <CalendrierMenageSection catalogue={catalogue} />}
           {onglet === 'validees' && <HistoriqueAgentSection />}
         </main>
       </div>
 
       {isMobile && (
         <nav
-          className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-4 border-t border-border-default bg-marine"
+          className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t border-border-default bg-marine"
           role="tablist"
           aria-label={t('menage.workspaceNavLabel')}
         >

@@ -598,6 +598,18 @@ export interface HistoriqueMissionAgent {
 }
 
 /**
+ * The menage agent's own "Calendrier" view -- GET /api/mes-missions/
+ * calendrier -- every mission regardless of statut, laid out by checkout
+ * day (the sejour's date_depart) so the frontend can group them per day.
+ */
+export interface MissionCalendrierEntry {
+  id: number
+  date: string
+  statut: MissionStatut
+  appartement: { id: number; nom: string; adresse: string } | null
+}
+
+/**
  * The maintenance agent's own "Validés" tab -- GET /api/tickets-maintenance/
  * mes-tickets/historique -- always their own already-resolved (resolu)
  * tickets, most recent first.

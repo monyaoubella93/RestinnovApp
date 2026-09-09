@@ -44,6 +44,7 @@ function mockFetch(missions: MissionMenage[] = []) {
     if (url.pathname === '/api/produits-catalogue') return new Response(JSON.stringify([]), { status: 200 })
     if (url.pathname === '/api/mission-menages') return new Response(JSON.stringify(missions), { status: 200 })
     if (url.pathname === '/api/mes-missions/historique') return new Response(JSON.stringify([]), { status: 200 })
+    if (url.pathname === '/api/mes-missions/calendrier') return new Response(JSON.stringify([]), { status: 200 })
 
     throw new Error(`Unhandled request: ${url.pathname}`)
   })
@@ -102,6 +103,18 @@ describe('AgentWorkspace', () => {
     await user.click(screen.getByRole('tab', { name: /validées/i }))
 
     expect(await screen.findByRole('heading', { name: 'Validées' })).toBeInTheDocument()
+    expect(screen.queryByText('Mes missions du jour')).not.toBeInTheDocument()
+  })
+
+  it('bascule vers "Calendrier" au clic sur l\'onglet', async () => {
+    const user = userEvent.setup()
+    globalThis.fetch = mockFetch() as typeof fetch
+    renderWithAuth()
+
+    await screen.findByText('Mes missions du jour')
+    await user.click(screen.getByRole('tab', { name: /^calendrier/i }))
+
+    expect(await screen.findByRole('heading', { name: 'Calendrier' })).toBeInTheDocument()
     expect(screen.queryByText('Mes missions du jour')).not.toBeInTheDocument()
   })
 
@@ -197,7 +210,7 @@ describe('AgentWorkspace', () => {
 
       await screen.findByText('Mes missions du jour')
 
-      // The 4 tabs are still reachable...
+      // The 5 tabs are still reachable...
       expect(screen.getByRole('tab', { name: /mes missions.*1/i })).toBeInTheDocument()
       expect(screen.getByRole('tab', { name: /validées/i })).toBeInTheDocument()
       // ...but the desktop-only user footer (name + role) is gone, and

@@ -23,6 +23,7 @@
     "title": "Ménage",
     "nav": {
       "mesMissions": "Mes missions",
+      "calendrier": "Calendrier",
       "enAttente": "En attente",
       "refusees": "Refusées",
       "validees": "Validées"
@@ -35,6 +36,20 @@
     "errorMissions": "Impossible de charger les missions.",
     "errorCatalogue": "Impossible de charger les données.",
     "nouvelleMission": "Nouvelle mission",
+    "calendrier": {
+      "title": "Calendrier",
+      "empty": "Aucune mission pour l'instant.",
+      "error": "Impossible de charger le calendrier.",
+      "moisPrecedent": "Mois précédent",
+      "moisSuivant": "Mois suivant",
+      "missionValidee": "Mission validée",
+      "legende": {
+        "aFaire": "À faire / En cours",
+        "enAttente": "En attente de validation",
+        "conforme": "Terminé",
+        "refusee": "Refusé"
+      }
+    },
     "historique": {
       "title": "Validées",
       "empty": "Aucun ménage validé pour l'instant.",
