@@ -134,6 +134,48 @@ class AppartementReleveTest extends TestCase
         $response->assertJsonPath('montant_proprietaire', 4173.73);
     }
 
+    public function test_commission_matches_the_adrar2_juin_2025_reference_invoice(): void
+    {
+        // Mirrors a second real invoice (Adrar 2, juin 2025): CA=10753.31,
+        // charges=1241.00, taux=26% -> commission = CA * 26% = 2795.86,
+        // propriétaire = CA - charges - commission = 6716.45. Confirms the
+        // live (non-historique) calculation applies the commission on the
+        // gross CA, never on (CA - charges).
+        $appartement = Appartement::create([
+            'nom' => 'Adrar 2',
+            'adresse' => 'A',
+            'statut' => 'disponible',
+            'mode_gestion' => 'mandat',
+            'taux_commission' => 26,
+        ]);
+
+        Sejour::create([
+            'appartement_id' => $appartement->id,
+            'date_arrivee' => '2026-08-01',
+            'date_depart' => '2026-08-20',
+            'nom_voyageur' => 'Jean Dupont',
+            'statut' => 'termine',
+            'montant_mad' => 10753.31,
+        ]);
+
+        ChargeAppartement::create([
+            'appartement_id' => $appartement->id,
+            'nom_service' => 'Charges diverses',
+            'montant' => 1241.00,
+            'frequence' => 'mensuel',
+            'a_charge_de' => 'restinnov',
+            'date_debut' => '2026-08-01',
+        ]);
+
+        $response = $this->getJson("/api/appartements/{$appartement->id}/releve?mois=2026-08");
+
+        $response->assertOk();
+        $response->assertJsonPath('revenus_bruts', 10753.31);
+        $response->assertJsonPath('charges_restinnov_total', 1241);
+        $response->assertJsonPath('commission_restinnov', 2795.86);
+        $response->assertJsonPath('montant_proprietaire', 6716.45);
+    }
+
     public function test_a_proprietaire_charge_is_shown_but_not_deducted(): void
     {
         $appartement = Appartement::create([
