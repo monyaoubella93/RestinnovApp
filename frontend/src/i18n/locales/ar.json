@@ -21,6 +21,7 @@
     "title": "النظافة",
     "nav": {
       "mesMissions": "مهامي",
+      "calendrier": "التقويم",
       "enAttente": "قيد الانتظار",
       "refusees": "مرفوضة",
       "validees": "مقبولة"
@@ -33,6 +34,20 @@
     "errorMissions": "تعذر تحميل المهام.",
     "errorCatalogue": "تعذر تحميل البيانات.",
     "nouvelleMission": "مهمة جديدة",
+    "calendrier": {
+      "title": "التقويم",
+      "empty": "لا توجد مهمة حالياً.",
+      "error": "تعذر تحميل التقويم.",
+      "moisPrecedent": "الشهر السابق",
+      "moisSuivant": "الشهر التالي",
+      "missionValidee": "مهمة مقبولة",
+      "legende": {
+        "aFaire": "قيد الإنجاز",
+        "enAttente": "قيد المراجعة",
+        "conforme": "منتهية",
+        "refusee": "مرفوضة"
+      }
+    },
     "historique": {
       "title": "مقبولة",
       "empty": "لا توجد مهمة مقبولة حالياً.",

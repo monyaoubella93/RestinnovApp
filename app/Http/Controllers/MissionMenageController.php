@@ -120,6 +120,44 @@ class MissionMenageController extends Controller
     }
 
     /**
+     * This menage agent's missions laid out for the "Calendrier" view: every
+     * mission regardless of statut, with the checkout day (the sejour's
+     * date_depart -- the day the mission was generated, see
+     * SejourCheckoutService::checkout()) so the frontend can group them by
+     * calendar day. Explicitly own-agent-only server-side, same as
+     * index()/historique(): a "menage" caller can never pass another agent's
+     * id.
+     */
+    public function calendrier(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->role === Utilisateur::ROLE_MENAGE) {
+            $agentId = $user->id;
+        } else {
+            $validated = $request->validate([
+                'agent_id' => ['required', 'integer', 'exists:utilisateurs,id'],
+            ]);
+            $agentId = $validated['agent_id'];
+        }
+
+        $missions = MissionMenage::with('sejour.appartement')
+            ->where('agent_id', $agentId)
+            ->get();
+
+        return response()->json($missions->map(fn (MissionMenage $mission) => [
+            'id' => $mission->id,
+            'date' => ($mission->sejour->date_depart ?? $mission->created_at)->toDateString(),
+            'statut' => $mission->statut,
+            'appartement' => $mission->sejour->appartement ? [
+                'id' => $mission->sejour->appartement->id,
+                'nom' => $mission->sejour->appartement->nom,
+                'adresse' => $mission->sejour->appartement->adresse,
+            ] : null,
+        ])->values());
+    }
+
+    /**
      * Manager-wide "Historique" view -- every already-validated (conforme)
      * mission across every appartement, most recent sejour first, optionally
      * narrowed to one appartement and/or a sejour checkout date range.
