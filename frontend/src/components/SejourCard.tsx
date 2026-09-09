@@ -18,7 +18,7 @@ const STATUT_STYLES: Record<Sejour['statut'], string> = {
   a_venir: 'bg-brand-pale text-brand',
   en_cours: 'bg-warning-bg text-warning-text',
   termine: 'bg-table-header-bg text-ink-tertiary',
-  annule: 'bg-danger-bg text-danger',
+  annule: 'bg-table-header-bg text-ink-tertiary',
 }
 
 function formatDate(iso: string): string {
@@ -226,7 +226,7 @@ export function SejourCard({
           {showAnnulerModal && (
             <ConfirmModal
               title="Annuler ce séjour"
-              message="Êtes-vous sûr de vouloir annuler ce séjour ?"
+              message="Êtes-vous sûr de vouloir annuler ce séjour ? Cette action est irréversible."
               confirmLabel="Annuler le séjour"
               onCancel={() => setShowAnnulerModal(false)}
               onConfirm={async () => {

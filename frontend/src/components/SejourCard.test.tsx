@@ -340,6 +340,14 @@ describe('SejourCard', () => {
     expect(screen.queryByRole('button', { name: /^annuler$/i })).not.toBeInTheDocument()
   })
 
+  it('affiche le badge "Annulé" en couleur neutre, pas rouge', () => {
+    renderCard(sejourFixture({ statut: 'annule' }))
+
+    const badge = screen.getByText('Annulé')
+    expect(badge.className).toContain('bg-table-header-bg')
+    expect(badge.className).not.toContain('bg-danger')
+  })
+
   it('affiche "Confirmer le checkout" uniquement pour un séjour en cours', () => {
     let view = renderCard(sejourFixture({ statut: 'en_cours' }))
     expect(screen.getByRole('button', { name: /confirmer le checkout/i })).toBeInTheDocument()
@@ -365,7 +373,7 @@ describe('SejourCard', () => {
 
     await user.click(screen.getByRole('button', { name: /^annuler$/i }))
 
-    expect(screen.getByText('Êtes-vous sûr de vouloir annuler ce séjour ?')).toBeInTheDocument()
+    expect(screen.getByText('Êtes-vous sûr de vouloir annuler ce séjour ? Cette action est irréversible.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /annuler le séjour$/i }))
 
     expect(onAnnuler).toHaveBeenCalledWith(1)
@@ -382,6 +390,6 @@ describe('SejourCard', () => {
     await user.click(screen.getAllByRole('button', { name: /^annuler$/i })[1])
 
     expect(onAnnuler).not.toHaveBeenCalled()
-    expect(screen.queryByText('Êtes-vous sûr de vouloir annuler ce séjour ?')).not.toBeInTheDocument()
+    expect(screen.queryByText('Êtes-vous sûr de vouloir annuler ce séjour ? Cette action est irréversible.')).not.toBeInTheDocument()
   })
 })
