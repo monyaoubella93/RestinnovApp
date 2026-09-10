@@ -46,6 +46,7 @@ import { ProduitsSignalesSection } from './components/ProduitsSignalesSection'
 import { SejoursListeSection } from './components/SejoursListeSection'
 import { TicketsMaintenanceSection } from './components/TicketsMaintenanceSection'
 import { useAuth } from './auth/AuthContext'
+import { useMediaQuery } from './hooks/useMediaQuery'
 import { usePwaIdentity } from './pwa/usePwaIdentity'
 import type {
   Agent,
@@ -150,6 +151,8 @@ function groupKeyForTab(tab: Tab): string | null {
   return NAV_GROUPS.find((group) => group.tabs.some(([t]) => t === tab))?.key ?? null
 }
 
+const MOBILE_QUERY = '(max-width: 767px)'
+
 function App() {
   const [appartements, setAppartements] = useState<Appartement[]>([])
   const [proprietaires, setProprietaires] = useState<Proprietaire[]>([])
@@ -171,7 +174,9 @@ function App() {
   const [pendingStatutFilter, setPendingStatutFilter] = useState<SejourStatut | ''>('')
   const [pendingTicketStatutFilter, setPendingTicketStatutFilter] = useState<TicketMaintenanceStatut | ''>('')
   const [pendingTicketId, setPendingTicketId] = useState<number | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const { user, logout } = useAuth()
+  const isMobile = useMediaQuery(MOBILE_QUERY)
 
   usePwaIdentity('manager')
 
@@ -183,6 +188,7 @@ function App() {
     setPendingStatutFilter('')
     setPendingTicketStatutFilter('')
     setPendingTicketId(null)
+    setDrawerOpen(false)
   }
 
   const handleNavigateToSejourDetail = (sejourId: number) => {
@@ -517,14 +523,16 @@ function App() {
     return null
   }
 
-  return (
-    <div className="flex min-h-screen bg-app-bg font-sans text-ink">
-      <nav className="flex w-[246px] shrink-0 flex-col bg-marine px-3.5 py-5">
-        <div className="flex items-center px-2 pb-5">
-          <img src="/logo.png" alt="RestInnov" className="h-[38px] w-auto object-contain" />
-        </div>
+  // Shared between the desktop sidebar (always visible) and the mobile
+  // slide-over drawer (behind a hamburger button) -- same nav, same
+  // handlers, so the two can never drift out of sync.
+  const navContent = (
+    <>
+      <div className="flex items-center px-2 pb-5">
+        <img src="/logo.png" alt="RestInnov" className="h-[38px] w-auto object-contain" />
+      </div>
 
-        <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5">
           <div className="px-2.5 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-rail-group-title">
             Pilotage
           </div>
@@ -662,25 +670,74 @@ function App() {
             Déconnexion
           </button>
         </div>
-      </nav>
+    </>
+  )
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border-default bg-surface px-6">
-          <h2 className="text-lg font-bold tracking-[-0.02em] text-ink">{SECTION_TITLES[activeTab]}</h2>
-          <div className="border-l border-border-default pl-4 text-[13px] text-ink-tertiary">{todayCapitalized}</div>
-          <div className="ml-auto flex items-center gap-2.5">
-            <HeaderSearchBar
-              onNavigateToSejour={handleNavigateToSejourDetail}
-              onNavigateToAppartement={handleNavigateToAppartementDetail}
-            />
+  return (
+    <div className={`flex min-h-screen bg-app-bg font-sans text-ink ${isMobile ? 'flex-col' : ''}`}>
+      {isMobile ? (
+        <>
+          {/* Compact top bar: hamburger opens the drawer below instead of the
+              fixed sidebar, which has no room on a phone-width screen. */}
+          <header className="flex shrink-0 items-center gap-2 border-b border-border-default bg-surface px-3 py-2.5">
+            <button
+              type="button"
+              aria-label="Ouvrir le menu"
+              onClick={() => setDrawerOpen(true)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-field text-xl text-ink-secondary hover:bg-table-header-bg"
+            >
+              ☰
+            </button>
+            <img src="/logo.png" alt="RestInnov" className="h-7 w-auto shrink-0 object-contain" />
+            <h1 className="min-w-0 flex-1 truncate text-base font-bold tracking-[-0.02em] text-ink">
+              {SECTION_TITLES[activeTab]}
+            </h1>
             <NotificationBell
               onNavigateToSejour={handleNavigateToSejourDetail}
               onNavigateToTicketsMaintenance={() => handleNavigateToTicketsMaintenance('ouvert')}
             />
-          </div>
-        </header>
+          </header>
 
-        <main className="min-w-0 flex-1 overflow-auto p-6">
+          {drawerOpen && (
+            <div className="fixed inset-0 z-50 flex">
+              <nav
+                aria-label="Menu principal"
+                className="flex h-full w-[246px] shrink-0 flex-col overflow-y-auto bg-marine px-3.5 py-5"
+              >
+                {navContent}
+              </nav>
+              <button
+                type="button"
+                aria-label="Fermer le menu"
+                className="flex-1 bg-ink/40"
+                onClick={() => setDrawerOpen(false)}
+              />
+            </div>
+          )}
+        </>
+      ) : (
+        <nav className="flex w-[246px] shrink-0 flex-col bg-marine px-3.5 py-5">{navContent}</nav>
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {!isMobile && (
+          <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border-default bg-surface px-6">
+            <h2 className="text-lg font-bold tracking-[-0.02em] text-ink">{SECTION_TITLES[activeTab]}</h2>
+            <div className="border-l border-border-default pl-4 text-[13px] text-ink-tertiary">{todayCapitalized}</div>
+            <div className="ml-auto flex items-center gap-2.5">
+              <HeaderSearchBar
+                onNavigateToSejour={handleNavigateToSejourDetail}
+                onNavigateToAppartement={handleNavigateToAppartementDetail}
+              />
+              <NotificationBell
+                onNavigateToSejour={handleNavigateToSejourDetail}
+                onNavigateToTicketsMaintenance={() => handleNavigateToTicketsMaintenance('ouvert')}
+              />
+            </div>
+          </header>
+        )}
+
+        <main className={`min-w-0 flex-1 overflow-auto ${isMobile ? 'p-4' : 'p-6'}`}>
           {loadError && <p className="mb-4 text-sm text-danger">{loadError}</p>}
 
           <div className="space-y-6">

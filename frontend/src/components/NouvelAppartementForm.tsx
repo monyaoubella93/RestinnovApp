@@ -480,7 +480,7 @@ export function NouvelAppartementForm({
               placeholder="Adresse (optionnel)"
               className="block w-full rounded-field border border-border-default px-3 py-2 text-sm text-ink focus:border-brand-light focus:outline-none"
             />
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => setShowNewProprietaireInput(false)}
@@ -511,7 +511,7 @@ export function NouvelAppartementForm({
 
       <div>
         <span className="block text-sm font-semibold text-ink-secondary">Mode de gestion</span>
-        <div className="mt-1 flex gap-2">
+        <div className="mt-1 flex flex-wrap gap-2">
           <button
             type="button"
             aria-pressed={modeGestion === 'mandat'}
@@ -616,7 +616,7 @@ export function NouvelAppartementForm({
                   <option value="mensuel">Mensuel</option>
                   <option value="annuel">Annuel</option>
                 </select>
-                <div className="flex gap-1">
+                <div className="flex flex-wrap gap-1">
                   <button
                     type="button"
                     aria-pressed={charge.aChargeDe === 'restinnov'}
@@ -697,7 +697,7 @@ export function NouvelAppartementForm({
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <button
           type="button"
           onClick={() => {
