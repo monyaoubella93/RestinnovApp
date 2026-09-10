@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { AuthProvider } from './auth/AuthContext'
 import type { Appartement, DashboardData, PaginatedResponse, Sejour } from './types'
@@ -752,5 +752,103 @@ describe('App', () => {
 
     await waitFor(() => expect(localStorage.getItem('auth_token')).toBeNull())
     expect(localStorage.getItem('auth_user')).toBeNull()
+  })
+
+  describe('en portrait mobile (largeur <= 767px)', () => {
+    const originalMatchMedia = window.matchMedia
+
+    afterEach(() => {
+      // useMediaQuery reads window.matchMedia directly, not via a spy --
+      // restore it so a later test in this file doesn't inherit "always
+      // mobile" from here.
+      window.matchMedia = originalMatchMedia
+    })
+
+    function mockMobileViewport() {
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })) as typeof window.matchMedia
+    }
+
+    it('affiche une barre compacte avec un bouton menu, pas la barre latérale fixe', async () => {
+      mockMobileViewport()
+      globalThis.fetch = mockFetch({ sejours: [] }) as typeof fetch
+
+      renderApp()
+      await screen.findByTestId('dashboard-revenus-totaux')
+
+      expect(screen.getByRole('button', { name: /ouvrir le menu/i })).toBeInTheDocument()
+      // The sidebar's "Séjours" group button only exists once the drawer is open.
+      expect(screen.queryByRole('button', { name: 'Séjours' })).not.toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeInTheDocument()
+    })
+
+    it('ouvre le tiroir de navigation au clic sur le hamburger, et navigue en le refermant automatiquement', async () => {
+      const user = userEvent.setup()
+      mockMobileViewport()
+      globalThis.fetch = mockFetch({ sejours: [sejourFixture()] }) as typeof fetch
+
+      renderApp()
+      await screen.findByTestId('dashboard-revenus-totaux')
+
+      await user.click(screen.getByRole('button', { name: /ouvrir le menu/i }))
+      expect(screen.getByRole('navigation', { name: /menu principal/i })).toBeInTheDocument()
+
+      await openGroup(user, 'Séjours')
+      await openSubItem(user, 'Liste des séjours')
+
+      expect(await screen.findByText('Jean Dupont')).toBeInTheDocument()
+      // Selecting a real destination closes the drawer.
+      expect(screen.queryByRole('navigation', { name: /menu principal/i })).not.toBeInTheDocument()
+    })
+
+    it('ferme le tiroir au clic sur l\'overlay, sans changer d\'écran', async () => {
+      const user = userEvent.setup()
+      mockMobileViewport()
+      globalThis.fetch = mockFetch({ sejours: [] }) as typeof fetch
+
+      renderApp()
+      await screen.findByTestId('dashboard-revenus-totaux')
+
+      await user.click(screen.getByRole('button', { name: /ouvrir le menu/i }))
+      expect(screen.getByRole('navigation', { name: /menu principal/i })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /fermer le menu/i }))
+
+      expect(screen.queryByRole('navigation', { name: /menu principal/i })).not.toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeInTheDocument()
+    })
+
+    it('expand/collapse d\'un groupe dans le tiroir ne referme pas le tiroir', async () => {
+      const user = userEvent.setup()
+      mockMobileViewport()
+      globalThis.fetch = mockFetch({ sejours: [] }) as typeof fetch
+
+      renderApp()
+      await screen.findByTestId('dashboard-revenus-totaux')
+      await user.click(screen.getByRole('button', { name: /ouvrir le menu/i }))
+
+      await openGroup(user, 'Séjours')
+      expect(screen.getByRole('button', { name: 'Créer un séjour' })).toBeInTheDocument()
+      expect(screen.getByRole('navigation', { name: /menu principal/i })).toBeInTheDocument()
+    })
+  })
+
+  it('rendu desktop inchangé : pas de bouton hamburger, barre latérale toujours visible', async () => {
+    globalThis.fetch = mockFetch({ sejours: [] }) as typeof fetch
+
+    renderApp()
+    await screen.findByTestId('dashboard-revenus-totaux')
+
+    expect(screen.queryByRole('button', { name: /ouvrir le menu/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Séjours' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Dashboard', level: 2 })).toBeInTheDocument()
   })
 })

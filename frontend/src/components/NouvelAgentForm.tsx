@@ -173,7 +173,7 @@ export function NouvelAgentForm({ appartements, onSubmit, onCancel, agentToEdit 
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <button
           type="button"
           onClick={() => {

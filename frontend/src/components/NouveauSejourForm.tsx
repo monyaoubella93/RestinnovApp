@@ -304,7 +304,7 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
 
       <div>
         <span className="block text-sm font-semibold text-ink-secondary">Plateforme d'origine</span>
-        <div className="mt-1 flex gap-2" role="group" aria-label="Plateforme d'origine">
+        <div className="mt-1 flex flex-wrap gap-2" role="group" aria-label="Plateforme d'origine">
           {PLATEFORMES.map((plateforme) => (
             <button
               key={plateforme.value}
@@ -365,7 +365,7 @@ export function NouveauSejourForm({ appartements, onSubmit, onCancel, sejourToEd
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <button
           type="button"
           onClick={() => {
