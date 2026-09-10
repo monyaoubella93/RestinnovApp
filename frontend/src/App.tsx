@@ -723,7 +723,7 @@ function App() {
               />
               <NotificationBell
                 onNavigateToSejour={handleNavigateToSejourDetail}
-                onNavigateToTicketsMaintenance={() => handleNavigateToTicketsMaintenance('ouvert')}
+                onNavigateToTicketDetail={handleNavigateToTicketDetail}
               />
             </div>
           </header>
